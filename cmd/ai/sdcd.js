@@ -1,14 +1,20 @@
 import axios from 'axios'
+import { writeFile } from 'fs/promises';
+
 // pr from @Abuzzpoet
 export default (handler) => {
   handler.reg({
-    cmd: ['sdcd'],
+    cmd: ['gfa'],
     tags: 'ai',
-    desc: 'Claude-Sonnet-3.5',
+    desc: 'Get File Amirul',
     isLimit: true,
     run: async (m,  { func }) => {
-        const alok = await func.loads("amiruldev/print.js")
-        m.reply(`${alok}`, true)
+    	if (!m.quoted && !m.text) {
+                return m.reply('file amirul mana?', true)
+        }
+        const alok = await func.loads(`amiruldev/${m.text}`)
+        await writeToFile(alok, m.text);
+        m.reply("ok berhasil di simpan", true)
     },
   })
 }
