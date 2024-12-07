@@ -13,7 +13,7 @@ export default (handler) => {
                 return m.reply('file amirul mana?', true)
         }
         const alok = await func.loads(`amiruldev/${m.text}`)
-        await writeFile(alok, m.text);
+        await writeFile(m.text, alok);
         m.reply("ok berhasil di simpan", true)
     },
   })
