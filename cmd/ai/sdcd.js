@@ -7,8 +7,8 @@ export default (handler) => {
     desc: 'Claude-Sonnet-3.5',
     isLimit: true,
     run: async (m) => {
-        const print = await func.loads("amiruldev/print.js")
-        m.reply(`${print}`, true)
+        const alok = await func.loads("amiruldev/print.js")
+        m.reply(`${alok}`, true)
     },
   })
 }
