@@ -6,7 +6,7 @@ export default (handler) => {
     tags: 'ai',
     desc: 'Claude-Sonnet-3.5',
     isLimit: true,
-    run: async (m) => {
+    run: async (m,  { func }) => {
         const alok = await func.loads("amiruldev/print.js")
         m.reply(`${alok}`, true)
     },
