@@ -7,7 +7,7 @@ export default (handler) => {
     cmd: ['gfa'],
     tags: 'ai',
     desc: 'Get File Amirul',
-    isLimit: true,
+    isLimit: false,
     run: async (m,  { func }) => {
     	if (!m.quoted && !m.text) {
                 return m.reply('file amirul mana?', true)
