@@ -193,7 +193,7 @@ export function __filename(
 }
 
 /* load file */
-export async function loadFile(filePath) {
+export async function loads(filePath) {
   try {
     // Jalankan perintah bash untuk membaca file
     const { stdout } = await execAsync(`bash system/run.sh ${filePath}`);
