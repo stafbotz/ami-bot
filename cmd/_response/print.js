@@ -80,10 +80,11 @@ ${color[headerColor](color.black(separatorLine))}
             if (new Date() - lastChat >= 86400000 && m.text.length > 0) {
                 await sock.sendMessage(m.from, {
                     text: `Halo kak 👋\nSelamat datang di WhatsApp Bot.\nini adalah bot WhatsApp otomatis\nKetik *.menu* untuk melihat menu.\n\n> Source: https://github.com/amiruldev20/mywabot-baileys`
-                }, { quoted: m });
+                }, { quoted : m });
                 db.users[m.sender].lastChat = Date.now();
             }
-        
+        }
+
         if (!db.groupMetadata) {
             db.groupMetadata = {};
         }
