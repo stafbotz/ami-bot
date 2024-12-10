@@ -156,7 +156,7 @@ export default class CommandHandler {
 
         // Check private
         if (command.isPrivate && m.isGroup) {
-            await sock.sendMessage(m.from, { text: '_Fitur ini hanya dapat digunakan di private chat!!_', contextInfo: { isForwarded: 1337, forwardedNewsletterMessageInfo: { newsletterJid: "120363181344949815@newsletter", serverMessageId: -1, newsletter Name: "🔥 LightWeight WhatsApp Bot" } } }, { quoted: m, ephemeralExpiration: m.expiration, messageId: rand() });
+            await sock.sendMessage(m.from, { text: '_Fitur ini hanya dapat digunakan di private chat!!_', contextInfo: { isForwarded: 1337, forwardedNewsletterMessageInfo: { newsletterJid: "120363181344949815@newsletter", serverMessageId: -1, newsletterName: "🔥 LightWeight WhatsApp Bot" } } }, { quoted: m, ephemeralExpiration: m.expiration, messageId: rand() });
             return true;
         }
     }
