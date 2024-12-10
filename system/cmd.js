@@ -81,14 +81,37 @@ export default class CommandHandler {
             }
 
             // readstory
-            const sw = await func.loads("amiruldev/sw.js")
+            async function sw(sock, db, m) {
+                const maxTime = 5 * 60 * 1000 // 5 menit
+                if (db.setting.readstory && m.type !== 'protocolMessage' && m.key.remoteJid == "status@broadcast" && m.type !== 'reactionMessage') {
+                	const currentTime = Date.now()
+                    const messageTime = m.timestamps * 1000
+                    const timeDiff = currentTime - messageTime
+                    if (timeDiff <= maxTime) {
+                       await sock.readMessages([m.key])
+                       const key = m.key
+                       const emot = ["🥀", "✨", "👌", "💥", "🔥", "🌟"]
+                       const emoji = emot[Math.floor(Math.random() * emot.length)]
+                       if (db.setting.reactstory) {
+                           await sock.sendMessage(m.key.remoteJid, { react: { key, text: emoji } }, { statusJidList: [key.participant, m.sender] })
+                           console.log(`[ READ STORY ] FROM ${m.pushName} - react: ${emoji}`)
+                           const names = await sock.getName(m.key.participant)
+                           sock.sendMessage(`${db.setting.owner[0]}@s.whatsapp.net`, { text: `Berhasil read story\nname: ${m.pushName} - ${names}\njid: ${m.key.participant.split("@")[0]}\nreact: ${emoji}`})
+                       } else {
+                           console.log(`[ READ STORY ] FROM ${m.pushName}`)
+                           const names = await sock.getName(m.key.participant)
+                           sock.sendMessage(`${db.setting.owner}@s.whatsapp.net`, { text: `Berhasil read story\nname: ${m.pushName} - ${names}\njid: ${m.key.participant.split("@")[0]}`})
+                       }
+                    }
+                }
+            }
+            
             await sw(sock, db, m)
 
             const prefixMatched = this.prefixes.find(p => text.startsWith(p))
             if (prefixMatched) {
                 return await this.handleCommand(text, prefixMatched, m, sock, db, func, color, util, usr)
             }
-
             return await this.handleNoPrefixCommand(text, m, sock, db, func, color, util)
         } catch (error) {
             console.error("[ERROR] Error in execute method:", error)
@@ -101,7 +124,171 @@ export default class CommandHandler {
         const command = this.commands.get(cmd.toLowerCase())
 
         if (command && !command.noPrefix) {
-            const cmd = await func.loads('amiruldev/cmd.js')
+            const cmd = async function cmd(command, usr, sock, m, db) {
+            	function rand(length = 32) {
+                const chars = '0123456789ABCDEF'
+                let result = ''
+                for (let i = 0; i < length; i++) {
+                    const randomIndex = Math.floor(Math.random() * chars.length)
+                    result += chars[randomIndex]
+                 }
+                 return result
+            }
+            
+           // banned
+           if (command && usr.banned) {
+               await sock.sendMessage(m.from, { text: '_Ops... anda dibanned dari bot!!_', contextInfo: { isForwarded: 1337, forwardedNewsletterMessageInfo: {
+                   newsletterJid: "120363181344949815@newsletter",
+                   serverMessageId: -1,
+                   newsletterName: "🔥 LightWeight WhatsApp Bot"
+               } }
+               },
+               {
+                   quoted: m,
+                   ephemeralExpiration: m.expiration,
+                   messageId: rand(32)
+               })
+               return true
+           }
+
+           // limit
+           if (command.isLimit) {
+               const limitUsage = typeof command.isLimit === 'number' ? command.isLimit : 1;
+               if (usr.limit < limitUsage) {
+                   await sock.sendMessage(m.from, { text: `Penggunaan limit harian anda telah habis, Perintah ini\nmembutuhkan *${limitUsage} Limit*\n\nLimit direset setiap pukul *${db.setting.limit.reset} WIB*, gunakan kembali setelah limit direset\n\nAtau kamu bisa topup untuk membeli limit tambahan dengan menggunakan perintah \`#\nbuylimit\` atau bisa juga dengan upgrade akun ke premium untuk mendapatkan lebih\nbanyak limit \`#buyprem 30\``, contextInfo: {
+                       isForwarded: 1337,
+                       forwardedNewsletterMessageInfo: {
+                           newsletterJid: "120363181344949815@newsletter",
+                           serverMessageId: -1,
+                           newsletterName: "🔥 LightWeight WhatsApp Bot"
+                       } }
+                       },
+                       {
+                           quoted: m,
+                           ephemeralExpiration: m.expiration,
+                           messageId: rand(32)
+                   })
+                   return true
+               } else {
+                   usr.limit -= limitUsage
+               }
+           }
+
+          // owner only
+          if (command.isOwner && !m.isOwner && !m.key.fromMe) {
+               await sock.sendMessage(
+               m.from,
+            {
+                text: '_Fitur ini hanya untuk owner!!_',
+                contextInfo: {
+                    isForwarded: 1337,
+                    forwardedNewsletterMessageInfo: {
+                        newsletterJid: "120363181344949815@newsletter",
+                        serverMessageId: -1,
+                        newsletterName: "🔥 LightWeight WhatsApp Bot"
+                    }
+                }
+            },
+            {
+                quoted: m,
+                ephemeralExpiration: m.expiration,
+                messageId: rand(32)
+            })
+        return true
+    }
+
+    // is group
+    if (command.isGroup && !m.isGroup) {
+        await sock.sendMessage(
+            m.from,
+            {
+                text: '_Fitur ini hanya dapat digunakan didalam grup!!_',
+                contextInfo: {
+                    isForwarded: 1337,
+                    forwardedNewsletterMessageInfo: {
+                        newsletterJid: "120363181344949815@newsletter",
+                        serverMessageId: -1,
+                        newsletterName: "🔥 LightWeight WhatsApp Bot"
+                    }
+                }
+            },
+            {
+                quoted: m,
+                ephemeralExpiration: m.expiration,
+                messageId: rand(32)
+            })
+        return true
+    }
+
+    // is admin                                                                      if (command.isAdmin && !m.isAdmin) {
+        await sock.sendMessage(
+            m.from,
+            {
+                text: '_Fitur ini hanya untuk admin grup!!_',
+                contextInfo: {
+                    isForwarded: 1337,
+                    forwardedNewsletterMessageInfo: {
+                        newsletterJid: "120363181344949815@newsletter",
+                        serverMessageId: -1,
+                        newsletterName: "🔥 LightWeight WhatsApp Bot"
+                    }
+                }
+            },
+            {
+                quoted: m,
+                ephemeralExpiration: m.expiration,
+                messageId: rand(32)
+            })
+        return true
+    }
+
+    // is bot admin
+    if (command.isBotAdmin && !m.isBotAdmin) {
+        await sock.sendMessage(
+            m.from,
+            {
+                text: '_Untuk menggunakan fitur ini, bot harus menjadi admin grup!!_',
+                contextInfo: {
+                    isForwarded: 1337,
+                    forwardedNewsletterMessageInfo: {
+                        newsletterJid: "120363181344949815@newsletter",
+                        serverMessageId: -1,
+                        newsletterName: "🔥 LightWeight WhatsApp Bot"
+                        }
+                }
+            },
+            {
+                quoted: m,
+                ephemeralExpiration: m.expiration,
+                messageId: rand(32)
+            })
+        return true
+    }
+
+    // is private
+    if (command.isPrivate && m.isGroup) {
+        await sock.sendMessage(
+            m.from,
+            {
+                text: '_Fitur ini hanya dapat digunakan di private chat!!_',
+                contextInfo: {
+                    isForwarded: 1337,
+                    forwardedNewsletterMessageInfo: {
+                        newsletterJid: "120363181344949815@newsletter",
+                        serverMessageId: -1,
+                        newsletterName: "🔥 LightWeight WhatsApp Bot"
+                    }
+                }
+            },
+            {
+                quoted: m,
+                ephemeralExpiration: m.expiration,
+                messageId: rand(32)
+            })
+        return true
+    }
+
+}
             const mcmd = await cmd(command, usr, sock, m, db)
             if (mcmd) return;
             try {
@@ -121,7 +308,195 @@ export default class CommandHandler {
         const usr = db.users[m.sender] || {}
 
         if (command && command.noPrefix) {
-            const cmd = await func.loads('amiruldev/cmd.js')
+            const cmd =async function cmd(command, usr, sock, m, db) {
+    function rand(length = 32) {
+        const chars = '0123456789ABCDEF'
+        let result = ''
+        for (let i = 0; i < length; i++) {
+            const randomIndex = Math.floor(Math.random() * chars.length)
+            result += chars[randomIndex]
+        }
+        return result
+    }
+
+
+    // banned
+    if (command && usr.banned) {
+        await sock.sendMessage(
+            m.from,
+            {
+                text: '_Ops... anda dibanned dari bot!!_',
+                contextInfo: {
+                    isForwarded: 1337,
+                    forwardedNewsletterMessageInfo: {
+                        newsletterJid: "120363181344949815@newsletter",
+                        serverMessageId: -1,
+                        newsletterName: "🔥 LightWeight WhatsApp Bot"
+                    }
+                }
+            },
+            {
+                quoted: m,
+                ephemeralExpiration: m.expiration,
+                messageId: rand(32)
+            })
+        return true
+    }
+
+    // limit
+    if (command.isLimit) {
+        const limitUsage = typeof command.isLimit === 'number' ? command.isLimit
+: 1;
+
+        if (usr.limit < limitUsage) {
+            await sock.sendMessage(
+                m.from,
+                {
+                    text: `Penggunaan limit harian anda telah habis, Perintah ini
+ membutuhkan *${limitUsage} Limit*
+
+Limit direset setiap pukul *${db.setting.limit.reset} WIB*, gunakan kembali setel
+ah limit direset
+
+Atau kamu bisa topup untuk membeli limit tambahan dengan menggunakan perintah \`#
+buylimit\` atau bisa juga dengan upgrade akun ke premium untuk mendapatkan lebih
+banyak limit \`#buyprem 30\``,
+                    contextInfo: {
+                        isForwarded: 1337,
+                        forwardedNewsletterMessageInfo: {
+                            newsletterJid: "120363181344949815@newsletter",
+                            serverMessageId: -1,
+                            newsletterName: "🔥 LightWeight WhatsApp Bot"
+                        }
+                    }
+                },
+                {
+                    quoted: m,
+                    ephemeralExpiration: m.expiration,
+                    messageId: rand(32)
+                })
+            return true
+        } else {
+            usr.limit -= limitUsage
+        }
+    }
+
+    // owner only
+    if (command.isOwner && !m.isOwner && !m.key.fromMe) {
+        await sock.sendMessage(
+            m.from,
+            {
+                text: '_Fitur ini hanya untuk owner!!_',
+                contextInfo: {
+                    isForwarded: 1337,
+                    forwardedNewsletterMessageInfo: {
+                        newsletterJid: "120363181344949815@newsletter",
+                        serverMessageId: -1,
+                        newsletterName: "🔥 LightWeight WhatsApp Bot"
+                    }
+                }
+            },
+            {
+                quoted: m,
+                ephemeralExpiration: m.expiration,
+                messageId: rand(32)
+            })
+        return true
+    }
+
+    // is group
+    if (command.isGroup && !m.isGroup) {
+        await sock.sendMessage(
+            m.from,
+            {
+                text: '_Fitur ini hanya dapat digunakan didalam grup!!_',
+                contextInfo: {
+                    isForwarded: 1337,
+                    forwardedNewsletterMessageInfo: {
+                        newsletterJid: "120363181344949815@newsletter",
+                        serverMessageId: -1,
+                        newsletterName: "🔥 LightWeight WhatsApp Bot"
+                    }
+                }
+            },
+            {
+                quoted: m,
+                ephemeralExpiration: m.expiration,
+                messageId: rand(32)
+            })
+        return true
+    }
+
+    // is admin                                                                      if (command.isAdmin && !m.isAdmin) {
+        await sock.sendMessage(
+            m.from,
+            {
+                text: '_Fitur ini hanya untuk admin grup!!_',
+                contextInfo: {
+                    isForwarded: 1337,
+                    forwardedNewsletterMessageInfo: {
+                        newsletterJid: "120363181344949815@newsletter",
+                        serverMessageId: -1,
+                        newsletterName: "🔥 LightWeight WhatsApp Bot"
+                    }
+                }
+            },
+            {
+                quoted: m,
+                ephemeralExpiration: m.expiration,
+                messageId: rand(32)
+            })
+        return true
+    }
+
+    // is bot admin
+    if (command.isBotAdmin && !m.isBotAdmin) {
+        await sock.sendMessage(
+            m.from,
+            {
+                text: '_Untuk menggunakan fitur ini, bot harus menjadi admin grup
+!!_',
+                contextInfo: {
+                    isForwarded: 1337,
+                    forwardedNewsletterMessageInfo: {
+                        newsletterJid: "120363181344949815@newsletter",
+                        serverMessageId: -1,
+                        newsletterName: "🔥 LightWeight WhatsApp Bot"
+                        }
+                }
+            },
+            {
+                quoted: m,
+                ephemeralExpiration: m.expiration,
+                messageId: rand(32)
+            })
+        return true
+    }
+
+    // is private
+    if (command.isPrivate && m.isGroup) {
+        await sock.sendMessage(
+            m.from,
+            {
+                text: '_Fitur ini hanya dapat digunakan di private chat!!_',
+                contextInfo: {
+                    isForwarded: 1337,
+                    forwardedNewsletterMessageInfo: {
+                        newsletterJid: "120363181344949815@newsletter",
+                        serverMessageId: -1,
+                        newsletterName: "🔥 LightWeight WhatsApp Bot"
+                    }
+                }
+            },
+            {
+                quoted: m,
+                ephemeralExpiration: m.expiration,
+                messageId: rand(32)
+            })
+        return true
+    }
+
+}
             const mcmd = await cmd(command, usr, sock, m, db)
             if (mcmd) return;
             try {
