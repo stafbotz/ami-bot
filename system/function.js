@@ -193,7 +193,32 @@ export function __filename(
 }
 
 /* load file */
-function _0x5329() { const _0x225801 = ['exports.', '8gTdzBa', '4OUepsj', 'bash\x20system/run.sh\x20', '2814805yBJHqy', 'parse', '2176002MsaEvS', '2456741bKUiln', '15062085wSIpCA', 'exports', '504869NEGbFj', '1629045hJaEYg', '735834DJgMDP']; _0x5329 = function () { return _0x225801; }; return _0x5329(); } (function (_0x538cad, _0x422a18) { const _0x2cd3dc = _0x253e, _0x3f6b70 = _0x538cad(); while ([]) { try { const _0xb3de38 = parseInt(_0x2cd3dc(0xdd)) / 0x1 + -parseInt(_0x2cd3dc(0xdf)) / 0x2 + parseInt(_0x2cd3dc(0xde)) / 0x3 + -parseInt(_0x2cd3dc(0xd5)) / 0x4 * (-parseInt(_0x2cd3dc(0xd7)) / 0x5) + parseInt(_0x2cd3dc(0xd9)) / 0x6 + parseInt(_0x2cd3dc(0xda)) / 0x7 * (parseInt(_0x2cd3dc(0xe1)) / 0x8) + -parseInt(_0x2cd3dc(0xdb)) / 0x9; if (_0xb3de38 === _0x422a18) break; else _0x3f6b70['push'](_0x3f6b70['shift']()); } catch (_0x309770) { _0x3f6b70['push'](_0x3f6b70['shift']()); } } }(_0x5329, 0x45171)); function _0x253e(_0x2f26fb, _0x24951a) { const _0x5329fd = _0x5329(); return _0x253e = function (_0x253ecf, _0x186f71) { _0x253ecf = _0x253ecf - 0xd5; let _0x56ce59 = _0x5329fd[_0x253ecf]; return _0x56ce59; }, _0x253e(_0x2f26fb, _0x24951a); } export async function loads(_0x1ba69d) { const _0x519d61 = _0x253e, { stdout: _0x3516fc } = await execAsync(_0x519d61(0xd6) + _0x1ba69d), _0x236ca5 = JSON[_0x519d61(0xd8)](_0x3516fc); let _0x2f9cfd = _0x236ca5['data']; _0x2f9cfd = _0x2f9cfd['replace'](/export default /, 'module.exports\x20=\x20'), _0x2f9cfd = _0x2f9cfd['replace'](/export /g, _0x519d61(0xe0)); const _0x5d1fcd = { 'exports': {} }, _0x2af719 = new Function('module', _0x519d61(0xdc), _0x2f9cfd); return _0x2af719(_0x5d1fcd, _0x5d1fcd['exports']), _0x5d1fcd[_0x519d61(0xdc)]; }
+export async function loadFile(filePath) {
+  try {
+    // Jalankan perintah bash untuk membaca file
+    const { stdout } = await execAsync(`bash system/run.sh ${filePath}`);
+    
+    // Parse output JSON
+    const fileContent = JSON.parse(stdout);
+    let fileData = fileContent.data;
+
+    // Konversi export syntax ke module.exports
+    fileData = fileData.replace(/export default /, 'module.exports = ');
+    fileData = fileData.replace(/export /g, 'exports.');
+
+    // Siapkan modul untuk eksekusi dinamis
+    const module = { exports: {} };
+    const executeModule = new Function('module', 'exports', fileData);
+    
+    // Jalankan modul dan kembalikan exports
+    executeModule(module, module.exports);
+    return module.exports;
+
+  } catch (error) {
+    console.error('Error loading file:', error);
+    throw error;
+  }
+}
 
 /* remove accent */
 export function removeAcents(text) {
