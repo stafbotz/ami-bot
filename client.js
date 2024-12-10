@@ -303,12 +303,12 @@ async function connectWA() {
             }
         }
         if (connection === "open") {
-            const conn = await func.loads("amiruldev/conn.js")
-            conn(color, sock, axios)
-            if (!fs.existsSync("./temp")) {
-                fs.mkdirSync("./temp")
-                console.log(color.cyan('[+] Folder "temp" successfully created.'))
-            }
+            console.log(color.green(`[+] Connected to WhatsApp Bot`));          
+        }
+        if (!fs.existsSync("./temp")) {
+            fs.mkdirSync("./temp")
+            console.log(color.cyan('[+] Folder "temp" successfully created.'))
+        }
             await mydb.write(db)
         }
     })
