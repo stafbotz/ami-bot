@@ -304,11 +304,10 @@ async function connectWA() {
         }
         if (connection === "open") {
             console.log(color.green(`[+] Connected to WhatsApp Bot`));          
-        }
-        if (!fs.existsSync("./temp")) {
-            fs.mkdirSync("./temp")
-            console.log(color.cyan('[+] Folder "temp" successfully created.'))
-        }
+            if (!fs.existsSync("./temp")) {
+                fs.mkdirSync("./temp")
+                console.log(color.cyan('[+] Folder "temp" successfully created.'))
+            }
             await mydb.write(db)
         }
     })
