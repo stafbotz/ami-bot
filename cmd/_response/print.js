@@ -2,7 +2,7 @@ export default function (handler) {
     handler.addFunction(async (m, { sock, db, color, func }) => {
         const terminalWidth = 54;
         const separatorLine = '─'.repeat(terminalWidth - 2);
-        const footerText = 'whatsapp bot by amirul dev';
+        const footerText = 'Ami Bot by Ren Visualz';
         const maxTextLength = terminalWidth - 4;
 
         const trimText = (text) => text?.length > maxTextLength ? `${text.slice(0, maxTextLength - 3)}...` : text || 'Unknown';
@@ -48,14 +48,9 @@ ${color[headerColor](color.black(separatorLine))}
         };
 
         logChat();
-
-        // Handle .sc command
-        if (m.body === ".sc") {
-            m.reply(`Hai kak *${m.pushName}* 👋\n\nScript ini menggunakan source publik dari Amirul Dev.\n> Source: https://github.com/amiruldev20/mywabot-baileys`);
-        }
-
+        
         // Reset limit
-        let hasReset = false;
+        /*let hasReset = false;
         setInterval(() => {
             const [resetHour, resetMinute] = db.setting.limit.reset.split(":").map(Number);
             const now = new Date();
@@ -72,10 +67,10 @@ ${color[headerColor](color.black(separatorLine))}
                 console.log("[ + ] RESET LIMIT SUCCESSFULLY");
             }
             if (now.getHours() === 0 && now.getMinutes() === 0) hasReset = false;
-        }, 60000);
+        }, 60000);*/
 
         // First chat
-        if (!m.isGroup && !m.from.includes("newsletter") && !m.key.remoteJid.includes("broadcast") && db.setting.firstchat) {
+        /*if (!m.isGroup && !m.from.includes("newsletter") && !m.key.remoteJid.includes("broadcast") && db.setting.firstchat) {
             const lastChat = db.users[m.sender]?.lastChat || 0;
             if (new Date() - lastChat >= 86400000 && m.text.length > 0) {
                 await sock.sendMessage(m.from, {
@@ -83,7 +78,7 @@ ${color[headerColor](color.black(separatorLine))}
                 }, { quoted : m });
                 db.users[m.sender].lastChat = Date.now();
             }
-        }
+        }*/
 
         if (!db.groupMetadata) {
             db.groupMetadata = {};
