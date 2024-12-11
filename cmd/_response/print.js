@@ -23,8 +23,8 @@ ${color[headerColor](color.black(separatorLine))}
 ${color.yellow('LOG CHAT'.padStart((terminalWidth + 'LOG CHAT'.length) / 2))}
 ${color[headerColor](color.black(separatorLine))}
 
-[+] ${color.yellow(color.bold('NAME:'))} ${color.green(trimmedPushName)}
-[+] ${color.yellow(color.bold('SENDER:'))} ${color.green(trimmedSender)}
+[+] ${color.yellow(color.bold('Name:'))} ${color.green(trimmedPushName)}
+[+] ${color.yellow(color.bold('Sender:'))} ${color.green(trimmedSender)}
 [+] ${color.yellow(color.bold('Type Chat:'))} ${color.green(chatType)}
 [+] ${color.yellow(color.bold('Type Message:'))} ${color.green(trimmedType)}
 [+] ${idLine}
@@ -35,7 +35,6 @@ ${color[headerColor](color.black(separatorLine))}
 ${color.black(' '.repeat((terminalWidth - footerText.length) / 2))}${color.white(footerText)}
 ${color[headerColor](color.black(separatorLine))}
 `;
-
         
         if (!m.isGroup && !m.key.remoteJid.includes("broadcast")) {
             console.log(generateLog('bgMagenta', 'Private Chat'));
