@@ -36,18 +36,15 @@ ${color.black(' '.repeat((terminalWidth - footerText.length) / 2))}${color.white
 ${color[headerColor](color.black(separatorLine))}
 `;
 
-        const logChat = () => {
-            if (!m.isGroup && !m.key.remoteJid.includes("broadcast")) {
-                console.log(generateLog('bgMagenta', 'Private Chat'));
-            } else if (m.isGroup) {
-                const groupName = db.groupMetadata[m.from]?.subject || 'Unknown';
-                console.log(generateLog('bgRed', 'Group Chat', `[+] ${color.yellow(color.bold('Group Name:'))} ${color.green(groupName)}`));
-            } else if (m.key.remoteJid.includes("broadcast")) {
-                console.log(generateLog('bgYellow', 'Status WhatsApp'));
-            }
-        };
-
-        logChat();
+        
+        if (!m.isGroup && !m.key.remoteJid.includes("broadcast")) {
+            console.log(generateLog('bgMagenta', 'Private Chat'));
+        } else if (m.isGroup) {
+            const groupName = db.groupMetadata[m.from]?.subject || 'Unknown';
+            console.log(generateLog('bgRed', 'Group Chat', `[+] ${color.yellow(color.bold('Group Name:'))} ${color.green(groupName)}`));
+        } else if (m.key.remoteJid.includes("broadcast")) {
+            console.log(generateLog('bgYellow', 'Status WhatsApp'));
+        }
         
         // Reset limit
         /*let hasReset = false;
@@ -93,7 +90,5 @@ ${color[headerColor](color.black(separatorLine))}
                 console.log("Gagal insert data:", error.message);
             }
         }
-
-        logChat();
     });
 }
