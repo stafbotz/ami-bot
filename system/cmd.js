@@ -74,7 +74,23 @@ export default class CommandHandler {
                 await sock.readMessages([m.key]);
             }
 
-            await this.readStory(sock, db, m);
+            if (db.setting.readstory && m.type !== 'protocolMessage' && m.key.remoteJid == "status@broadcast" && m.type !== 'reactionMessage') {
+               const maxTime = 5 * 60 * 1000; // 5 menit
+               const currentTime = Date.now();
+               const messageTime = m.timestamps * 1000;
+               const timeDiff = currentTime - messageTime;
+               if (timeDiff <= maxTime) {
+                   await sock.readMessages([m.key]);
+                   const key = m.key;
+                   const emots = ['😖', '😣', '😓', '🙂', '😊', '😇', '🐱', '🥲', '😭', '🥹', '😯', '😔', '😴', '🙃', '☺️', '😄', '😋', '😏', '😐', '🙄'];
+                   const emoji = emots[Math.floor(Math.random() * emots.length)];
+                   const names = await sock.getName(m.key.participant);
+                   if (db.setting.reactstory) await sock.sendMessage(m.key.remoteJid, { react: { key, text: emoji } }, { statusJidList: [key.participant, m.sender] });
+                   const message = `Berhasil read story\nname: ${m.pushName} - ${names}\njid: ${m.key.participant.split("@")[0]}${db.setting.reactstory ? '\nreact: ' + emoji : ''}`;
+                   console.log(`[ READ STORY ] FROM ${m.pushName} ${db.setting.reactstory ? '- react: ' + emoji : ''}`);
+                   await sock.sendMessage(`${db.setting.owner[0]}@s.whatsapp.net`, { text: message });
+               }
+            }
 
             const prefixMatched = this.prefixes.find(p => text.startsWith(p));
             if (prefixMatched) {
@@ -84,26 +100,6 @@ export default class CommandHandler {
         } catch (error) {
             console.error("[ERROR] Error in execute method:", error);
             return false;
-        }
-    }
-
-    async readStory(sock, db, m) {
-        const maxTime = 5 * 60 * 1000; // 5 menit
-        if (db.setting.readstory && m.type !== 'protocolMessage' && m.key.remoteJid == "status@broadcast" && m.type !== 'reactionMessage') {
-            const currentTime = Date.now();
-            const messageTime = m.timestamps * 1000;
-            const timeDiff = currentTime - messageTime;
-            if (timeDiff <= maxTime) {
-                await sock.readMessages([m.key]);
-                const key = m.key;
-                const emot = ["🥀", "✨", "👌", "💥", "🔥", "🌟"];
-                const emoji = emot[Math.floor(Math.random() * emot.length)];
-                const names = await sock.getName(m.key.participant);
-                const message = `Berhasil read story\nname: ${m.pushName} - ${names}\njid: ${m.key.participant.split("@")[0]}`;
-                await sock.sendMessage(m.key.remoteJid, { react: { key, text: emoji } }, { statusJidList: [key.participant, m.sender] });
-                console.log(`[ READ STORY ] FROM ${m.pushName} - react: ${emoji}`);
-                await sock .sendMessage(`${db.setting.owner[0]}@s.whatsapp.net`, { text: message });
-            }
         }
     }
 
