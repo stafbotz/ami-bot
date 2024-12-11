@@ -78,7 +78,7 @@ const schema = async (m, sock, db) => {
 
     let setting = db.setting
     if (setting) {
-        if (!("firstchat" in setting)) setting.firstchat = true
+        /*if (!("firstchat" in setting)) setting.firstchat = true*/
         if (!("readstory" in setting)) setting.readstory = true
         if (!("reactstory" in setting)) setting.reactstory = false
         if (!("autoread" in setting)) setting.autoread = false
@@ -103,7 +103,6 @@ const schema = async (m, sock, db) => {
         }*/
     } else {
         db.setting = {
-            firstchat: true,
             readstory: true,
             reactstory: false,
             autoread: false,
