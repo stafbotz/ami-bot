@@ -456,7 +456,7 @@ export async function msg(sock, msg, db) {
     }
 
     m.reply = async (text, trs, options = {}) => {
-        const ms = typeof text === "string" && trs ? await func.tr(text, db.setting.lang) : text
+        const ms = typeof text === "string" && trs ? await func.translate(text, db.setting.lang) : text
         return await sock.sendMessage(
             m.from,
             typeof text === "string" ? { text: ms, ...options } : { ...text, ...options },
