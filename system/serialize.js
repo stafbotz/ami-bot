@@ -111,7 +111,7 @@ export function Client(db, ...args) {
                     forwardedNewsletterMessageInfo: {
                         newsletterJid: opt?.idch || db.setting.ch_id,
                         serverMessageId: -1,
-                        newsletterName: opt?.nch || (await sock.newsletterMetadata('jid', opt?.idch || db.setting.ch_id)).name;
+                        newsletterName: opt?.nch || (await sock.newsletterMetadata('jid', opt?.idch || db.setting.ch_id)).name
                     },
                     externalAdReply: {
                         title: opt?.title || sock.user.name,
