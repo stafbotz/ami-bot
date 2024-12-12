@@ -258,7 +258,6 @@ async function connectWA() {
                     console.log(color.cyan('[+] Need to restart, restarting...'))
                     await connectWA()
                     break
-
                 case 401:
                     try {
                         console.log(color.cyan('[+] Session Logged Out.. Recreate session...'))
@@ -273,7 +272,6 @@ async function connectWA() {
                         console.log(color.cyan('[+] Session not found!!'))
                     }
                     break
-
                 case 403:
                     console.log(color.red(`[+] Your WhatsApp Has Been Baned :D`))
                     if (setting.typedb === "mongo") {
@@ -283,7 +281,6 @@ async function connectWA() {
                     }
                     process.send('reset')
                     break
-
                 case 405:
                     try {
                         console.log(color.cyan('[+] Session Not Logged In.. Recreate session...'))
@@ -299,7 +296,8 @@ async function connectWA() {
                     }
                     break
                 default:
-
+                // Jika terdapat case yang tidak terduga
+                console.log('[+] Reason: ', reason)
             }
         }
         if (connection === "open") {
