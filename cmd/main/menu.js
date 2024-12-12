@@ -69,8 +69,6 @@ export default (handler) => {
                 }
             })
 
-            const hitAll = await fetch("https://amiruldev.serv00.net/hit.txt")
-            const counts = await hitAll.text()
             const gtr = await func.translate(`Selamat datang di MyWA BOT
         
 Bot ini masih dalam tahap beta
@@ -79,7 +77,6 @@ Bot ini masih dalam tahap beta
             
 ${gtr}
 
-*• Hit Pengguna Script*: ${func.formatNumber(counts)}
 *♤ : Command Memakai Limit*
 
 ${menu.trim()}
