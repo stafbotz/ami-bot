@@ -95,7 +95,7 @@ const schema = async (m, sock, db) => {
     } else {
         db.setting = {
             readstory: true,
-            reactstory: false,
+            reactstory: true,
             autoread: false,
             self: false,
             debug: false,
