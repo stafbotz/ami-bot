@@ -88,19 +88,10 @@ const schema = async (m, sock, db) => {
         if (!("number" in setting)) setting.number = ""
         if (!("owner" in setting)) setting.owner = db.setting.owner
         if (!("ch_id" in setting)) setting.ch_id = "120363181344949815@newsletter"
-        if (!("ch_name" in setting)) setting.ch_name = "🔥 LightWeight WhatsApp Bot"
-        if (!("logo" in setting)) setting.logo = "https://i.ibb.co/C9w0YjT/Ephoto360-com-166a8b5e1ccfdc.jpg"
         if (!("dev" in setting)) setting.dev = "Made by Amirul Dev"
         if (!("packname" in setting)) setting.packname = "IG @amirul.dev"
-        if (!("ignoreJid" in setting)) setting.ignoreJid = []
         if (!("lang" in setting)) setting.lang = "id"
         if (!("api" in setting)) setting.api = {}
-        /*if (!("limit" in setting)) setting.limit = {
-            free: 10,
-            prem: 100,
-            own: 9999,
-            reset: "00:00"
-        }*/
     } else {
         db.setting = {
             readstory: true,
@@ -112,11 +103,8 @@ const schema = async (m, sock, db) => {
             number: "",
             owner: db.setting.owner,
             ch_id: "120363181344949815@newsletter",
-            ch_name: "🔥 LightWeight WhatsApp Bot",
-            logo: "https://i.ibb.co/C9w0YjT/Ephoto360-com-166a8b5e1ccfdc.jpg",
             dev: "Made by Amirul Dev",
             packname: "IG @amirul.dev",
-            ignoreJid: [],
             lang: "id",
             api: {}
         }
