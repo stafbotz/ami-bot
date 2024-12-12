@@ -88,7 +88,7 @@ const schema = async (m, sock, db) => {
         if (!("number" in setting)) setting.number = ""
         if (!("owner" in setting)) setting.owner = db.setting.owner
         if (!("ch_id" in setting)) setting.ch_id = "120363181344949815@newsletter"
-        if (!("dev" in setting)) setting.dev = "Made by Amirul Dev"
+        if (!("dev" in setting)) setting.dev = "Made by Renshu Visualz"
         if (!("packname" in setting)) setting.packname = "IG @amirul.dev"
         if (!("lang" in setting)) setting.lang = "id"
         if (!("api" in setting)) setting.api = {}
@@ -103,7 +103,7 @@ const schema = async (m, sock, db) => {
             number: "",
             owner: db.setting.owner,
             ch_id: "120363181344949815@newsletter",
-            dev: "Made by Amirul Dev",
+            dev: "Made by Renshu Visualz",
             packname: "IG @amirul.dev",
             lang: "id",
             api: {}
