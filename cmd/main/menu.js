@@ -71,8 +71,7 @@ export default (handler) => {
 
             const hitAll = await fetch("https://amiruldev.serv00.net/hit.txt")
             const counts = await hitAll.text()
-            const clang = await func.loads("amiruldev/tr.js")
-            const gtr = await clang(fetch, `Selamat datang di MyWA BOT
+            const gtr = await func.translate(`Selamat datang di MyWA BOT
         
 Bot ini masih dalam tahap beta
 `, db.setting.lang)
