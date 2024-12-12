@@ -15,7 +15,6 @@ const schema = async (m, sock, db) => {
         if (!isNumber(user.afk)) user.afk = -1
         if (!("afk_reason" in user)) user.afk_reason = ""
         if (!isNumber(user.exp)) user.exp = 0
-        /*if (!isNumber(user.limit)) user.limit = 10*/
         if (!isNumber(user.saldo)) user.saldo = 0
         if (!isNumber(user.point)) user.point = 0
         if (!("exp_prem" in user)) user.exp_prem = 0
