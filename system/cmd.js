@@ -115,17 +115,6 @@ export default class CommandHandler {
             return true;
         }
 
-        // Check limit
-        /*if (command.isLimit) {
-            const limitUsage = typeof command.isLimit === 'number' ? command.isLimit : 1;
-            if (usr.limit < limitUsage) {
-                await sock.sendMessage(m.from, { text: `Penggunaan limit harian anda telah habis, Perintah ini\nmembutuhkan *${limitUsage} Limit*\n\nLimit direset setiap pukul *${db.setting.limit.reset} WIB*, gunakan kembali setelah limit direset\n\nAtau kamu bisa topup untuk membeli limit tambahan dengan menggunakan perintah \`#buylimit\` atau bisa juga dengan upgrade akun ke premium untuk mendapatkan lebih banyak limit \`#buyprem 30\``, contextInfo: { isForwarded: 1337, forwardedNewsletterMessageInfo: { newsletterJid: "120363181344949815@newsletter", serverMessageId: -1, newsletterName: "🔥 LightWeight WhatsApp Bot" } } }, { quoted: m, ephemeralExpiration: m.expiration, messageId: rand() });
-                return true;
-            } else {
-                usr.limit -= limitUsage;
-            }
-        }*/
-
         // Check owner
         if (command.isOwner && !m.isOwner && !m.key.fromMe) {
             await sock.sendMessage(m.from, { text: '_Fitur ini hanya untuk owner!!_', contextInfo: { isForwarded: 1337, forwardedNewsletterMessageInfo: { newsletterJid: "120363181344949815@newsletter", serverMessageId: -1, newsletterName: "🔥 LightWeight WhatsApp Bot" } } }, { quoted: m, ephemeralExpiration: m.expiration, messageId: rand() });
