@@ -43,13 +43,7 @@ const schema = async (m, sock, db) => {
             point: 0,
             exp_prem: 0,
             premium: false,
-            autoDownload: false,
-            autoSticker: false,
             banned: false,
-            logAi: [],
-            total_trx: 0,
-            jumlah_trx: 0,
-            depo: {}
         }
     }
 
@@ -62,8 +56,6 @@ const schema = async (m, sock, db) => {
             if (!isNumber(group.lastChat)) group.lastChat = new Date() * 1
             if (!isBoolean(group.mute)) group.mute = false
             if (!isBoolean(group.antiLink)) group.antiLink = false
-            if (!isBoolean(group.autoDownload)) group.autoDownload = false
-            if (!isBoolean(group.autoSticker)) group.autoSticker = false
             if (!("blacklist" in group)) group.blacklist = []
         } else {
             db.groups[m.from] = {
@@ -71,8 +63,6 @@ const schema = async (m, sock, db) => {
                 lastChat: new Date() * 1,
                 mute: false,
                 antiLink: false,
-                autoDownload: false,
-                autoSticker: false,
                 blacklist: []
             }
         }
