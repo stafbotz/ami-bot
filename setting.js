@@ -5,6 +5,7 @@ Other settings are in db.setting. you can use the owner command. default languag
 */
 export default {
     owner: ["6281360190018"],
+    bot_logo: "",
     typedb: "json", // use json / mongo
 
     /* database setting */
