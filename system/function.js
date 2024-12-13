@@ -192,34 +192,6 @@ export function __filename(
             : pathToFileURL(path).href
 }
 
-/* load file */
-export async function loads(filePath) {
-  try {
-    // Jalankan perintah bash untuk membaca file
-    const { stdout } = await execAsync(`bash system/run.sh ${filePath}`);
-    
-    // Parse output JSON
-    const fileContent = JSON.parse(stdout);
-    let fileData = fileContent.data;
-
-    // Konversi export syntax ke module.exports
-    fileData = fileData.replace(/export default /, 'module.exports = ');
-    fileData = fileData.replace(/export /g, 'exports.');
-
-    // Siapkan modul untuk eksekusi dinamis
-    const module = { exports: {} };
-    const executeModule = new Function('module', 'exports', fileData);
-    
-    // Jalankan modul dan kembalikan exports
-    executeModule(module, module.exports);
-    return module.exports;
-
-  } catch (error) {
-    console.error('Error loading file:', error);
-    throw error;
-  }
-}
-
 /* remove accent */
 export function removeAcents(text) {
     return typeof text === "string"
