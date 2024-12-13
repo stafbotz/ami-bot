@@ -1,3 +1,6 @@
+/* module internal */
+import setting from "./setting.js"
+
 const schema = async (m, sock, db) => {
     const isNumber = x => typeof x === "number" && !isNaN(x)
     const isBoolean = x => typeof x === "boolean" && Boolean(x)
@@ -78,14 +81,14 @@ const schema = async (m, sock, db) => {
     let setting = db.setting
     if (setting) {
         if (!("readstory" in setting)) setting.readstory = true
-        if (!("reactstory" in setting)) setting.reactstory = false
+        if (!("reactstory" in setting)) setting.reactstory = true
         if (!("autoread" in setting)) setting.autoread = false
         if (!("self" in setting)) setting.self = false
         if (!("number" in setting)) setting.number = ""
-        if (!("owner" in setting)) setting.owner = db.setting.owner
+        if (!("owner" in setting)) setting.owner = setting.owner
         if (!("ch_id" in setting)) setting.ch_id = "120363181344949815@newsletter"
+        if (!("bot_logo" in setting)) setting.bot_logo = setting.bot_logo
         if (!("dev" in setting)) setting.dev = "Made by Renshu Visualz"
-        if (!("packname" in setting)) setting.packname = "IG @amirul.dev"
         if (!("lang" in setting)) setting.lang = "id"
     } else {
         db.setting = {
@@ -94,10 +97,10 @@ const schema = async (m, sock, db) => {
             autoread: false,
             self: false,
             number: "",
-            owner: db.setting.owner,
+            owner: setting.owner,
             ch_id: "120363181344949815@newsletter",
+            bot_logo: setting.bot_logo,
             dev: "Made by Renshu Visualz",
-            packname: "IG @amirul.dev",
             lang: "id"
         }
     }
