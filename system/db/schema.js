@@ -10,7 +10,6 @@ const schema = async (m, sock, db) => {
     let user = db.users[m.sender]
     if (typeof user !== "object") db.users[m.sender] = {}
     if (user) {
-        if (!m.sender.endsWith("@s.whatsapp.net")) return
         if (!("name" in user)) user.name = m.pushName
         if (!("lastChat" in user)) user.lastChat = -1
         if (!("ads" in user)) user.ads = -1
@@ -29,7 +28,6 @@ const schema = async (m, sock, db) => {
         if (!("total_trx" in user)) user.total_trx = 0
         if (!("jumlah_trx" in user)) user.jumlah_trx = 0
         if (!("depo" in user)) user.depo = {}
-
     } else {
         db.users[m.sender] = {
             name: m.pushName,
@@ -51,7 +49,6 @@ const schema = async (m, sock, db) => {
         let group = db.groups[m.from]
         if (typeof group !== "object") db.groups[m.from] = {}
         if (group) {
-            if (!m.from.endsWith("@g.us")) return
             if (!("name" in group)) group.name = await sock.getName(m.from)
             if (!isNumber(group.lastChat)) group.lastChat = new Date() * 1
             if (!isBoolean(group.mute)) group.mute = false
@@ -69,6 +66,7 @@ const schema = async (m, sock, db) => {
     }
 
     let setting = db.setting
+    if (typeof setting !== "object") db.setting = {}
     if (setting) {
         if (!("readstory" in setting)) setting.readstory = true
         if (!("reactstory" in setting)) setting.reactstory = true
