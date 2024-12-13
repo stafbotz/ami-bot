@@ -45,26 +45,6 @@ ${color[headerColor](color.black(separatorLine))}
             console.log(generateLog('bgYellow', 'Status WhatsApp'));
         }
         
-        // Reset limit
-        /*let hasReset = false;
-        setInterval(() => {
-            const [resetHour, resetMinute] = db.setting.limit.reset.split(":").map(Number);
-            const now = new Date();
-            if (now.getHours() === resetHour && now.getMinutes() === resetMinute && !hasReset) {
-                Object.keys(db.users).forEach(id => {
-                    const user = db.users[id];
-                    user.limit = db.setting.owner.includes(id.split("@")[0])
-                        ? db.setting.limit.own
-                        : user.premium
-                        ? db.setting.limit.prem
-                        : db.setting.limit.free;
-                });
-                hasReset = true;
-                console.log("[ + ] RESET LIMIT SUCCESSFULLY");
-            }
-            if (now.getHours() === 0 && now.getMinutes() === 0) hasReset = false;
-        }, 60000);*/
-
         // First chat
         /*if (!m.isGroup && !m.from.includes("newsletter") && !m.key.remoteJid.includes("broadcast") && db.setting.firstchat) {
             const lastChat = db.users[m.sender]?.lastChat || 0;
