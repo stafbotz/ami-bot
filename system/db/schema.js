@@ -1,5 +1,5 @@
 /* module internal */
-import setting from "./setting.js"
+import setting from "../../setting.js"
 
 const schema = async (m, sock, db) => {
     const isNumber = x => typeof x === "number" && !isNaN(x)
