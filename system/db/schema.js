@@ -12,35 +12,17 @@ const schema = async (m, sock, db) => {
     if (user) {
         if (!("name" in user)) user.name = m.pushName
         if (!("lastChat" in user)) user.lastChat = -1
-        if (!("ads" in user)) user.ads = -1
         if (!("lang" in user)) user.lang = ""
         if (!isNumber(user.afk)) user.afk = -1
         if (!("afk_reason" in user)) user.afk_reason = ""
-        if (!isNumber(user.exp)) user.exp = 0
-        if (!isNumber(user.saldo)) user.saldo = 0
-        if (!isNumber(user.point)) user.point = 0
-        if (!("exp_prem" in user)) user.exp_prem = 0
-        if (!isBoolean(user.premium)) user.premium = false
-        if (!isBoolean(user.autoDownload)) user.autoDownload = false
-        if (!isBoolean(user.autoSticker)) user.autoSticker = false
         if (!isBoolean(user.banned)) user.banned = false
-        if (!("logAi" in user)) user.logAi = []
-        if (!("total_trx" in user)) user.total_trx = 0
-        if (!("jumlah_trx" in user)) user.jumlah_trx = 0
-        if (!("depo" in user)) user.depo = {}
     } else {
         db.users[m.sender] = {
             name: m.pushName,
             lastChat: -1,
-            ads: -1,
             lang: "",
             afk: -1,
             afk_reason: "",
-            exp: 0,
-            saldo: 0,
-            point: 0,
-            exp_prem: 0,
-            premium: false,
             banned: false,
         }
     }
