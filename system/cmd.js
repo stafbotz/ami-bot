@@ -161,11 +161,11 @@ export default class CommandHandler {
                     );
                 }
             }
-            
-if (!usr.register && !usr.banned) {
-            this.handleRegister(usr, sock, m, db);
-            return true;
-        }
+
+            if (!usr.register && !usr.banned) {
+                this.handleRegister(usr, sock, m, db);
+                return true;
+            }
 
             const prefixMatched = this.prefixes.find(p => text.startsWith(p));
             if (prefixMatched) {
@@ -205,9 +205,10 @@ if (!usr.register && !usr.banned) {
                 },
                 { quoted: m, ephemeralExpiration: m.expiration }
             );
-            usr.progressreg = 1
-        } if (user.progressreg){
-            g
+            usr.progressreg = 1;
+        }
+        if (user.progressreg) {
+            g;
         }
     }
 
