@@ -364,11 +364,9 @@ export default class CommandHandler {
             );
             return true;
         }
-        
-if (!usr.register && !usr.banned) {
-                await this.handleRegister(usr, sock, m, db, prefixMatched);
-                return true;
-            }
+
+        if (!usr.register && !usr.banned)
+            return await this.handleRegister(usr, sock, m, db, false);
 
         // Check owner
         if (command.isOwner && !m.isOwner && !m.key.fromMe) {
