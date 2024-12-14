@@ -197,8 +197,9 @@ export default class CommandHandler {
 
     async handleRegister(usr, sock, m, db, prefix) {
         // daftar badwords
-        const badwords = /(anj[kg]|ajn[gk]|a?njin[gk]|bajingan|b[a]?[n]?gsa?t|ko?nto?l|me?me?[kq]|pe?pe?[kq]|meki|titi[t,d]|pe?ler|tetek|toket|ngewe|go?blo?k|to?lo?l|idiot|[kng]e?nto?[t,d]|jembut|bego|dajjal|janc[uo]k|pantek|puki?(mak)?|kimak|kampang|lonte|col[i,mek]|pelacur|henceut|nigga|fuck|dick|bitch|tits|bastard|asshole|a[su,w,yu])/i;
-        
+        const badwords =
+            /(anj[kg]|ajn[gk]|a?njin[gk]|bajingan|b[a]?[n]?gsa?t|ko?nto?l|me?me?[kq]|pe?pe?[kq]|meki|titi[t,d]|pe?ler|tetek|toket|ngewe|go?blo?k|to?lo?l|idiot|[kng]e?nto?[t,d]|jembut|bego|dajjal|janc[uo]k|pantek|puki?(mak)?|kimak|kampang|lonte|col[i,mek]|pelacur|henceut|nigga|fuck|dick|bitch|tits|bastard|asshole|a[su,w,yu])/i;
+
         if (!usr.progressreg) {
             await sock.sendMessage(
                 m.from,
@@ -210,60 +211,65 @@ export default class CommandHandler {
             usr.progressreg = 1;
         }
         if (user.progressreg === 1) {
-            if (prefix) sock.sendMessage(
-                m.from,
-                {
-                    text: "Sebelum aku bisa bantu dengan fitur yang aku punya, yuk kita kenalan dulu biar lebih akrab. Nama kamu siapa, ya? 😊"
-                },
-                { quoted: m, ephemeralExpiration: m.expiration }
-            );
+            if (prefix)
+                sock.sendMessage(
+                    m.from,
+                    {
+                        text: "Sebelum aku bisa bantu dengan fitur yang aku punya, yuk kita kenalan dulu biar lebih akrab. Nama kamu siapa, ya? 😊"
+                    },
+                    { quoted: m, ephemeralExpiration: m.expiration }
+                );
             else {
-             const name = m.text.trim();
-            const nameRegex = /^[a-zA-Z\s]+$/; // Hanya huruf dan spasi yang diperbolehkan
-            const minNameLength = 3;
-            const maxNameLength = 50;
-            const suspiciousNameRegex = /^(?:\d+|[^\w\s]+)$/; // Nama yang hanya angka atau simbol
+                const name = m.text.trim();
+                const nameRegex = /^[a-zA-Z\s]+$/; // Hanya huruf dan spasi yang diperbolehkan
+                const minNameLength = 3;
+                const maxNameLength = 50;
+                const suspiciousNameRegex = /^(?:\d+|[^\w\s]+)$/; // Nama yang hanya angka atau simbol
 
-            // Cek apakah nama mengandung kata kotor
-            if (badwords.test(name)) {
-                // Jika nama mengandung kata kotor
-                await sock.sendMessage(
-                    m.from,
-                    {
-                        text: `Eits, kata-kata yang kamu pakai nggak cocok buat nama, nih. Yuk coba masukkan nama yang baik-baik aja, ya! 😊`
-                    },
-                    { quoted: m, ephemeralExpiration: m.expiration }
-                );
-            } else if (!nameRegex.test(name)) {
-                // Nama mengandung karakter yang aneh
-                await sock.sendMessage(
-                    m.from,
-                    {
-                        text: `Hmm... Apa iya nama kamu kaya gitu? Sepertinya ada karakter yang nggak biasa. Coba pakai nama yang cuma huruf aja, ya! 😊`
-                    },
-                    { quoted: m, ephemeralExpiration: m.expiration }
-                );
-            } else if (name.length < minNameLength || name.length > maxNameLength) {
-                // Nama terlalu pendek atau panjang
-                await sock.sendMessage(
-                    m.from,
-                    {
-                        text: `Nama kamu kelihatannya terlalu pendek atau panjang. Coba pakai nama yang lebih pas, ya? 😊`
-                    },
-                    { quoted: m, ephemeralExpiration: m.expiration }
-                );
-            } else if (suspiciousNameRegex.test(name)) {
-                // Nama mengandung angka atau simbol yang mencurigakan
-                await sock.sendMessage(
-                    m.from,
-                    {
-                        text: `Hmm, sepertinya nama kamu aneh deh. Nama biasanya nggak pake angka atau simbol, coba lagi ya! 😊`
-                    },
-                    { quoted: m, ephemeralExpiration: m.expiration }
-                );
-            } else {}
+                // Cek apakah nama mengandung kata kotor
+                if (badwords.test(name)) {
+                    // Jika nama mengandung kata kotor
+                    await sock.sendMessage(
+                        m.from,
+                        {
+                            text: `Eits, kata-kata yang kamu pakai nggak cocok buat nama, nih. Yuk coba masukkan nama yang baik-baik aja, ya! 😊`
+                        },
+                        { quoted: m, ephemeralExpiration: m.expiration }
+                    );
+                } else if (!nameRegex.test(name)) {
+                    // Nama mengandung karakter yang aneh
+                    await sock.sendMessage(
+                        m.from,
+                        {
+                            text: `Hmm... Apa iya nama kamu kaya gitu? Sepertinya ada karakter yang nggak biasa. Coba pakai nama yang cuma huruf aja, ya! 😊`
+                        },
+                        { quoted: m, ephemeralExpiration: m.expiration }
+                    );
+                } else if (
+                    name.length < minNameLength ||
+                    name.length > maxNameLength
+                ) {
+                    // Nama terlalu pendek atau panjang
+                    await sock.sendMessage(
+                        m.from,
+                        {
+                            text: `Nama kamu kelihatannya terlalu pendek atau panjang. Coba pakai nama yang lebih pas, ya? 😊`
+                        },
+                        { quoted: m, ephemeralExpiration: m.expiration }
+                    );
+                } else if (suspiciousNameRegex.test(name)) {
+                    // Nama mengandung angka atau simbol yang mencurigakan
+                    await sock.sendMessage(
+                        m.from,
+                        {
+                            text: `Hmm, sepertinya nama kamu aneh deh. Nama biasanya nggak pake angka atau simbol, coba lagi ya! 😊`
+                        },
+                        { quoted: m, ephemeralExpiration: m.expiration }
+                    );
+                } else {
+                }
             }
-       }
+        }
     }
 
     async cmd(command, usr, sock, m, db) {
