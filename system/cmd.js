@@ -163,11 +163,6 @@ export default class CommandHandler {
             }
 
             const prefixMatched = this.prefixes.find(p => text.startsWith(p));
-            if (!usr.register && !usr.banned) {
-                await this.handleRegister(usr, sock, m, db, prefixMatched);
-                return false;
-            }
-
             if (prefixMatched) {
                 return await this.handleCommand(
                     text,
@@ -210,7 +205,7 @@ export default class CommandHandler {
                 { quoted: m, ephemeralExpiration: m.expiration }
             );
             usr.progressreg = 1;
-            return;
+            return true;
         }
         if (usr.progressreg === 1) {
             if (prefix) {
@@ -221,7 +216,7 @@ export default class CommandHandler {
                     },
                     { quoted: m, ephemeralExpiration: m.expiration }
                 );
-                return;
+                return true;
             } else {
                 const name = m.msg.trim();
                 const nameRegex = /^[a-zA-Z\s]+$/; // Hanya huruf dan spasi yang diperbolehkan
@@ -238,7 +233,7 @@ export default class CommandHandler {
                         },
                         { quoted: m, ephemeralExpiration: m.expiration }
                     );
-                    return;
+                    return true;
                 } else if (!nameRegex.test(name)) {
                     // Nama mengandung karakter yang aneh
                     await sock.sendMessage(
@@ -248,7 +243,7 @@ export default class CommandHandler {
                         },
                         { quoted: m, ephemeralExpiration: m.expiration }
                     );
-                    return;
+                    return true;
                 } else if (
                     name.length < minNameLength ||
                     name.length > maxNameLength
@@ -261,7 +256,7 @@ export default class CommandHandler {
                         },
                         { quoted: m, ephemeralExpiration: m.expiration }
                     );
-                    return;
+                    return true;
                 } else {
                     usr.name = name;
                     usr.progressreg = 2;
@@ -270,11 +265,11 @@ export default class CommandHandler {
                         {
                             text: `Senang banget bisa kenalan sama kamu ${
                                 usr.name.split(" ")[0]
-                            }! 🥳\n\nOh iya, tanggal lahir kamu kapan? Tenang aja, aku cuma mau tau biar bisa kasih pengalaman yang lebih personal buat kamu. 😊\n\nMisal kamu lahir tanggal 1 Oktober 2005, jadi kamu ketik: 01/01/2005`
+                            }! 🥳\n\nOh iya, tanggal lahir kamu kapan? Tenang aja, aku cuma mau tau biar bisa kasih pengalaman yang lebih personal buat kamu. 😊\n\nPakai format dd/mm/yyyy. Misal kamu lahir tanggal 1 Oktober 2005, jadi kamu ketik: 01/01/2005`
                         },
                         { quoted: m, ephemeralExpiration: m.expiration }
                     );
-                    return;
+                    return true;
                 }
             }
         }
@@ -294,7 +289,7 @@ export default class CommandHandler {
                     },
                     { quoted: m }
                 );
-                return;
+                return true;
             }
 
             // Pisahkan tanggal, bulan, dan tahun
@@ -315,12 +310,13 @@ export default class CommandHandler {
                     },
                     { quoted: m }
                 );
-                return;
+                return true;
             }
 
             // Jika semua valid, simpan
             usr.birth = birthDate;
-            usr.progressreg = 5;
+            usr.register = true;
+            delete usr.progressreg;
 
             // Kirim pesan konfirmasi
             await sock.sendMessage(
@@ -332,6 +328,7 @@ export default class CommandHandler {
                 },
                 { quoted: m }
             );
+            return true;
         }
     }
 
@@ -367,6 +364,11 @@ export default class CommandHandler {
             );
             return true;
         }
+        
+if (!usr.register && !usr.banned) {
+                await this.handleRegister(usr, sock, m, db, prefixMatched);
+                return true;
+            }
 
         // Check owner
         if (command.isOwner && !m.isOwner && !m.key.fromMe) {
