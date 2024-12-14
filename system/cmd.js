@@ -178,8 +178,7 @@ export default class CommandHandler {
     async handleNoPrefixCommand(text, m, sock, db, func, color, util) {
         const [potentialCmd, ...args] = text.split(' ');
         const command = this.commands.get(potentialCmd.toLowerCase());
-        const usr = 
-        //db.users[m.sender]|| {};
+        const usr = db.users[m.sender]|| {};
 
         if (command && command.noPrefix) {
             const mcmd = await this.cmd(command, usr, sock, m, db);
