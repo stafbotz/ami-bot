@@ -326,20 +326,20 @@ export default class CommandHandler {
                 { quoted: m }
             );
 
-            // Setelah itu kita minta user menyetujui ketentuan
-            await sock.sendMessage(
-                m.from,
-                {
-                    text: `Sebelum kita lanjut, aku butuh konfirmasi dari kamu untuk menyetujui Kebijakan Privasi dan Ketentuan Penggunaan Ami Bot. Ini penting supaya kamu tau bagaimana data kamu akan digunakan dan aturan penggunaan Ami Bot. 😌 Kamu bisa baca dulu kebijakannya dan kalau setuju, cukup ketik "Setuju" ya. 😊\n\nKetentuan dan Kebijakan Privasi bisa kamu lihat di bawah ini:`
-                },
-                { quoted: m }
-            );
-
             // Kirim teks policy & termsnya
             await sock.sendMessage(
                 m.from,
                 {
                     text: await fs.readFileSync("policy&terms.txt", "utf8")
+                },
+                { quoted: m }
+            );
+            
+             // Setelah itu kita minta user menyetujui ketentuan
+            await sock.sendMessage(
+                m.from,
+                {
+                    text: `Sebelum kita lanjut, aku butuh konfirmasi dari kamu untuk menyetujui Kebijakan Privasi dan Ketentuan Penggunaan Ami Bot.\n\nIni penting supaya kamu tau bagaimana data kamu akan digunakan dan aturan penggunaan Ami Bot. 😌 Kamu bisa baca dulu kebijakannya dan kalau setuju, cukup ketik "Setuju" ya.`
                 },
                 { quoted: m }
             );
