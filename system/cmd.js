@@ -213,7 +213,7 @@ export default class CommandHandler {
             return;
         }
         if (usr.progressreg === 1) {
-            if (prefix)
+            if (prefix) {
                 await sock.sendMessage(
                     m.from,
                     {
@@ -222,7 +222,7 @@ export default class CommandHandler {
                     { quoted: m, ephemeralExpiration: m.expiration }
                 );
                 return;
-            else {
+            } else {
                 const name = m.msg.trim();
                 const nameRegex = /^[a-zA-Z\s]+$/; // Hanya huruf dan spasi yang diperbolehkan
                 const minNameLength = 3;
