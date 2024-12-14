@@ -165,6 +165,7 @@ export default class CommandHandler {
             const prefixMatched = this.prefixes.find(p => text.startsWith(p));
             if (!usr.register && !usr.banned) {
                 await this.handleRegister(usr, sock, m, db, prefixMatched);
+                return false;
             }
 
             if (prefixMatched) {
@@ -224,7 +225,7 @@ export default class CommandHandler {
                 const nameRegex = /^[a-zA-Z\s]+$/; // Hanya huruf dan spasi yang diperbolehkan
                 const minNameLength = 3;
                 const maxNameLength = 50;
-                
+
                 // Cek apakah nama mengandung kata kotor
                 if (badwords.test(name)) {
                     // Jika nama mengandung kata kotor
@@ -257,67 +258,75 @@ export default class CommandHandler {
                         { quoted: m, ephemeralExpiration: m.expiration }
                     );
                 } else {
-                    usr.name = name
-                    usr.progressreg = 2
+                    usr.name = name;
+                    usr.progressreg = 2;
                     await sock.sendMessage(
                         m.from,
                         {
-                            text: `Senang banget bisa kenalan sama kamu ${usr.name.split(' ')[0]}! 🥳\nOh iya, tanggal lahir kamu kapan? Tenang aja, aku cuma mau tau biar bisa kasih pengalaman yang lebih personal buat kamu. 😊\n\nMisal kamu lahir tanggal 1 Oktober 2005, jadi kamu ketik: 1/10/2005`
+                            text: `Senang banget bisa kenalan sama kamu ${
+                                usr.name.split(" ")[0]
+                            }! 🥳\nOh iya, tanggal lahir kamu kapan? Tenang aja, aku cuma mau tau biar bisa kasih pengalaman yang lebih personal buat kamu. 😊\n\nMisal kamu lahir tanggal 1 Oktober 2005, jadi kamu ketik: 1/10/2005`
                         },
                         { quoted: m, ephemeralExpiration: m.expiration }
                     );
                 }
             }
-        } 
-        if (usr.progress === 2) {
-const birthDate = m.text.trim(); // Ambil tanggal dari pesan user
+        }
+        if (usr.progressreg === 2) {
+            const birthDate = m.msg.trim(); // Ambil tanggal dari pesan user
 
-        // Cek format tanggal dd/mm/yyyy
-        const datePattern = /^(0[1-9]|[12][0-9]|3[01])\/(0[1-9]|1[0-2])\/(19|20)\d{2}$/;
-        
-        if (!datePattern.test(birthDate)) {
-            // Jika format salah, kasih tahu user
+            // Cek format tanggal dd/mm/yyyy
+            const datePattern =
+                /^(0[1-9]|[12][0-9]|3[01])\/(0[1-9]|1[0-2])\/(19|20)\d{2}$/;
+
+            if (!datePattern.test(birthDate)) {
+                // Jika format salah, kasih tahu user
+                await sock.sendMessage(
+                    m.from,
+                    {
+                        text: "Oops, format tanggal lahirnya salah nih. Coba kirim lagi dengan format: dd/mm/yyyy. Misal kamu lahir tanggal 1 Januari 2005, jadi kamu ketik: 01/01/2005"
+                    },
+                    { quoted: m }
+                );
+                return;
+            }
+
+            // Pisahkan tanggal, bulan, dan tahun
+            const [day, month, year] = birthDate
+                .split("/")
+                .map(num => parseInt(num));
+
+            // Cek umur berdasarkan tahun
+            const currentYear = new Date().getFullYear();
+            const age = currentYear - year;
+
+            // Cek apakah umur realistis (misalnya antara 1 hingga 120 tahun)
+            if (age < 5 || age > 120) {
+                await sock.sendMessage(
+                    m.from,
+                    {
+                        text: "Hmm, sepertinya umur kamu terlalu ekstrem. Coba kirim tanggal lahir yang lebih realistis ya. 😊"
+                    },
+                    { quoted: m }
+                );
+                return;
+            }
+
+            // Jika semua valid, simpan
+            usr.birth = birthDate;
+            usr.progressreg = 5;
+
+            // Kirim pesan konfirmasi
             await sock.sendMessage(
                 m.from,
                 {
-                    text: "Oops, format tanggal lahirnya salah nih. Coba kirim lagi dengan format: dd/mm/yyyy. Misal: 01/01/2000."
+                    text: `Terima kasih, ${
+                        usr.name.split(" ")[0]
+                    }! 😊 Tanggal lahir kamu sudah tercatat. Selamat datang di Ami Bot!`
                 },
                 { quoted: m }
             );
-            return;
         }
-
-        // Pisahkan tanggal, bulan, dan tahun
-        const [day, month, year] = birthDate.split('/').map(num => parseInt(num));
-
-        // Cek umur berdasarkan tahun
-        const currentYear = new Date().getFullYear();
-        const age = currentYear - year;
-
-        // Cek apakah umur realistis (misalnya antara 1 hingga 120 tahun)
-        if (age < 1 || age > 120) {
-            await sock.sendMessage(
-                m.from,
-                {
-                    text: "Hmm, sepertinya umur kamu terlalu ekstrem. Coba kirim tanggal lahir yang lebih realistis ya. 😊"
-                },
-                { quoted: m }
-            );
-            return;
-        }
-
-        // Jika semua valid, lanjutkan proses
-         // Tandai tahapan registrasi selesai
-
-        // Kirim pesan konfirmasi
-        await sock.sendMessage(
-            m.from,
-            {
-                text: `Terima kasih, [Nama User]! 😊 Tanggal lahir kamu sudah tercatat. Selamat datang di Ami Bot!`
-            },
-            { quoted: m }
-        );
-    }
     }
 
     async cmd(command, usr, sock, m, db) {
