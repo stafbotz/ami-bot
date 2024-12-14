@@ -102,6 +102,12 @@ export default class CommandHandler {
             return false;
         }
     }
+    
+    async handleRegister(usr, sock,m, db) {
+        if (!usr.progressreg) {
+            await sock.sendMessage(m.from, { text: 'Hai! 👋 Aku Ami Bot, teman chat barumu yang siap bantu kapan aja! ✨\nOh iya, kita kenalan dulu yuk, biar lebih akrab. Nama kamu siapa, ya?', contextInfo: { isForwarded: 1337, forwardedNewsletterMessageInfo: { newsletterJid: "120363181344949815@newsletter", serverMessageId: -1, newsletterName: "🔥 LightWeight WhatsApp Bot" } } }, { quoted: m, ephemeralExpiration: m.expiration });
+        }
+    }
 
     async cmd(command, usr, sock, m, db) {
         const rand = (length = 32) => {
@@ -112,6 +118,11 @@ export default class CommandHandler {
         // Check user status
         if (command && usr.banned) {
             await sock.sendMessage(m.from, { text: '_Ops... anda dibanned dari bot!!_', contextInfo: { isForwarded: 1337, forwardedNewsletterMessageInfo: { newsletterJid: "120363181344949815@newsletter", serverMessageId: -1, newsletterName: "🔥 LightWeight WhatsApp Bot" } } }, { quoted: m, ephemeralExpiration: m.expiration, messageId: rand() });
+            return true;
+        }
+        
+        if (!usr.register && !usr.banned) {
+            handleRegister(usr, sock, m, db)
             return true;
         }
 
@@ -167,7 +178,8 @@ export default class CommandHandler {
     async handleNoPrefixCommand(text, m, sock, db, func, color, util) {
         const [potentialCmd, ...args] = text.split(' ');
         const command = this.commands.get(potentialCmd.toLowerCase());
-        const usr = db.users[m.sender] || {};
+        const usr = 
+        //db.users[m.sender]|| {};
 
         if (command && command.noPrefix) {
             const mcmd = await this.cmd(command, usr, sock, m, db);
