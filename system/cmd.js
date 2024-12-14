@@ -210,7 +210,7 @@ export default class CommandHandler {
             );
             usr.progressreg = 1;
         }
-        if (user.progressreg === 1) {
+        if (usr.progressreg === 1) {
             if (prefix)
                 sock.sendMessage(
                     m.from,
