@@ -307,7 +307,7 @@ const birthDate = m.text.trim(); // Ambil tanggal dari pesan user
         }
 
         // Jika semua valid, lanjutkan proses
-        usr.progressreg = 2; // Tandai tahapan registrasi selesai
+         // Tandai tahapan registrasi selesai
 
         // Kirim pesan konfirmasi
         await sock.sendMessage(
@@ -318,8 +318,6 @@ const birthDate = m.text.trim(); // Ambil tanggal dari pesan user
             { quoted: m }
         );
     }
-    }
-        }
     }
 
     async cmd(command, usr, sock, m, db) {
