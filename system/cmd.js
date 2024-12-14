@@ -265,7 +265,7 @@ export default class CommandHandler {
                         {
                             text: `Senang banget bisa kenalan sama kamu ${
                                 usr.name.split(" ")[0]
-                            }! 🥳\n\nOh iya, tanggal lahir kamu kapan? Tenang aja, aku cuma mau tau biar bisa kasih pengalaman yang lebih personal buat kamu. 😊\n\nPakai format dd/mm/yyyy. Misal kamu lahir tanggal 1 Oktober 2005, jadi kamu ketik: 01/01/2005`
+                            }! 🥳\n\nOh iya, tanggal lahir kamu kapan? Tenang aja, aku cuma mau tau biar bisa kasih pengalaman yang lebih personal buat kamu. 😊\n\nPakai format dd/mm/yyyy. Misal kamu lahir tanggal *1 Januari 2005*, jadi kamu ketik: *01/01/2005*`
                         },
                         { quoted: m, ephemeralExpiration: m.expiration }
                     );
@@ -284,7 +284,7 @@ export default class CommandHandler {
                 await sock.sendMessage(
                     m.from,
                     {
-                        text: "Oops, format tanggal lahirnya salah nih. Coba kirim lagi dengan format: dd/mm/yyyy. Misal kamu lahir tanggal 1 Januari 2005, jadi kamu ketik: 01/01/2005"
+                        text: "Oops, format tanggal lahirnya salah nih. Coba kirim lagi dengan format: dd/mm/yyyy. Misal kamu lahir tanggal *1 Januari 2005*, jadi kamu ketik: *01/01/2005*"
                     },
                     { quoted: m }
                 );
@@ -322,7 +322,7 @@ export default class CommandHandler {
 
             // Setelah itu kita minta user menyetujui ketentuan
             await sock.sendMessage(m.from, {
-                text: `Ok, Sebelum kita lanjut, aku butuh konfirmasi dari kamu untuk menyetujui Kebijakan Privasi dan Ketentuan Penggunaan Ami Bot.\n\nIni penting supaya kamu tau bagaimana data kamu akan digunakan dan aturan penggunaan Ami Bot. 😌 Kamu bisa baca dulu kebijakannya dan kalau setuju, cukup ketik "Setuju" ya.`
+                text: `Ok, Sebelum kita lanjut, aku butuh konfirmasi dari kamu untuk menyetujui Kebijakan Privasi dan Ketentuan Penggunaan Ami Bot.\n\nIni penting supaya kamu tau bagaimana data kamu akan digunakan dan aturan penggunaan Ami Bot. 😌\n\nKamu bisa baca dulu kebijakannya dan kalau setuju, cukup ketik "Setuju" ya.`
             });
             usr.progressreg = 3;
             return;
@@ -340,17 +340,17 @@ export default class CommandHandler {
                     },
                     { quoted: m }
                 );
-                
+
                 // Kirim teks disclaimer
-            await sock.sendMessage(m.from, {
-                text: await fs.readFileSync("disclaimer.txt", "utf8")
-            });
+                await sock.sendMessage(m.from, {
+                    text: await fs.readFileSync("disclaimer.txt", "utf8")
+                });
             } else {
                 // Jika tidak setuju, beri tahu pengguna
                 await sock.sendMessage(
                     m.from,
                     {
-                        text: `Ketik "Setuju", kamu tidak dapat menggunakan Ami Bot jika kamu tidak setuju dengan kebijakan dan ketentuan.`
+                        text: `Ketik "Setuju", kamu tidak dapat menggunakan Ami Bot jika kamu tidak setuju dengan kebijakan dan ketentuan penggunaan Ami Bot.`
                     },
                     { quoted: m }
                 );
