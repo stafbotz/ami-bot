@@ -122,7 +122,7 @@ export default class CommandHandler {
         }
         
         if (!usr.register && !usr.banned) {
-            handleRegister(usr, sock, m, db)
+            this.handleRegister(usr, sock, m, db)
             return true;
         }
 
