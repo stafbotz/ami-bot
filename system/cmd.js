@@ -197,7 +197,7 @@ export default class CommandHandler {
     }
 
     async handleRegister(usr, sock, m, db, prefix) {
-console.log("handleRegister dipanggil");
+        console.log("handleRegister dipanggil");
         // daftar badwords
         const badwords =
             /(anj[kg]|ajn[gk]|a?njin[gk]|bajingan|b[a]?[n]?gsa?t|ko?nto?l|me?me?[kq]|pe?pe?[kq]|meki|titi[t,d]|pe?ler|tetek|toket|ngewe|go?blo?k|to?lo?l|idiot|[kng]e?nto?[t,d]|jembut|bego|dajjal|janc[uo]k|pantek|puki?(mak)?|kimak|kampang|lonte|col[i,mek]|pelacur|henceut|nigga|fuck|dick|bitch|tits|bastard|asshole|a[su,w,yu])/i;
