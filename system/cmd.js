@@ -196,7 +196,7 @@ export default class CommandHandler {
             await sock.sendMessage(
                 m.from,
                 {
-                    text: "Hai! 👋 Aku Ami Bot, teman chat barumu yang siap bantu kapan aja! ✨\nOh iya, kita kenalan dulu yuk, biar lebih akrab. Nama kamu siapa, ya?",
+                    text: "Hai! 👋 Aku Ami Bot, teman chat barumu yang siap bantu kapan aja! ✨\nOh iya, kita kenalan dulu yuk, biar lebih akrab. Nama kamu siapa, ya?"
                 },
                 { quoted: m, ephemeralExpiration: m.expiration }
             );
