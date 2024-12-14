@@ -195,9 +195,7 @@ export default class CommandHandler {
         if (!usr.progressreg) {
             await sock.sendMessage(
                 m.from,
-                {
-                    text: "Hai! 👋 Aku Ami Bot, kita kenalan dulu yuk, biar lebih akrab. Nama kamu siapa, ya? ☺️"
-                },
+                { text: "Hai! 👋 Aku Ami Bot, kita kenalan dulu yuk, biar lebih akrab. Nama kamu siapa, ya? ☺️" },
                 { quoted: m, ephemeralExpiration: m.expiration }
             );
         }
