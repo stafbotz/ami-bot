@@ -265,7 +265,7 @@ export default class CommandHandler {
                         {
                             text: `Senang banget bisa kenalan sama kamu ${
                                 usr.name.split(" ")[0]
-                            }! 🥳\nOh iya, tanggal lahir kamu kapan? Tenang aja, aku cuma mau tau biar bisa kasih pengalaman yang lebih personal buat kamu. 😊\n\nMisal kamu lahir tanggal 1 Oktober 2005, jadi kamu ketik: 1/10/2005`
+                            }! 🥳\n\nOh iya, tanggal lahir kamu kapan? Tenang aja, aku cuma mau tau biar bisa kasih pengalaman yang lebih personal buat kamu. 😊\n\nMisal kamu lahir tanggal 1 Oktober 2005, jadi kamu ketik: 01/01/2005`
                         },
                         { quoted: m, ephemeralExpiration: m.expiration }
                     );
