@@ -263,7 +263,7 @@ export default class CommandHandler {
                 );
             } else {
             }
-        }
+            }
     }
 
     async cmd(command, usr, sock, m, db) {
