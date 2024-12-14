@@ -212,7 +212,7 @@ export default class CommandHandler {
                 await sock.sendMessage(
                     m.from,
                     {
-                        text: "Sebelum aku bisa bantu dengan fitur yang aku punya, yuk kita kenalan dulu biar lebih akrab. Nama kamu siapa, ya? 😊"
+                        text: "Sebelum aku bisa bantu dengan fitur yang aku punya, yuk kita kenalan dulu biar lebih akrab. Nama kamu siapa? 😊"
                     },
                     { quoted: m, ephemeralExpiration: m.expiration }
                 );
@@ -327,7 +327,7 @@ export default class CommandHandler {
             usr.progressreg = 3;
             return;
         } else if (usr.progressreg === 3) {
-            if (m.msg.trim() === "setuju") {
+            if (m.msg.trim().toLowerCase() === "setuju") {
                 delete usr.progressreg; // Hapus progressreg setelah selesai
                 usr.register = true;
 
@@ -340,6 +340,11 @@ export default class CommandHandler {
                     },
                     { quoted: m }
                 );
+                
+                // Kirim teks disclaimer
+            await sock.sendMessage(m.from, {
+                text: await fs.readFileSync("disclaimer.txt", "utf8")
+            });
             } else {
                 // Jika tidak setuju, beri tahu pengguna
                 await sock.sendMessage(
@@ -354,7 +359,7 @@ export default class CommandHandler {
             await sock.sendMessage(
                 m.from,
                 {
-                    text: "Hai! 👋 Aku Ami Bot, kita kenalan dulu yuk, biar lebih akrab. Nama kamu siapa, ya? ☺️"
+                    text: "Hai! 👋 Aku Ami Bot, bot Whatsapp yang dibuat oleh Renshu Visualz.\n\nKita kenalan dulu yuk, biar lebih akrab. Nama kamu siapa? ☺️"
                 },
                 { quoted: m, ephemeralExpiration: m.expiration }
             );
