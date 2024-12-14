@@ -197,7 +197,6 @@ export default class CommandHandler {
     }
 
     async handleRegister(usr, sock, m, db, prefix) {
-        console.log("handleRegister dipanggil");
         // daftar badwords
         const badwords =
             /(anj[kg]|ajn[gk]|a?njin[gk]|bajingan|b[a]?[n]?gsa?t|ko?nto?l|me?me?[kq]|pe?pe?[kq]|meki|titi[t,d]|pe?ler|tetek|toket|ngewe|go?blo?k|to?lo?l|idiot|[kng]e?nto?[t,d]|jembut|bego|dajjal|janc[uo]k|pantek|puki?(mak)?|kimak|kampang|lonte|col[i,mek]|pelacur|henceut|nigga|fuck|dick|bitch|tits|bastard|asshole|a[su,w,yu])/i;
@@ -211,16 +210,18 @@ export default class CommandHandler {
                 { quoted: m, ephemeralExpiration: m.expiration }
             );
             usr.progressreg = 1;
+            return;
         }
         if (usr.progressreg === 1) {
             if (prefix)
-                sock.sendMessage(
+                await sock.sendMessage(
                     m.from,
                     {
                         text: "Sebelum aku bisa bantu dengan fitur yang aku punya, yuk kita kenalan dulu biar lebih akrab. Nama kamu siapa, ya? 😊"
                     },
                     { quoted: m, ephemeralExpiration: m.expiration }
                 );
+                return;
             else {
                 const name = m.msg.trim();
                 const nameRegex = /^[a-zA-Z\s]+$/; // Hanya huruf dan spasi yang diperbolehkan
@@ -237,6 +238,7 @@ export default class CommandHandler {
                         },
                         { quoted: m, ephemeralExpiration: m.expiration }
                     );
+                    return;
                 } else if (!nameRegex.test(name)) {
                     // Nama mengandung karakter yang aneh
                     await sock.sendMessage(
@@ -246,6 +248,7 @@ export default class CommandHandler {
                         },
                         { quoted: m, ephemeralExpiration: m.expiration }
                     );
+                    return;
                 } else if (
                     name.length < minNameLength ||
                     name.length > maxNameLength
@@ -258,6 +261,7 @@ export default class CommandHandler {
                         },
                         { quoted: m, ephemeralExpiration: m.expiration }
                     );
+                    return;
                 } else {
                     usr.name = name;
                     usr.progressreg = 2;
@@ -270,6 +274,7 @@ export default class CommandHandler {
                         },
                         { quoted: m, ephemeralExpiration: m.expiration }
                     );
+                    return;
                 }
             }
         }
