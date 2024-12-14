@@ -163,6 +163,9 @@ export default class CommandHandler {
             }
 
             const prefixMatched = this.prefixes.find(p => text.startsWith(p));
+            
+            if (!usr.register && !usr.banned) return await this.handleRegister(usr, sock, m, db, prefixMatched);
+
             if (prefixMatched) {
                 return await this.handleCommand(
                     text,
@@ -196,17 +199,6 @@ export default class CommandHandler {
         const badwords =
             /(anj[kg]|ajn[gk]|a?njin[gk]|bajingan|b[a]?[n]?gsa?t|ko?nto?l|me?me?[kq]|pe?pe?[kq]|meki|titi[t,d]|pe?ler|tetek|toket|ngewe|go?blo?k|to?lo?l|idiot|[kng]e?nto?[t,d]|jembut|bego|dajjal|janc[uo]k|pantek|puki?(mak)?|kimak|kampang|lonte|col[i,mek]|pelacur|henceut|nigga|fuck|dick|bitch|tits|bastard|asshole|a[su,w,yu])/i;
 
-        if (!usr.progressreg) {
-            await sock.sendMessage(
-                m.from,
-                {
-                    text: "Hai! 👋 Aku Ami Bot, kita kenalan dulu yuk, biar lebih akrab. Nama kamu siapa, ya? ☺️"
-                },
-                { quoted: m, ephemeralExpiration: m.expiration }
-            );
-            usr.progressreg = 1;
-            return true;
-        }
         if (usr.progressreg === 1) {
             if (prefix) {
                 await sock.sendMessage(
@@ -216,7 +208,7 @@ export default class CommandHandler {
                     },
                     { quoted: m, ephemeralExpiration: m.expiration }
                 );
-                return true;
+                return;
             } else {
                 const name = m.msg.trim();
                 const nameRegex = /^[a-zA-Z\s]+$/; // Hanya huruf dan spasi yang diperbolehkan
@@ -233,7 +225,7 @@ export default class CommandHandler {
                         },
                         { quoted: m, ephemeralExpiration: m.expiration }
                     );
-                    return true;
+                    return;
                 } else if (!nameRegex.test(name)) {
                     // Nama mengandung karakter yang aneh
                     await sock.sendMessage(
@@ -243,7 +235,7 @@ export default class CommandHandler {
                         },
                         { quoted: m, ephemeralExpiration: m.expiration }
                     );
-                    return true;
+                    return;
                 } else if (
                     name.length < minNameLength ||
                     name.length > maxNameLength
@@ -256,7 +248,7 @@ export default class CommandHandler {
                         },
                         { quoted: m, ephemeralExpiration: m.expiration }
                     );
-                    return true;
+                    return;
                 } else {
                     usr.name = name;
                     usr.progressreg = 2;
@@ -269,11 +261,10 @@ export default class CommandHandler {
                         },
                         { quoted: m, ephemeralExpiration: m.expiration }
                     );
-                    return true;
+                    return;
                 }
             }
-        }
-        if (usr.progressreg === 2) {
+        } else if (usr.progressreg === 2) {
             const birthDate = m.msg.trim(); // Ambil tanggal dari pesan user
 
             // Cek format tanggal dd/mm/yyyy
@@ -289,7 +280,7 @@ export default class CommandHandler {
                     },
                     { quoted: m }
                 );
-                return true;
+                return;
             }
 
             // Pisahkan tanggal, bulan, dan tahun
@@ -310,13 +301,12 @@ export default class CommandHandler {
                     },
                     { quoted: m }
                 );
-                return true;
+                return;
             }
 
             // Jika semua valid, simpan
             usr.birth = birthDate;
-            usr.register = true;
-            delete usr.progressreg;
+            usr.progressreg = 3;
 
             // Kirim pesan konfirmasi
             await sock.sendMessage(
@@ -328,7 +318,26 @@ export default class CommandHandler {
                 },
                 { quoted: m }
             );
-            return true;
+            
+            // Setelah itu kita minta user menyetujui terms
+            await sock.sendMessage(m.from,
+        {
+            text: `Sebelum kita lanjut, aku butuh konfirmasi dari kamu untuk menyetujui Kebijakan Privasi dan Ketentuan Penggunaan Ami Bot. Ini penting supaya kamu tau aturan penggunaan Ami Bot dan bagaimana data kamu akan digunakan. 😌 Kamu bisa baca dulu kebijakannya dan kalau setuju, cukup ketik "Setuju" ya. 😊\n\nKetentuan dan Kebijakan Privasi bisa kamu lihat di bawah ini:` },
+        { quoted: m }
+    );
+                return;
+        } else if (usr.progressreg === 3) {
+            
+        } else {
+            await sock.sendMessage(
+                m.from,
+                {
+                    text: "Hai! 👋 Aku Ami Bot, kita kenalan dulu yuk, biar lebih akrab. Nama kamu siapa, ya? ☺️"
+                },
+                { quoted: m, ephemeralExpiration: m.expiration }
+            );
+            usr.progressreg = 1;
+            return;
         }
     }
 
@@ -364,9 +373,6 @@ export default class CommandHandler {
             );
             return true;
         }
-
-        if (!usr.register && !usr.banned)
-            return await this.handleRegister(usr, sock, m, db, false);
 
         // Check owner
         if (command.isOwner && !m.isOwner && !m.key.fromMe) {
