@@ -197,14 +197,6 @@ export default class CommandHandler {
                 m.from,
                 {
                     text: "Hai! 👋 Aku Ami Bot, teman chat barumu yang siap bantu kapan aja! ✨\nOh iya, kita kenalan dulu yuk, biar lebih akrab. Nama kamu siapa, ya?",
-                    contextInfo: {
-                        isForwarded: 1337,
-                        forwardedNewsletterMessageInfo: {
-                            newsletterJid: "120363181344949815@newsletter",
-                            serverMessageId: -1,
-                            newsletterName: "🔥 LightWeight WhatsApp Bot"
-                        }
-                    }
                 },
                 { quoted: m, ephemeralExpiration: m.expiration }
             );
