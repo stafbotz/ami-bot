@@ -314,7 +314,6 @@ export default class CommandHandler {
 
             // Jika semua valid, simpan
             usr.birth = birthDate;
-            usr.progressreg = 3;
 
             // Kirim pesan konfirmasi
             await sock.sendMessage(
@@ -335,15 +334,16 @@ export default class CommandHandler {
                 },
                 { quoted: m }
             );
-            
+
             // Kirim teks policy & termsnya
             await sock.sendMessage(
                 m.from,
                 {
-                    text: (await fs.readFileSync('policy&terms.txt', 'utf8'))},
+                    text: await fs.readFileSync("policy&terms.txt", "utf8")
+                },
                 { quoted: m }
-            );//
-            
+            );
+            usr.progressreg = 3;
             return;
         } else if (usr.progressreg === 3) {
         } else {
