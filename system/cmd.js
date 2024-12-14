@@ -327,43 +327,40 @@ export default class CommandHandler {
             );
 
             // Kirim teks policy & termsnya
-            const msgterms = await sock.sendMessage(
-                m.from,
-                {
-                    text: await fs.readFileSync("policy&terms.txt", "utf8")
-                }
-            );
+            await sock.sendMessage(m.from, {
+                text: await fs.readFileSync("policy&terms.txt", "utf8")
+            });
 
             // Setelah itu kita minta user menyetujui ketentuan
-            await sock.sendMessage(
-                m.from,
-                {
-                    text: `Sebelum kita lanjut, aku butuh konfirmasi dari kamu untuk menyetujui Kebijakan Privasi dan Ketentuan Penggunaan Ami Bot.\n\nIni penting supaya kamu tau bagaimana data kamu akan digunakan dan aturan penggunaan Ami Bot. 😌 Kamu bisa baca dulu kebijakannya dan kalau setuju, cukup ketik "Setuju" ya.`
-                }
-            );
+            await sock.sendMessage(m.from, {
+                text: `Sebelum kita lanjut, aku butuh konfirmasi dari kamu untuk menyetujui Kebijakan Privasi dan Ketentuan Penggunaan Ami Bot.\n\nIni penting supaya kamu tau bagaimana data kamu akan digunakan dan aturan penggunaan Ami Bot. 😌 Kamu bisa baca dulu kebijakannya dan kalau setuju, cukup ketik "Setuju" ya.`
+            });
             usr.progressreg = 3;
             return;
         } else if (usr.progressreg === 3) {
-            if (response === 'setuju') {
+            if (response === "setuju") {
                 delete usr.progressreg; // Hapus progressreg setelah selesai
-
-        await sock.sendMessage(
-            m.from,
-            {
-                text: `Terima kasih sudah setuju, ${usr.name.split(" ")[0]}! 🎉`
-            },
-            { quoted: m }
-        );
-    } else {
-        // Jika tidak setuju, beri tahu pengguna
-        await sock.sendMessage(
-            m.from,
-            {
-                text: `Ketik "Setuju", kamu tidak dapat menggunakan Ami Bot jika kamu tidak setuju dengan kebijakan dan ketentuan.`
-            },
-            { quoted: m }
-        );
-    }
+                usr.register = true;
+                
+                await sock.sendMessage(
+                    m.from,
+                    {
+                        text: `Terima kasih sudah setuju, ${
+                            usr.name.split(" ")[0]
+                        }! 🎉`
+                    },
+                    { quoted: m }
+                );
+            } else {
+                // Jika tidak setuju, beri tahu pengguna
+                await sock.sendMessage(
+                    m.from,
+                    {
+                        text: `Ketik "Setuju", kamu tidak dapat menggunakan Ami Bot jika kamu tidak setuju dengan kebijakan dan ketentuan.`
+                    },
+                    { quoted: m }
+                );
+            }
         } else {
             await sock.sendMessage(
                 m.from,
