@@ -220,8 +220,7 @@ export default class CommandHandler {
                     { quoted: m, ephemeralExpiration: m.expiration }
                 );
             else {
-                const name = m.text.trim();
-                m.reply(name)
+                const name = m.msg.trim();
                 const nameRegex = /^[a-zA-Z\s]+$/; // Hanya huruf dan spasi yang diperbolehkan
                 const minNameLength = 3;
                 const maxNameLength = 50;
@@ -239,7 +238,7 @@ export default class CommandHandler {
                     );
                 } else if (!nameRegex.test(name)) {
                     // Nama mengandung karakter yang aneh
-                    
+
                     await sock.sendMessage(
                         m.from,
                         {
