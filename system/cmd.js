@@ -315,17 +315,6 @@ export default class CommandHandler {
             // Jika semua valid, simpan
             usr.birth = birthDate;
 
-            // Kirim pesan konfirmasi
-            await sock.sendMessage(
-                m.from,
-                {
-                    text: `Terima kasih, ${
-                        usr.name.split(" ")[0]
-                    }! 😊 Tanggal lahir kamu sudah tercatat. Selamat datang di Ami Bot!`
-                },
-                { quoted: m }
-            );
-
             // Kirim teks policy & termsnya
             await sock.sendMessage(m.from, {
                 text: await fs.readFileSync("policy&terms.txt", "utf8")
@@ -333,15 +322,15 @@ export default class CommandHandler {
 
             // Setelah itu kita minta user menyetujui ketentuan
             await sock.sendMessage(m.from, {
-                text: `Sebelum kita lanjut, aku butuh konfirmasi dari kamu untuk menyetujui Kebijakan Privasi dan Ketentuan Penggunaan Ami Bot.\n\nIni penting supaya kamu tau bagaimana data kamu akan digunakan dan aturan penggunaan Ami Bot. 😌 Kamu bisa baca dulu kebijakannya dan kalau setuju, cukup ketik "Setuju" ya.`
+                text: `Ok, Sebelum kita lanjut, aku butuh konfirmasi dari kamu untuk menyetujui Kebijakan Privasi dan Ketentuan Penggunaan Ami Bot.\n\nIni penting supaya kamu tau bagaimana data kamu akan digunakan dan aturan penggunaan Ami Bot. 😌 Kamu bisa baca dulu kebijakannya dan kalau setuju, cukup ketik "Setuju" ya.`
             });
             usr.progressreg = 3;
             return;
         } else if (usr.progressreg === 3) {
-            if (response === "setuju") {
+            if (m.msg.trim() === "setuju") {
                 delete usr.progressreg; // Hapus progressreg setelah selesai
                 usr.register = true;
-                
+
                 await sock.sendMessage(
                     m.from,
                     {
