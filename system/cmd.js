@@ -261,9 +261,9 @@ export default class CommandHandler {
                     },
                     { quoted: m, ephemeralExpiration: m.expiration }
                 );
-            } else {
+            } else {}
             }
-            }
+       }
     }
 
     async cmd(command, usr, sock, m, db) {
