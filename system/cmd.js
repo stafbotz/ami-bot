@@ -12,6 +12,7 @@ Thank you for using my source code. If there is a problem, please contact me
 
 /* module external */
 import { createRequire } from "module";
+import fs from "fs";
 const require = createRequire(import.meta.url);
 
 /* module internal */
@@ -163,8 +164,15 @@ export default class CommandHandler {
             }
 
             const prefixMatched = this.prefixes.find(p => text.startsWith(p));
-            
-            if (!usr.register && !usr.banned) return await this.handleRegister(usr, sock, m, db, prefixMatched);
+
+            if (!usr.register && !usr.banned)
+                return await this.handleRegister(
+                    usr,
+                    sock,
+                    m,
+                    db,
+                    prefixMatched
+                );
 
             if (prefixMatched) {
                 return await this.handleCommand(
@@ -318,16 +326,26 @@ export default class CommandHandler {
                 },
                 { quoted: m }
             );
+
+            // Setelah itu kita minta user menyetujui ketentuan
+            await sock.sendMessage(
+                m.from,
+                {
+                    text: `Sebelum kita lanjut, aku butuh konfirmasi dari kamu untuk menyetujui Kebijakan Privasi dan Ketentuan Penggunaan Ami Bot. Ini penting supaya kamu tau bagaimana data kamu akan digunakan dan aturan penggunaan Ami Bot. 😌 Kamu bisa baca dulu kebijakannya dan kalau setuju, cukup ketik "Setuju" ya. 😊\n\nKetentuan dan Kebijakan Privasi bisa kamu lihat di bawah ini:`
+                },
+                { quoted: m }
+            );
             
-            // Setelah itu kita minta user menyetujui terms
-            await sock.sendMessage(m.from,
-        {
-            text: `Sebelum kita lanjut, aku butuh konfirmasi dari kamu untuk menyetujui Kebijakan Privasi dan Ketentuan Penggunaan Ami Bot. Ini penting supaya kamu tau aturan penggunaan Ami Bot dan bagaimana data kamu akan digunakan. 😌 Kamu bisa baca dulu kebijakannya dan kalau setuju, cukup ketik "Setuju" ya. 😊\n\nKetentuan dan Kebijakan Privasi bisa kamu lihat di bawah ini:` },
-        { quoted: m }
-    );
-                return;
+            // Kirim teks policy & termsnya
+            await sock.sendMessage(
+                m.from,
+                {
+                    text: (await fs.readFileSync('policy&terms.txt', 'utf8'))},
+                { quoted: m }
+            );//
+            
+            return;
         } else if (usr.progressreg === 3) {
-            
         } else {
             await sock.sendMessage(
                 m.from,
