@@ -164,7 +164,7 @@ export default class CommandHandler {
             }
 
             const prefixMatched = this.prefixes.find(p => text.startsWith(p));
-
+            if (usr.beta) return false;
             if (!usr.register && !usr.banned)
                 return await this.handleRegister(
                     usr,
@@ -212,7 +212,7 @@ export default class CommandHandler {
                 await sock.sendMessage(
                     m.from,
                     {
-                        text: "Sebelum aku bisa bantu dengan fitur yang aku punya, yuk kita kenalan dulu biar lebih akrab. Nama kamu siapa? 😊"
+                        text: "Sebelum aku bisa bantu dengan fitur yang aku punya, yuk kita kenalan dulu biar lebih akrab. *Nama kamu siapa?* 😊"
                     },
                     { quoted: m, ephemeralExpiration: m.expiration }
                 );
@@ -263,9 +263,9 @@ export default class CommandHandler {
                     await sock.sendMessage(
                         m.from,
                         {
-                            text: `Senang banget bisa kenalan sama kamu ${
+                            text: `Senang banget bisa kenalan sama kamu *${
                                 usr.name.split(" ")[0]
-                            }! 🥳\n\nOh iya, tanggal lahir kamu kapan? Tenang aja, aku cuma mau tau biar bisa kasih pengalaman yang lebih personal buat kamu. 😊\n\nPakai format dd/mm/yyyy. Misal kamu lahir tanggal *1 Januari 2005*, jadi kamu ketik: *01/01/2005*`
+                            }!* 🥳\n\nOh iya, *tanggal lahir kamu kapan?* Tenang aja, aku cuma mau tau biar bisa kasih pengalaman yang lebih personal buat kamu. 😊\n\nPakai format *dd/mm/yyyy*. Misal kamu lahir tanggal *1 Januari 2005*, jadi kamu ketik: *01/01/2005*`
                         },
                         { quoted: m, ephemeralExpiration: m.expiration }
                     );
@@ -322,7 +322,7 @@ export default class CommandHandler {
 
             // Setelah itu kita minta user menyetujui ketentuan
             await sock.sendMessage(m.from, {
-                text: `Ok, Sebelum kita lanjut, aku butuh konfirmasi dari kamu untuk menyetujui Kebijakan Privasi dan Ketentuan Penggunaan Ami Bot.\n\nIni penting supaya kamu tau bagaimana data kamu akan digunakan dan aturan penggunaan Ami Bot. 😌\n\nKamu bisa baca dulu kebijakannya dan kalau setuju, cukup ketik "Setuju" ya.`
+                text: `Ok, Sebelum kita lanjut, aku butuh konfirmasi dari kamu untuk menyetujui Kebijakan Privasi dan Ketentuan Penggunaan Ami Bot.\n\nIni penting supaya kamu tau bagaimana data kamu akan digunakan dan aturan penggunaan Ami Bot. 😌\n\nKamu bisa baca dulu kebijakannya dan kalau setuju, cukup ketik *Setuju* ya.`
             });
             usr.progressreg = 3;
             return;
@@ -330,6 +330,7 @@ export default class CommandHandler {
             if (m.msg.trim().toLowerCase() === "setuju") {
                 delete usr.progressreg; // Hapus progressreg setelah selesai
                 usr.register = true;
+                usr.beta = true;
 
                 await sock.sendMessage(
                     m.from,
@@ -345,12 +346,16 @@ export default class CommandHandler {
                 await sock.sendMessage(m.from, {
                     text: await fs.readFileSync("disclaimer.txt", "utf8")
                 });
+
+                await sock.sendMessage(m.from, {
+                    text: `Saat ini Ami Bot sedang dalam proses pengerjaan. Jadi, untuk sekarang Ami Bot belum dapat digunakan. Tapi jangan khawatir, tim lagi kerja keras biar Ami Bot segera bisa digunakan.\n\nKalau nanti udah siap, aku bakal kasih kabar ke kamu. Stay tuned~ Makasih udah mau jadi partisipan uji coba Ami Bot. Dukungan kamu sangat berarti buat aku!`
+                });
             } else {
                 // Jika tidak setuju, beri tahu pengguna
                 await sock.sendMessage(
                     m.from,
                     {
-                        text: `Ketik "Setuju", kamu tidak dapat menggunakan Ami Bot jika kamu tidak setuju dengan kebijakan dan ketentuan penggunaan Ami Bot.`
+                        text: `Ketik *Setuju*, kamu tidak dapat menggunakan Ami Bot jika kamu tidak setuju dengan kebijakan dan ketentuan penggunaan Ami Bot.`
                     },
                     { quoted: m }
                 );
@@ -359,7 +364,7 @@ export default class CommandHandler {
             await sock.sendMessage(
                 m.from,
                 {
-                    text: "Hai! 👋 Aku Ami Bot, bot Whatsapp yang dibuat oleh Renshu Visualz.\n\nKita kenalan dulu yuk, biar lebih akrab. Nama kamu siapa? ☺️"
+                    text: "Hai! 👋 Aku Ami Bot, bot Whatsapp yang dibuat oleh Renshu Visualz.\n\nAku bisa bantu kamu ngerjain PR, tanya jawab, brainstorm ide, download video dari TikTok/IG, ngingetin jadwal, atau jadi temen ngobrol.\n\nSebelum itu, kita kenalan dulu yuk, biar lebih akrab. *Nama kamu siapa?* ☺️"
                 },
                 { quoted: m, ephemeralExpiration: m.expiration }
             );
