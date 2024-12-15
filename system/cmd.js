@@ -348,7 +348,7 @@ export default class CommandHandler {
                 });
 
                 await sock.sendMessage(m.from, {
-                    text: `Saat ini Ami Bot sedang dalam proses pengerjaan. Jadi, untuk sekarang Ami Bot belum dapat digunakan. Tapi jangan khawatir, tim lagi kerja keras biar Ami Bot segera bisa digunakan.\n\nKalau nanti udah siap, aku bakal kasih kabar ke kamu. Stay tuned~ Makasih udah mau jadi partisipan uji coba Ami Bot. Dukungan kamu sangat berarti buat aku!`
+                    text: `Saat ini Ami Bot sedang dalam proses pengerjaan. Jadi, untuk sekarang *Ami Bot belum dapat digunakan*. Tapi jangan khawatir, tim lagi kerja keras biar Ami Bot segera bisa digunakan.\n\nKalau nanti udah siap, aku bakal kasih kabar ke kamu. Stay tuned~ Makasih udah mau jadi partisipan uji coba Ami Bot. Dukungan kamu sangat berarti buat aku!`
                 });
             } else {
                 // Jika tidak setuju, beri tahu pengguna
@@ -364,7 +364,7 @@ export default class CommandHandler {
             await sock.sendMessage(
                 m.from,
                 {
-                    text: "Hai! 👋 Aku Ami Bot, bot Whatsapp yang dibuat oleh Renshu Visualz.\n\nAku bisa bantu kamu ngerjain PR, tanya jawab, brainstorm ide, download video dari TikTok/IG, ngingetin jadwal, atau jadi temen ngobrol.\n\nSebelum itu, kita kenalan dulu yuk, biar lebih akrab. *Nama kamu siapa?* ☺️"
+                    text: "Hai! 👋 Aku Ami Bot, bot Whatsapp yang dibuat oleh Renshu Visualz.\n\nAku bisa bantu kamu ngerjain PR, tanya jawab, brainstorm ide, download video dari TikTok/IG, ngingetin jadwal, dan masih banyak lagi!\n\nSebelum itu, kita kenalan dulu yuk, biar lebih akrab. *Nama kamu siapa?* ☺️"
                 },
                 { quoted: m, ephemeralExpiration: m.expiration }
             );
