@@ -164,7 +164,7 @@ export default class CommandHandler {
             }
 
             const prefixMatched = this.prefixes.find(p => text.startsWith(p));
-            if (usr.beta) return false;
+            if (usr.beta && !m.isOwner) return false;
             if (!usr.register && !usr.banned)
                 return await this.handleRegister(
                     usr,
