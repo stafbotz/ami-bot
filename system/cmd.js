@@ -210,7 +210,7 @@ export default class CommandHandler {
         }
     }
 
-async function handleRegister(usr, sock, m, db, prefix) {
+async handleRegister(usr, sock, m, db, prefix) {
     try {
         // Validasi Input Awal
         if (!usr || !sock || !m || !m.msg) {
