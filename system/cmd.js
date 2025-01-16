@@ -166,8 +166,8 @@ export default class CommandHandler {
             const prefixMatched = this.prefixes.find(p => text.startsWith(p));
             if (usr.beta && !m.isOwner) return false;
             if (!usr.register && !usr.banned) {
-                if (usr.progressreg !== 1) {
- await sock.sendMessage(
+                if (!usr.progressreg) {
+                    await sock.sendMessage(
                         m.from,
                         {
                             text: "Hai! 👋 Aku Ami Bot, bot Whatsapp yang dibuat oleh Renshu Visualz.\n\nAku bisa bantu kamu ngerjain PR, tanya jawab, brainstorm ide, download video dari TikTok/IG, ngingetin jadwal, dan masih banyak lagi!\n\nSebelum itu, kita kenalan dulu yuk, biar lebih akrab. *Nama kamu siapa?* ☺️"
@@ -176,8 +176,7 @@ export default class CommandHandler {
                     );
                     usr.progressreg = 1; // Set progressreg agar pesan tidak dikirim lagi
                 }
-
-return await this.handleRegister(
+                return await this.handleRegister(
                     usr,
                     sock,
                     m,
