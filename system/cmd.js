@@ -166,17 +166,25 @@ export default class CommandHandler {
             const prefixMatched = this.prefixes.find(p => text.startsWith(p));
             if (usr.beta && !m.isOwner) return false;
             if (!usr.register && !usr.banned) {
-                await sock.sendMessage(
-                    m.from,
-                    {
-                        text: "Hai! 👋 Aku Ami Bot, bot Whatsapp yang dibuat oleh Renshu Visualz.\n\nAku bisa bantu kamu ngerjain PR, tanya jawab, brainstorm ide, download video dari TikTok/IG, ngingetin jadwal, dan masih banyak lagi!\n\nSebelum itu, kita kenalan dulu yuk, biar lebih akrab. *Nama kamu siapa?* ☺️"
-                    },
-                    { quoted: m, ephemeralExpiration: m.expiration }
-                );
-            usr.progressreg = 1;
-            return await this.handleRegister(usr, sock, m, db, prefixMatched);
-            }
-             if (prefixMatched) {
+    if (usr.progressreg !== 1) {
+        // Kirim pesan perkenalan hanya jika progressreg belum diatur ke 1
+        await sock.sendMessage(
+            m.from,
+            {
+                text: "Hai! 👋 Aku Ami Bot, bot Whatsapp yang dibuat oleh Renshu Visualz.\n\nAku bisa bantu kamu ngerjain PR, tanya jawab, brainstorm ide, download video dari TikTok/IG, ngingetin jadwal, dan masih banyak lagi!\n\nSebelum itu, kita kenalan dulu yuk, biar lebih akrab. *Nama kamu siapa?* ☺️"
+            },
+            { quoted: m, ephemeralExpiration: m.expiration }
+        );
+        usr.progressreg = 1; // Set progressreg agar pesan tidak dikirim lagi
+    }
+
+    // Panggil handleRegister hanya jika belum selesai registrasi
+    return await this.handleRegister(usr, sock, m, db, prefixMatched);
+}
+
+// Jika sudah register atau banned, jangan lakukan apa-apa
+return;
+            if (prefixMatched) {
                 return await this.handleCommand(
                     text,
                     prefixMatched,
@@ -206,7 +214,6 @@ export default class CommandHandler {
 
     async handleRegister(usr, sock, m, db, prefix) {
         try {
-          
             // Daftar kata-kata kasar
             const badwords =
                 /(anj[kg]|ajn[gk]|a?njin[gk]|bajingan|b[a]?[n]?gsa?t|ko?nto?l|me?me?[kq]|pe?pe?[kq]|meki|titi[t,d]|pe?ler|tetek|toket|ngewe|go?blo?k|to?lo?l|idiot|[kng]e?nto?[t,d]|jembut|bego|dajjal|janc[uo]k|pantek|puki?(mak)?|kimak|kampang|lonte|col[i,mek]|pelacur|henceut|nigga|fuck|dick|bitch|tits|bastard|asshole|a[su,w,yu])/i;
