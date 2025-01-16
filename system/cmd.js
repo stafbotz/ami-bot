@@ -174,7 +174,6 @@ export default class CommandHandler {
                         },
                         { quoted: m, ephemeralExpiration: m.expiration }
                     );
-                    usr.progressreg = 1; // Set progressreg agar pesan tidak dikirim lagi
                 }
                 return await this.handleRegister(
                     usr,
@@ -323,16 +322,30 @@ export default class CommandHandler {
                         );
                     } else {
                         usr.birth = birthDate;
-// Pisahkan tanggal, bulan, dan tahun
-        const [day, month, year] = birthDate.split("/").map(num => parseInt(num));
-        const monthNames = [
-            "Januari", "Februari", "Maret", "April", "Mei", "Juni", "Juli",
-            "Agustus", "September", "Oktober", "November", "Desember"
-        ];
+                        // Pisahkan tanggal, bulan, dan tahun
+                        const [day, month, year] = birthDate
+                            .split("/")
+                            .map(num => parseInt(num));
+                        const monthNames = [
+                            "Januari",
+                            "Februari",
+                            "Maret",
+                            "April",
+                            "Mei",
+                            "Juni",
+                            "Juli",
+                            "Agustus",
+                            "September",
+                            "Oktober",
+                            "November",
+                            "Desember"
+                        ];
 
-        const monthName = monthNames[month - 1]; // Nama bulan
+                        const monthName = monthNames[month - 1]; // Nama bulan
                         usr.progressreg = 2.5; // Status konfirmasi tanggal lahir
-                        const confirmBirthMessage = `Tanggal lahir kamu *${day + ' ' + monthName + ' ' + year}*, benar? Kalau benar, ketik *Ya*. Kalau salah, ketik ulang tanggal lahirnya. 😊`;
+                        const confirmBirthMessage = `Tanggal lahir kamu *${
+                            day + " " + monthName + " " + year
+                        }*, benar? Kalau benar, ketik *Ya*. Kalau salah, ketik ulang tanggal lahirnya. 😊`;
                         await sock.sendMessage(
                             m.from,
                             { text: confirmBirthMessage },
@@ -380,7 +393,7 @@ export default class CommandHandler {
                         { quoted: m }
                     );
                 }
-            }
+            } else if (!usr.progressreg) usr.progressreg = 1;
         } catch (error) {
             console.error("Error di handleRegister:", error);
         }
