@@ -264,7 +264,7 @@ export default class CommandHandler {
                     } else {
                         usr.name = name;
                         usr.progressreg = 1.5; // Status konfirmasi nama
-                        const confirmNameMessage = `Namanya *${usr.name}*? Kalau sudah benar, ketik *Ya*. Kalau salah, ketik ulang nama kamu. 😊`;
+                        const confirmNameMessage = `Nama kamu *${usr.name}*? Kalau sudah benar, ketik *Ya*. Kalau salah, ketik ulang nama kamu. 😊`;
                         await sock.sendMessage(
                             m.from,
                             { text: confirmNameMessage },
@@ -323,8 +323,16 @@ export default class CommandHandler {
                         );
                     } else {
                         usr.birth = birthDate;
+// Pisahkan tanggal, bulan, dan tahun
+        const [day, month, year] = birthDate.split("/").map(num => parseInt(num));
+        const monthNames = [
+            "Januari", "Februari", "Maret", "April", "Mei", "Juni", "Juli",
+            "Agustus", "September", "Oktober", "November", "Desember"
+        ];
+
+        const monthName = monthNames[month - 1]; // Nama bulan
                         usr.progressreg = 2.5; // Status konfirmasi tanggal lahir
-                        const confirmBirthMessage = `Tanggal lahir kamu *${usr.birth}*, benar? Kalau benar, ketik *Ya*. Kalau salah, ketik ulang tanggal lahirnya. 😊`;
+                        const confirmBirthMessage = `Tanggal lahir kamu *${day + ' ' + monthName + ' ' + year}*, benar? Kalau benar, ketik *Ya*. Kalau salah, ketik ulang tanggal lahirnya. 😊`;
                         await sock.sendMessage(
                             m.from,
                             { text: confirmBirthMessage },
