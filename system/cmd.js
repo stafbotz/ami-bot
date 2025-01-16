@@ -295,7 +295,7 @@ export default class CommandHandler {
             } else if (usr.progressreg === 2) {
                 const birthDate = m.msg.trim();
                 const datePattern =
-                    /^(0[1-9]|[12][0-9]|3[01])\/(0[1-9]|1[0-2])\/(19|20)\d{2}$/;
+/^(0[1-9]|[12][0-9]|3[01])\/(0[1-9]|1[0-2])\/\d{4}$/
 
                 if (!datePattern.test(birthDate)) {
                     const invalidDateMessage =
@@ -312,9 +312,10 @@ export default class CommandHandler {
                     const currentYear = new Date().getFullYear();
                     const age = currentYear - year;
 
-                    if (age < 5 || age > 120) {
+                    if (age < 13 || age > 80) {
                         const extremeAgeMessage =
-                            "Hmm, sepertinya umur kamu terlalu ekstrem. Coba kirim tanggal lahir yang lebih realistis ya. 😊";
+                            "Hmm, sepertinya umur kamu kurang pas nih. Bot ini dirancang buat pengguna usia 13 sampai 30 tahun. Kalau umur kamu di luar rentang itu, mungkin bot ini kurang cocok buat kamu. Kalau kamu salah ketik, coba kirim ulang tanggal lahir yang benar, ya. Pastikan umur yang kamu kirim sesuai dengab umur kamu yang sebenarnya, karena interaksi kamu dengan bot akan dipersonalisasi dengan umur kamu. 😊"
+;
                         await sock.sendMessage(
                             m.from,
                             { text: extremeAgeMessage },
