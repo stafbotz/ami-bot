@@ -165,7 +165,7 @@ export default class CommandHandler {
 
             const prefixMatched = this.prefixes.find(p => text.startsWith(p));
             if (usr.beta && !m.isOwner) return false;
-            if (!usr.register && !usr.banned)
+            if (!usr.register && !usr.banned) {
                 await sock.sendMessage(
                     m.from,
                     {
@@ -175,8 +175,8 @@ export default class CommandHandler {
                 );
             usr.progressreg = 1;
             return await this.handleRegister(usr, sock, m, db, prefixMatched);
-
-            if (prefixMatched) {
+            }
+             if (prefixMatched) {
                 return await this.handleCommand(
                     text,
                     prefixMatched,
