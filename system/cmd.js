@@ -314,7 +314,7 @@ export default class CommandHandler {
 
                     if (age < 13 || age > 80) {
                         const extremeAgeMessage =
-                            "Hmm, sepertinya umur kamu kurang pas nih. Bot ini dirancang buat pengguna usia 13 sampai 30 tahun. Kalau umur kamu di luar rentang itu, mungkin bot ini kurang cocok buat kamu. Kalau kamu salah ketik, coba kirim ulang tanggal lahir yang benar, ya. Pastikan umur yang kamu kirim sesuai dengab umur kamu yang sebenarnya, karena interaksi kamu dengan bot akan dipersonalisasi dengan umur kamu. 😊";
+                            "Hmm, sepertinya umur kamu terlalu ekstrem. Bot ini dirancang buat pengguna usia 13 sampai 30 tahun. Kalau umur kamu di luar rentang itu, mungkin bot ini kurang cocok buat kamu.\n\nKalau kamu salah ketik, coba *kirim ulang* tanggal lahir yang benar, ya. Pastikan umur yang kamu kirim sesuai dengan *umur kamu yang sebenarnya*, karena interaksi kamu dengan bot akan dipersonalisasi sesuai dengan umur kamu. 😊";
                         await sock.sendMessage(
                             m.from,
                             { text: extremeAgeMessage },
