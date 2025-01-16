@@ -166,24 +166,25 @@ export default class CommandHandler {
             const prefixMatched = this.prefixes.find(p => text.startsWith(p));
             if (usr.beta && !m.isOwner) return false;
             if (!usr.register && !usr.banned) {
-    if (usr.progressreg !== 1) {
-        // Kirim pesan perkenalan hanya jika progressreg belum diatur ke 1
-        await sock.sendMessage(
-            m.from,
-            {
-                text: "Hai! 👋 Aku Ami Bot, bot Whatsapp yang dibuat oleh Renshu Visualz.\n\nAku bisa bantu kamu ngerjain PR, tanya jawab, brainstorm ide, download video dari TikTok/IG, ngingetin jadwal, dan masih banyak lagi!\n\nSebelum itu, kita kenalan dulu yuk, biar lebih akrab. *Nama kamu siapa?* ☺️"
-            },
-            { quoted: m, ephemeralExpiration: m.expiration }
-        );
-        usr.progressreg = 1; // Set progressreg agar pesan tidak dikirim lagi
-    }
+                if (usr.progressreg !== 1) {
+ await sock.sendMessage(
+                        m.from,
+                        {
+                            text: "Hai! 👋 Aku Ami Bot, bot Whatsapp yang dibuat oleh Renshu Visualz.\n\nAku bisa bantu kamu ngerjain PR, tanya jawab, brainstorm ide, download video dari TikTok/IG, ngingetin jadwal, dan masih banyak lagi!\n\nSebelum itu, kita kenalan dulu yuk, biar lebih akrab. *Nama kamu siapa?* ☺️"
+                        },
+                        { quoted: m, ephemeralExpiration: m.expiration }
+                    );
+                    usr.progressreg = 1; // Set progressreg agar pesan tidak dikirim lagi
+                }
 
-    // Panggil handleRegister hanya jika belum selesai registrasi
-    return await this.handleRegister(usr, sock, m, db, prefixMatched);
-}
-
-// Jika sudah register atau banned, jangan lakukan apa-apa
-return;
+return await this.handleRegister(
+                    usr,
+                    sock,
+                    m,
+                    db,
+                    prefixMatched
+                );
+            }
             if (prefixMatched) {
                 return await this.handleCommand(
                     text,
