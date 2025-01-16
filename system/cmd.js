@@ -166,8 +166,14 @@ export default class CommandHandler {
             const prefixMatched = this.prefixes.find(p => text.startsWith(p));
             if (usr.beta && !m.isOwner) return false;
             if (!usr.register && !usr.banned) {
-                await sock.sendMessage(m.from, {text: "Hai! 👋 Aku Ami Bot, bot Whatsapp yang dibuat oleh Renshu Visualz.\n\nAku bisa bantu kamu ngerjain PR, tanya jawab, brainstorm ide, download video dari TikTok/IG, ngingetin jadwal, dan masih banyak lagi!\n\nSebelum itu, kita kenalan dulu yuk, biar lebih akrab. *Nama kamu siapa?* ☺️" }, { quoted: m, ephemeralExpiration: m.expiration });
-                usr.progressreg = 1
+                await sock.sendMessage(
+                    m.from,
+                    {
+                        text: "Hai! 👋 Aku Ami Bot, bot Whatsapp yang dibuat oleh Renshu Visualz.\n\nAku bisa bantu kamu ngerjain PR, tanya jawab, brainstorm ide, download video dari TikTok/IG, ngingetin jadwal, dan masih banyak lagi!\n\nSebelum itu, kita kenalan dulu yuk, biar lebih akrab. *Nama kamu siapa?* ☺️"
+                    },
+                    { quoted: m, ephemeralExpiration: m.expiration }
+                );
+                usr.progressreg = 1;
                 return await this.handleRegister(
                     usr,
                     sock,
@@ -204,7 +210,51 @@ export default class CommandHandler {
             return false;
         }
     }
-}
+  
+
+async function handleRegister(usr, sock, m, db, prefix) {
+    try {
+        // Validasi Input Awal
+        if (!usr || !sock || !m || !m.msg) {
+            console.error("Error: Parameter tidak lengkap.");
+            return;
+        }
+
+        // Daftar kata-kata kasar
+        const badwords =
+            /(anj[kg]|ajn[gk]|a?njin[gk]|bajingan|b[a]?[n]?gsa?t|ko?nto?l|me?me?[kq]|pe?pe?[kq]|meki|titi[t,d]|pe?ler|tetek|toket|ngewe|go?blo?k|to?lo?l|idiot|[kng]e?nto?[t,d]|jembut|bego|dajjal|janc[uo]k|pantek|puki?(mak)?|kimak|kampang|lonte|col[i,mek]|pelacur|henceut|nigga|fuck|dick|bitch|tits|bastard|asshole|a[su,w,yu])/i;
+
+        // Alur Registrasi
+        if (usr.progressreg === 1) {
+            if (prefix) {
+                const introMessage = "Sebelum aku bisa bantu dengan fitur yang aku punya, yuk kita kenalan dulu biar lebih akrab. *Nama kamu siapa?* 😊";
+                await sock.sendMessage(m.from, { text: introMessage }, { quoted: m, ephemeralExpiration: m.expiration });
+            } else {
+                const name = m.msg.trim();
+                const nameRegex = /^[a-zA-Z\s]+$/;
+                const minNameLength = 3;
+                const maxNameLength = 50;
+
+                if (badwords.test(name)) {
+                    const badwordMessage = "Eits, kata-kata yang kamu pakai nggak cocok buat nama, nih. Yuk coba masukkan nama yang baik-baik aja, ya! 😊";
+                    await sock.sendMessage(m.from, { text: badwordMessage }, { quoted: m });
+                } else if (!nameRegex.test(name)) {
+                    const invalidCharMessage = "Hmm... Nama kamu kok ada karakter anehnya? Coba masukkan nama yang cuma huruf aja, ya. 😊";
+                    await sock.sendMessage(m.from, { text: invalidCharMessage }, { quoted: m });
+                } else if (name.length < minNameLength || name.length > maxNameLength) {
+                    const lengthMessage = "Nama kamu kelihatannya terlalu pendek atau panjang. Coba pakai nama yang lebih pas, ya? 😊";
+                    await sock.sendMessage(m.from, { text: lengthMessage }, { quoted: m });
+                } else {
+                    usr.name = name;
+                    usr.progressreg = 1.5; // Status konfirmasi nama
+                    const confirmNameMessage = `Namanya *${usr.name}*? Kalau sudah benar, ketik *Ya*. Kalau salah, ketik ulang nama kamu. 😊`;
+                    await sock.sendMessage(m.from, { text: confirmNameMessage }, { quoted: m });
+                }
+            }
+        } else if (usr.progressreg === 1.5) {
+            if (m.msg.trim().toLowerCase() === "ya") {
+                usr.progressreg = 2;
+                const birthPrompt = `Senang banget bisa kenalan sama kamu *${usr.name.split(" ")[0]}!* 🥳\n\nOh iya, *tanggal lahir kamu kapan?* 😊\n\nPakai format *dd/mm/yyyy*. Misal kamu lahir tanggal *1 Januari 2005*, jadi kamu ketik:
 
     async cmd(command, usr, sock, m, db) {
         const rand = (length = 32) => {
