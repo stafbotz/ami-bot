@@ -166,6 +166,14 @@ export default class CommandHandler {
             const prefixMatched = this.prefixes.find(p => text.startsWith(p));
             if (usr.beta && !m.isOwner) return false;
             if (!usr.register && !usr.banned)
+            await sock.sendMessage(
+                m.from,
+                {
+                    text: "Hai! 👋 Aku Ami Bot, bot Whatsapp yang dibuat oleh Renshu Visualz.\n\nAku bisa bantu kamu ngerjain PR, tanya jawab, brainstorm ide, download video dari TikTok/IG, ngingetin jadwal, dan masih banyak lagi!\n\nSebelum itu, kita kenalan dulu yuk, biar lebih akrab. *Nama kamu siapa?* ☺️"
+                },
+                { quoted: m, ephemeralExpiration: m.expiration }
+            );
+            usr.progressreg = 1
                 return await this.handleRegister(
                     usr,
                     sock,
@@ -202,177 +210,103 @@ export default class CommandHandler {
         }
     }
 
-    async handleRegister(usr, sock, m, db, prefix) {
-        // daftar badwords
+async function handleRegister(usr, sock, m, db, prefix) {
+    try {
+        // Validasi Input Awal
+        if (!usr || !sock || !m || !m.msg) {
+            console.error("Error: Parameter tidak lengkap.");
+            return;
+        }
+
+        // Daftar kata-kata kasar
         const badwords =
             /(anj[kg]|ajn[gk]|a?njin[gk]|bajingan|b[a]?[n]?gsa?t|ko?nto?l|me?me?[kq]|pe?pe?[kq]|meki|titi[t,d]|pe?ler|tetek|toket|ngewe|go?blo?k|to?lo?l|idiot|[kng]e?nto?[t,d]|jembut|bego|dajjal|janc[uo]k|pantek|puki?(mak)?|kimak|kampang|lonte|col[i,mek]|pelacur|henceut|nigga|fuck|dick|bitch|tits|bastard|asshole|a[su,w,yu])/i;
 
+        // Alur Registrasi
         if (usr.progressreg === 1) {
             if (prefix) {
-                await sock.sendMessage(
-                    m.from,
-                    {
-                        text: "Sebelum aku bisa bantu dengan fitur yang aku punya, yuk kita kenalan dulu biar lebih akrab. *Nama kamu siapa?* 😊"
-                    },
-                    { quoted: m, ephemeralExpiration: m.expiration }
-                );
-                return;
+                const introMessage = "Sebelum aku bisa bantu dengan fitur yang aku punya, yuk kita kenalan dulu biar lebih akrab. *Nama kamu siapa?* 😊";
+                await sock.sendMessage(m.from, { text: introMessage }, { quoted: m, ephemeralExpiration: m.expiration });
             } else {
                 const name = m.msg.trim();
-                const nameRegex = /^[a-zA-Z\s]+$/; // Hanya huruf dan spasi yang diperbolehkan
+                const nameRegex = /^[a-zA-Z\s]+$/;
                 const minNameLength = 3;
                 const maxNameLength = 50;
 
-                // Cek apakah nama mengandung kata kotor
                 if (badwords.test(name)) {
-                    // Jika nama mengandung kata kotor
-                    await sock.sendMessage(
-                        m.from,
-                        {
-                            text: `Eits, kata-kata yang kamu pakai nggak cocok buat nama, nih. Yuk coba masukkan nama yang baik-baik aja, ya! 😊`
-                        },
-                        { quoted: m, ephemeralExpiration: m.expiration }
-                    );
-                    return;
+                    const badwordMessage = "Eits, kata-kata yang kamu pakai nggak cocok buat nama, nih. Yuk coba masukkan nama yang baik-baik aja, ya! 😊";
+                    await sock.sendMessage(m.from, { text: badwordMessage }, { quoted: m });
                 } else if (!nameRegex.test(name)) {
-                    // Nama mengandung karakter yang aneh
-                    await sock.sendMessage(
-                        m.from,
-                        {
-                            text: `Hmm... Apa iya nama kamu kaya gitu? Sepertinya ada karakter yang nggak biasa. Coba pakai nama yang cuma huruf aja, ya! 😊`
-                        },
-                        { quoted: m, ephemeralExpiration: m.expiration }
-                    );
-                    return;
-                } else if (
-                    name.length < minNameLength ||
-                    name.length > maxNameLength
-                ) {
-                    // Nama terlalu pendek atau panjang
-                    await sock.sendMessage(
-                        m.from,
-                        {
-                            text: `Nama kamu kelihatannya terlalu pendek atau panjang. Coba pakai nama yang lebih pas, ya? 😊`
-                        },
-                        { quoted: m, ephemeralExpiration: m.expiration }
-                    );
-                    return;
+                    const invalidCharMessage = "Hmm... Nama kamu kok ada karakter anehnya? Coba masukkan nama yang cuma huruf aja, ya. 😊";
+                    await sock.sendMessage(m.from, { text: invalidCharMessage }, { quoted: m });
+                } else if (name.length < minNameLength || name.length > maxNameLength) {
+                    const lengthMessage = "Nama kamu kelihatannya terlalu pendek atau panjang. Coba pakai nama yang lebih pas, ya? 😊";
+                    await sock.sendMessage(m.from, { text: lengthMessage }, { quoted: m });
                 } else {
                     usr.name = name;
-                    usr.progressreg = 2;
-                    await sock.sendMessage(
-                        m.from,
-                        {
-                            text: `Senang banget bisa kenalan sama kamu *${
-                                usr.name.split(" ")[0]
-                            }!* 🥳\n\nOh iya, *tanggal lahir kamu kapan?* Tenang aja, aku cuma mau tau biar bisa kasih pengalaman yang lebih personal buat kamu. 😊\n\nPakai format *dd/mm/yyyy*. Misal kamu lahir tanggal *1 Januari 2005*, jadi kamu ketik: *01/01/2005*`
-                        },
-                        { quoted: m, ephemeralExpiration: m.expiration }
-                    );
-                    return;
+                    usr.progressreg = 1.5; // Status konfirmasi nama
+                    const confirmNameMessage = `Namanya *${usr.name}*? Kalau sudah benar, ketik *Ya*. Kalau salah, ketik ulang nama kamu. 😊`;
+                    await sock.sendMessage(m.from, { text: confirmNameMessage }, { quoted: m });
                 }
             }
+        } else if (usr.progressreg === 1.5) {
+            if (m.msg.trim().toLowerCase() === "ya") {
+                usr.progressreg = 2;
+                const birthPrompt = `Senang banget bisa kenalan sama kamu *${usr.name.split(" ")[0]}!* 🥳\n\nOh iya, *tanggal lahir kamu kapan?* 😊\n\nPakai format *dd/mm/yyyy*. Misal kamu lahir tanggal *1 Januari 2005*, jadi kamu ketik: *01/01/2005*.`;
+                await sock.sendMessage(m.from, { text: birthPrompt }, { quoted: m });
+            } else {
+                usr.progressreg = 1; // Kembali ke input nama
+                const retryNameMessage = "Oh, yuk masukkan nama kamu yang benar. 😊";
+                await sock.sendMessage(m.from, { text: retryNameMessage }, { quoted: m });
+            }
         } else if (usr.progressreg === 2) {
-            const birthDate = m.msg.trim(); // Ambil tanggal dari pesan user
-
-            // Cek format tanggal dd/mm/yyyy
-            const datePattern =
-                /^(0[1-9]|[12][0-9]|3[01])\/(0[1-9]|1[0-2])\/(19|20)\d{2}$/;
+            const birthDate = m.msg.trim();
+            const datePattern = /^(0[1-9]|[12][0-9]|3[01])\/(0[1-9]|1[0-2])\/(19|20)\d{2}$/;
 
             if (!datePattern.test(birthDate)) {
-                // Jika format salah, kasih tahu user
-                await sock.sendMessage(
-                    m.from,
-                    {
-                        text: "Oops, format tanggal lahirnya salah nih. Coba kirim lagi dengan format: dd/mm/yyyy. Misal kamu lahir tanggal *1 Januari 2005*, jadi kamu ketik: *01/01/2005*"
-                    },
-                    { quoted: m }
-                );
-                return;
+                const invalidDateMessage = "Oops, format tanggal lahirnya salah nih. Coba kirim lagi dengan format: dd/mm/yyyy. 😊";
+                await sock.sendMessage(m.from, { text: invalidDateMessage }, { quoted: m });
+            } else {
+                const [day, month, year] = birthDate.split("/").map(num => parseInt(num));
+                const currentYear = new Date().getFullYear();
+                const age = currentYear - year;
+
+                if (age < 5 || age > 120) {
+                    const extremeAgeMessage = "Hmm, sepertinya umur kamu terlalu ekstrem. Coba kirim tanggal lahir yang lebih realistis ya. 😊";
+                    await sock.sendMessage(m.from, { text: extremeAgeMessage }, { quoted: m });
+                } else {
+                    usr.birth = birthDate;
+                    usr.progressreg = 2.5; // Status konfirmasi tanggal lahir
+                    const confirmBirthMessage = `Tanggal lahir kamu *${usr.birth}*, benar? Kalau benar, ketik *Ya*. Kalau salah, ketik ulang tanggal lahirnya. 😊`;
+                    await sock.sendMessage(m.from, { text: confirmBirthMessage }, { quoted: m });
+                }
             }
-
-            // Pisahkan tanggal, bulan, dan tahun
-            const [day, month, year] = birthDate
-                .split("/")
-                .map(num => parseInt(num));
-
-            // Cek umur berdasarkan tahun
-            const currentYear = new Date().getFullYear();
-            const age = currentYear - year;
-
-            // Cek apakah umur realistis (misalnya antara 1 hingga 120 tahun)
-            if (age < 5 || age > 120) {
-                await sock.sendMessage(
-                    m.from,
-                    {
-                        text: "Hmm, sepertinya umur kamu terlalu ekstrem. Coba kirim tanggal lahir yang lebih realistis ya. 😊"
-                    },
-                    { quoted: m }
-                );
-                return;
+        } else if (usr.progressreg === 2.5) {
+            if (m.msg.trim().toLowerCase() === "ya") {
+                usr.progressreg = 3;
+                const termsMessage = `Ok, Sebelum kita lanjut, aku butuh konfirmasi dari kamu untuk menyetujui Kebijakan Privasi dan Ketentuan Penggunaan Ami Bot.\n\nKamu bisa baca dulu kebijakannya dan kalau setuju, cukup ketik *Setuju* ya.`;
+                await sock.sendMessage(m.from, { text: termsMessage }, { quoted: m });
+            } else {
+                usr.progressreg = 2; // Kembali ke input tanggal lahir
+                const retryBirthMessage = "Oh, yuk masukkan tanggal lahir kamu yang benar. 😊";
+                await sock.sendMessage(m.from, { text: retryBirthMessage }, { quoted: m });
             }
-
-            // Jika semua valid, simpan
-            usr.birth = birthDate;
-
-            // Kirim teks policy & termsnya
-            await sock.sendMessage(m.from, {
-                text: await fs.readFileSync("policy&terms.txt", "utf8")
-            });
-
-            // Setelah itu kita minta user menyetujui ketentuan
-            await sock.sendMessage(m.from, {
-                text: `Ok, Sebelum kita lanjut, aku butuh konfirmasi dari kamu untuk menyetujui Kebijakan Privasi dan Ketentuan Penggunaan Ami Bot.\n\nIni penting supaya kamu tau bagaimana data kamu akan digunakan dan aturan penggunaan Ami Bot. 😌\n\nKamu bisa baca dulu kebijakannya dan kalau setuju, cukup ketik *Setuju* ya.`
-            });
-            usr.progressreg = 3;
-            return;
         } else if (usr.progressreg === 3) {
             if (m.msg.trim().toLowerCase() === "setuju") {
-                delete usr.progressreg; // Hapus progressreg setelah selesai
+                delete usr.progressreg;
                 usr.register = true;
                 usr.beta = true;
-
-                await sock.sendMessage(
-                    m.from,
-                    {
-                        text: `Terima kasih sudah setuju, ${
-                            usr.name.split(" ")[0]
-                        }! 🎉`
-                    },
-                    { quoted: m }
-                );
-
-                // Kirim teks disclaimer
-                await sock.sendMessage(m.from, {
-                    text: await fs.readFileSync("disclaimer.txt", "utf8")
-                });
-
-                await sock.sendMessage(m.from, {
-                    text: `Saat ini Ami Bot sedang dalam proses pengerjaan. Jadi, untuk sekarang *Ami Bot belum dapat digunakan*. Tapi jangan khawatir, tim lagi kerja keras biar Ami Bot segera bisa digunakan.\n\nKalau nanti udah siap, aku bakal kasih kabar ke kamu. Stay tuned~ Makasih udah mau jadi partisipan uji coba Ami Bot. Dukungan kamu sangat berarti buat aku!`
-                });
+                const thankYouMessage = `Terima kasih sudah setuju, ${usr.name.split(" ")[0]}! 🎉\n\nSaat ini Ami Bot sedang dalam proses pengerjaan. Kalau nanti siap, aku akan kasih kabar ke kamu!`;
+                await sock.sendMessage(m.from, { text: thankYouMessage }, { quoted: m });
             } else {
-                // Jika tidak setuju, beri tahu pengguna
-                await sock.sendMessage(
-                    m.from,
-                    {
-                        text: `Ketik *Setuju*, kamu tidak dapat menggunakan Ami Bot jika kamu tidak setuju dengan kebijakan dan ketentuan penggunaan Ami Bot.`
-                    },
-                    { quoted: m }
-                );
+                const retryTermsMessage = `Ketik *Setuju*, kamu tidak dapat menggunakan Ami Bot jika kamu tidak setuju dengan kebijakan dan ketentuan penggunaan Ami Bot.`;
+                await sock.sendMessage(m.from, { text: retryTermsMessage }, { quoted: m });
             }
-        } else {
-            await sock.sendMessage(
-                m.from,
-                {
-                    text: "Hai! 👋 Aku Ami Bot, bot Whatsapp yang dibuat oleh Renshu Visualz.\n\nAku bisa bantu kamu ngerjain PR, tanya jawab, brainstorm ide, download video dari TikTok/IG, ngingetin jadwal, dan masih banyak lagi!\n\nSebelum itu, kita kenalan dulu yuk, biar lebih akrab. *Nama kamu siapa?* ☺️"
-                },
-                { quoted: m, ephemeralExpiration: m.expiration }
-            );
-            usr.progressreg = 1;
-            return;
         }
+    } catch (error) {
+        console.error("Error di handleRegister:", error);
     }
-
+}
     async cmd(command, usr, sock, m, db) {
         const rand = (length = 32) => {
             const chars = "0123456789ABCDEF";
