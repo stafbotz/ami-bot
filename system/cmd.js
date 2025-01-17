@@ -335,24 +335,18 @@ export default class CommandHandler {
             // Progress tahap 2.5: Konfirmasi Tanggal Lahir
             else if (usr.progressreg === 2.5) {
                 if (response.toLowerCase() === "ya") {
-    // Hapus progressreg dan tandai pengguna sudah register
-    delete usr.progressreg;
-    usr.register = true;
+                    // Hapus progressreg dan tandai pengguna sudah register
+                    delete usr.progressreg;
+                    usr.register = true;
 
-    // Kirim pesan tutorial penggunaan bot
-    const tutorialMessage = `Senang banget bisa kenalan sama kamu, *${
-        usr.name.split(" ")[0]
-    }*. 😊\n\nSekarang aku mau kasih tahu cara pakai Ami Bot:\n- Ketik *.menu* untuk melihat fitur yang tersedia.  
-- Ketik *Ami* diikuti pesanmu kalau mau ngobrol langsung sama aku.  
-- Kalau kamu butuh bantuan, cukup bilang *bantuan*.  
-
-Aku di sini buat bantu kamu. Yuk, coba mulai sekarang. 😊`;
-    await sock.sendMessage(
-        m.from,
-        { text: tutorialMessage },
-        { quoted: m }
-    );
-} else if (!isValidDateFormat(response)) {
+                    // Kirim pesan tutorial penggunaan bot
+                    const tutorialMessage = `Senang banget bisa kenalan sama kamu, *${usr.name.split(" ")[0]}*. 😊\n\nSekarang aku mau kasih tahu cara pakai Ami Bot:\n- Ketik *.menu* untuk melihat fitur yang tersedia.\n- Ketik *Ami* diikuti pesanmu kalau mau ngobrol langsung sama aku.\n- Kalau kamu butuh bantuan, ketik *.bantuan*.\n\nYuk, coba sekarang. 😊`;
+                    await sock.sendMessage(
+                        m.from,
+                        { text: tutorialMessage },
+                        { quoted: m }
+                    );
+                } else if (!isValidDateFormat(response)) {
                     const retryBirthMessage =
                         "Oops, format tanggal lahirnya salah nih. Coba kirim lagi dengan format *dd/mm/yyyy*. 😊";
                     await sock.sendMessage(
