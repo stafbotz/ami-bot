@@ -239,7 +239,6 @@ export default class CommandHandler {
             }
             // Progress tahap 1.5: Konfirmasi Nama
             else if (usr.progressreg === 1.5) {
-                m.reply(response.toLowerCase());
                 if (response.toLowerCase() === "ya") {
                     usr.progressreg = 2;
                     const birthPrompt = `Senang banget bisa kenalan sama kamu *${
@@ -275,7 +274,7 @@ export default class CommandHandler {
             else if (usr.progressreg === 2) {
                 if (!isValidDateFormat(response)) {
                     const invalidDateMessage =
-                        "Oops, format tanggal lahirnya salah nih. Coba kirim lagi dengan format *dd/mm/yyyy*. 😊";
+                        "Oops, format tanggal lahirnya salah nih. Coba kirim lagi dengan format *dd/mm/yyyy*. Misal kamu lahir tanggal *1 Januari 2005*, jadi kamu ketik: *01/02/2005*. 😊";
                     await sock.sendMessage(
                         m.from,
                         { text: invalidDateMessage },
@@ -289,8 +288,8 @@ export default class CommandHandler {
                     const age = currentYear - year;
 
                     if (age < 13 || age > 30) {
-                        const extremeAgeMessage =
-                            "Hmm, sepertinya umur kamu kurang pas nih. Bot ini dirancang buat pengguna usia 13 sampai 30 tahun. Kalau umur kamu di luar rentang itu, mungkin bot ini kurang cocok buat kamu. 😊";
+                        const extremeAgeMessage = (age < 13) ?
+                            "Yah, umur kamu belum cukup buat pakai bot ini :(\n\nTapi kalau tadi *kamu salah ketik*, coba *kirim ulang tanggal lahir* kamu yang *benar*, ya! 😊" : "Yah, sepertinya umur kamu sudah melewati batas yang disarankan untuk pakai bot ini 🙏 Bot ini didesain khusus untuk anak muda, jadi mungkin kurang cocok buat kamu.\n\nTapi kalau tadi *kamu salah ketik*, coba *kirim ulang tanggal lahir* kamu yang *benar*, ya!"
                         await sock.sendMessage(
                             m.from,
                             { text: extremeAgeMessage },
