@@ -164,7 +164,6 @@ export default class CommandHandler {
             }
 
             const prefixMatched = this.prefixes.find(p => text.startsWith(p));
-            if (usr.beta && !m.isOwner) return false;
             if (!usr.register && !usr.banned) {
                 if (!usr.progressreg) {
                     await sock.sendMessage(
@@ -288,14 +287,23 @@ export default class CommandHandler {
                     const age = currentYear - year;
 
                     const ageMessages = {
-    underAge: "Yah, umur kamu belum cukup buat pakai bot ini :(\n\nTapi kalau tadi *kamu salah ketik*, coba *kirim ulang tanggal lahir* kamu yang *benar*, ya! 😊",
-    overAge: "Yah, sepertinya umur kamu sudah melewati batas yang disarankan untuk pakai bot ini 🙏 Bot ini didesain khusus untuk anak muda, jadi mungkin kurang cocok buat kamu.\n\nTapi kalau tadi *kamu salah ketik*, coba *kirim ulang tanggal lahir* kamu yang *benar*, ya!"
-};
+                        underAge:
+                            "Yah, umur kamu belum cukup buat pakai bot ini :(\n\nTapi kalau tadi *kamu salah ketik*, coba *kirim ulang tanggal lahir* kamu yang *benar*, ya! 😊",
+                        overAge:
+                            "Yah, sepertinya umur kamu sudah melewati batas yang disarankan untuk pakai bot ini 🙏 Bot ini didesain khusus untuk anak muda, jadi mungkin kurang cocok buat kamu.\n\nTapi kalau tadi *kamu salah ketik*, coba *kirim ulang tanggal lahir* kamu yang *benar*, ya!"
+                    };
 
-if (age < 13 || age > 30) {
-    const message = age < 13 ? ageMessages.underAge : ageMessages.overAge;
-    await sock.sendMessage(m.from, { text: message }, { quoted: m });
-} else {
+                    if (age < 13 || age > 30) {
+                        const message =
+                            age < 13
+                                ? ageMessages.underAge
+                                : ageMessages.overAge;
+                        await sock.sendMessage(
+                            m.from,
+                            { text: message },
+                            { quoted: m }
+                        );
+                    } else {
                         usr.birth = response;
                         const monthNames = [
                             "Januari",
@@ -327,14 +335,24 @@ if (age < 13 || age > 30) {
             // Progress tahap 2.5: Konfirmasi Tanggal Lahir
             else if (usr.progressreg === 2.5) {
                 if (response.toLowerCase() === "ya") {
-                    usr.progressreg = 3;
-                    const termsMessage = `Terima kasih sudah konfirmasi. Yuk baca kebijakan privasi dan ketentuan penggunaan sebelum lanjut. Ketik *Setuju* kalau sudah oke. 😊`;
-                    await sock.sendMessage(
-                        m.from,
-                        { text: termsMessage },
-                        { quoted: m }
-                    );
-                } else if (!isValidDateFormat(response)) {
+    // Hapus progressreg dan tandai pengguna sudah register
+    delete usr.progressreg;
+    usr.register = true;
+
+    // Kirim pesan tutorial penggunaan bot
+    const tutorialMessage = `Senang banget bisa kenalan sama kamu, *${
+        usr.name.split(" ")[0]
+    }*. 😊\n\nSekarang aku mau kasih tahu cara pakai Ami Bot:\n- Ketik *.menu* untuk melihat fitur yang tersedia.  
+- Ketik *Ami* diikuti pesanmu kalau mau ngobrol langsung sama aku.  
+- Kalau kamu butuh bantuan, cukup bilang *bantuan*.  
+
+Aku di sini buat bantu kamu. Yuk, coba mulai sekarang. 😊`;
+    await sock.sendMessage(
+        m.from,
+        { text: tutorialMessage },
+        { quoted: m }
+    );
+} else if (!isValidDateFormat(response)) {
                     const retryBirthMessage =
                         "Oops, format tanggal lahirnya salah nih. Coba kirim lagi dengan format *dd/mm/yyyy*. 😊";
                     await sock.sendMessage(
