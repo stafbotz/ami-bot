@@ -175,7 +175,6 @@ export default class CommandHandler {
                         { quoted: m, ephemeralExpiration: m.expiration }
                     );
                 }
-                usr.progressreg = 1;
                 return await this.handleRegister(
                     usr,
                     sock,
