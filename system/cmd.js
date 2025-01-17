@@ -258,13 +258,10 @@ export default class CommandHandler {
                     );
                 } else {
                     usr.name = response; // Simpan nama baru
-                    usr.progressreg = 2; // Lanjut ke tahap berikutnya
-                    const birthPrompt = `Senang banget bisa kenalan sama kamu *${
-                        usr.name.split(" ")[0]
-                    }!* 🥳\n\nOh iya, *tanggal lahir kamu kapan?* 😊\n\nPakai format *dd/mm/yyyy*. Misal kamu lahir tanggal *1 Januari 2005*, jadi kamu ketik: *01/01/2005*.`;
+                    const confirmNameMessage = `Nama kamu *${usr.name}*? Kalau sudah benar, ketik *Ya*. Kalau salah, ketik ulang nama kamu. 😊`;
                     await sock.sendMessage(
                         m.from,
-                        { text: birthPrompt },
+                        { text: confirmNameMessage },
                         { quoted: m }
                     );
                 }
@@ -340,7 +337,9 @@ export default class CommandHandler {
                     usr.register = true;
 
                     // Kirim pesan tutorial penggunaan bot
-                    const tutorialMessage = `Senang banget bisa kenalan sama kamu, *${usr.name.split(" ")[0]}*. 😊\n\nSekarang aku mau kasih tahu cara pakai Ami Bot:\n- Ketik *.menu* untuk melihat fitur yang tersedia.\n- Ketik *Ami* diikuti pesanmu kalau mau ngobrol langsung sama aku.\n- Kalau kamu butuh bantuan, ketik *.bantuan*.\n\nYuk, coba sekarang. 😊`;
+                    const tutorialMessage = `Senang banget bisa kenalan sama kamu, *${
+                        usr.name.split(" ")[0]
+                    }*. 😊\n\nSekarang aku mau kasih tahu cara pakai Ami Bot:\n- Ketik *.menu* untuk melihat fitur yang tersedia.\n- Ketik *Ami* diikuti pesanmu kalau mau ngobrol langsung sama aku.\n- Kalau kamu butuh bantuan, ketik *.bantuan*.\n\nYuk, coba sekarang. 😊`;
                     await sock.sendMessage(
                         m.from,
                         { text: tutorialMessage },
