@@ -240,7 +240,7 @@ export default class CommandHandler {
             }
             // Progress tahap 1.5: Konfirmasi Nama
             else if (usr.progressreg === 1.5) {
-              console.log(response.toLowerCase());
+                console.log(response.toLowerCase());
                 if (response.toLowerCase() === "ya") {
                     usr.progressreg = 2;
                     const birthPrompt = `Senang banget bisa kenalan sama kamu *${
