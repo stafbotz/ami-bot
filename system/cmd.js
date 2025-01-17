@@ -175,7 +175,7 @@ export default class CommandHandler {
                         { quoted: m, ephemeralExpiration: m.expiration }
                     );
                 }
-                usr.progressreg = 1; 
+                usr.progressreg = 1;
                 return await this.handleRegister(
                     usr,
                     sock,
@@ -240,6 +240,7 @@ export default class CommandHandler {
             }
             // Progress tahap 1.5: Konfirmasi Nama
             else if (usr.progressreg === 1.5) {
+              console.log(response.toLowerCase());
                 if (response.toLowerCase() === "ya") {
                     usr.progressreg = 2;
                     const birthPrompt = `Senang banget bisa kenalan sama kamu *${
@@ -372,7 +373,7 @@ export default class CommandHandler {
                         { quoted: m }
                     );
                 }
-            }
+            } else if (!usr.progressreg) usr.progressreg = 1;
         } catch (error) {
             console.error("Error di handleRegister:", error);
         }
