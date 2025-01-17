@@ -287,15 +287,15 @@ export default class CommandHandler {
                     const currentYear = new Date().getFullYear();
                     const age = currentYear - year;
 
-                    if (age < 13 || age > 30) {
-                        const extremeAgeMessage = (age < 13) ?
-                            "Yah, umur kamu belum cukup buat pakai bot ini :(\n\nTapi kalau tadi *kamu salah ketik*, coba *kirim ulang tanggal lahir* kamu yang *benar*, ya! 😊" : "Yah, sepertinya umur kamu sudah melewati batas yang disarankan untuk pakai bot ini 🙏 Bot ini didesain khusus untuk anak muda, jadi mungkin kurang cocok buat kamu.\n\nTapi kalau tadi *kamu salah ketik*, coba *kirim ulang tanggal lahir* kamu yang *benar*, ya!"
-                        await sock.sendMessage(
-                            m.from,
-                            { text: extremeAgeMessage },
-                            { quoted: m }
-                        );
-                    } else {
+                    const ageMessages = {
+    underAge: "Yah, umur kamu belum cukup buat pakai bot ini :(\n\nTapi kalau tadi *kamu salah ketik*, coba *kirim ulang tanggal lahir* kamu yang *benar*, ya! 😊",
+    overAge: "Yah, sepertinya umur kamu sudah melewati batas yang disarankan untuk pakai bot ini 🙏 Bot ini didesain khusus untuk anak muda, jadi mungkin kurang cocok buat kamu.\n\nTapi kalau tadi *kamu salah ketik*, coba *kirim ulang tanggal lahir* kamu yang *benar*, ya!"
+};
+
+if (age < 13 || age > 30) {
+    const message = age < 13 ? ageMessages.underAge : ageMessages.overAge;
+    await sock.sendMessage(m.from, { text: message }, { quoted: m });
+} else {
                         usr.birth = response;
                         const monthNames = [
                             "Januari",
