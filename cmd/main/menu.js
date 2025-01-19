@@ -70,7 +70,7 @@ export default handler => {
 
                 const commandText = `│๑ *.${command}* - ${details.desc}`;
 
-                if (!commandGroups[tag].includes(commandText)) {
+                if (!commandGroups[tag].some(cmd => cmd.includes(`- ${details.desc}`))) {
                     commandGroups[tag].push(commandText);
                 }
             }
