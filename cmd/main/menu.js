@@ -97,7 +97,6 @@ export default handler => {
             const maxChars = 1300;
             const pages = [];
 
-            // Menghindari TypeError dengan menggunakan variabel `let`
             let remainingMenu = allMenu;
             while (remainingMenu.length > 0) {
                 if (remainingMenu.length > maxChars) {
@@ -117,11 +116,19 @@ export default handler => {
             const selectedPage = pages[pageRequested - 1];
 
             if (selectedPage) {
-                const footer = `\n\n✦ Halaman ${pageRequested} dari ${
-                    pages.length
-                }\n✦ Ketik *.menu ${
-                    pageRequested + 1
-                }* untuk ke halaman berikutnya.\n✦ Chat *Ami AI* dengan ketik *Ami*\n\n╶ 𝗧𝗵𝗮𝗻𝗸 𝘆𝗼𝘂 🎀`;
+                let navigation = "";
+
+                // Tambahkan navigasi hanya jika jumlah halaman lebih dari 1
+                if (pages.length > 1) {
+                    navigation =
+                        pageRequested === 1
+                            ? `✦ Ketik *.menu ${pageRequested + 1}* untuk ke halaman berikutnya.`
+                            : pageRequested === pages.length
+                            ? `✦ Ketik *.menu ${pageRequested - 1}* untuk ke halaman sebelumnya.`
+                            : `✦ Ketik *.menu ${pageRequested + 1}* untuk ke halaman berikutnya.\n✦ Ketik *.menu ${pageRequested - 1}* untuk ke halaman sebelumnya.`;
+                }
+
+                const footer = `\n\n${navigation}\n✦ Chat *Ami AI* dengan ketik *Ami*\n\n╶ 𝗧𝗵𝗮𝗻𝗸 𝘆𝗼𝘂 🎀`;
                 await sock.sendMessage(
                     m.from,
                     { text: selectedPage + footer },
