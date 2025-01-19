@@ -1,119 +1,77 @@
-import fs from 'fs'
-import path from 'path'
-import { fileURLToPath } from 'url'
-
-const __filename = fileURLToPath(import.meta.url)
-const __dirname = path.dirname(__filename)
-
 export default (handler) => {
     handler.reg({
-        cmd: ['menu', 'list', 'help', 'start'],
+        cmd: ['menu'],
         tags: 'main',
-        desc: 'Show all commands',
-        run: async (m, { sock, cmds, db, func }) => {
-            const commandGroups = {}
-            const baseDir = path.join(__dirname)
+        desc: 'Menampilkan menu commands Ami Bot',
+        run: async (m, { sock, cmds }) => {
+            const isOwner = m.sender === process.env.OWNER_NUMBER; // Cek jika pengguna adalah owner
+            const prefix = '.'; // Prefix command
 
-            if (!fs.existsSync(baseDir)) {
-                console.error(`[ERROR] Directory not found: ${baseDir}`)
-                await m.reply("Command directory not found.")
-                return
-            }
+            // Salam khusus halaman pertama
+            const greetings = `Hai, *@${m.sender.split("@")[0]}* 👋\n\n🌟 *Selamat datang di Ami Bot!* 🌟\nYuk, cek apa aja yang bisa aku lakukan:\n\n`;
 
-            const loadCommands = (dir) => {
-                const items = fs.readdirSync(dir)
-                items.forEach(item => {
-                    const itemPath = path.join(dir, item)
-                    if (fs.statSync(itemPath).isDirectory()) {
-                        loadCommands(itemPath) // Rekursif untuk subfolder
-                    } else if (path.extname(item) === '.js') {
-                        import(itemPath).then(commandModule => {
-                            if (commandModule.default) {
-                                commandModule.default(handler)
-                            }
-                        }).catch(error => {
-                            console.error(`[ERROR] Failed to load command from ${itemPath}:`, error)
-                        })
-                    }
-                })
-            }
+            // Fitur khusus halaman pertama (My Vibes)
+            const myVibesFeature = `🎵 *MY VIBES*\n│๑ *${prefix}myvibe* - Pilih vibes favorit kamu untuk pengalaman personal.\n\n`;
 
-            loadCommands(baseDir)
-
-            for (const [command, details] of cmds) {
-                const tag = details.tags || 'LAINNYA'
-
-                // Jangan tambahkan tag owner jika user bukan owner
-                if (tag === 'owner' && !m.isOwner) continue
-
-                if (!commandGroups[tag]) {
-                    commandGroups[tag] = []
-                }
-
-                const commandText = `${command}${details.isLimit ? ' ♤' : ''}\n> ${details.desc}`
-
-                if (!commandGroups[tag].some(cmd => cmd.includes(`\n> ${details.desc}`))) {
-                    commandGroups[tag].push(commandText)
-                }
-            }
-
-            const orderedTags = ['main', 'convert', 'ai', 'downloader', 'group', 'channel', 'owner', 'tools', 'anime']
+            // Mapping emoji untuk setiap kategori/tag
             const tagEmojis = {
                 main: '📜',
-                convert: '🔄',
-                ai: '🤖',
-                downloader: '📥',
-                group: '👥',
-                channel: '📡',
+                utility: '🔧',
+                fun: '🎮',
+                admin: '🛡',
                 owner: '🛠',
-                tools: '🧰',
-                anime: '🎌',
-                lainnya: '📋'
-            }
+            };
 
-            const greetings = `Hi, *@${m.sender.split("@")[0]}* 👋\n\n🌟 *Selamat datang di Ami Bot!* 🌟`
-            const myVibesFeature = `🎵 *MY VIBES*\n│๑ *.myvibe* - Pilih vibes favorit kamu untuk pengalaman personal.\n\n`
-            const header = `${greetings}\n\n${myVibesFeature}Bot ini masih dalam tahap beta\n\n*♤ : Command Memakai Limit*\n\n`
+            // Commands khusus untuk owner
+            const ownerOnlyCommands = ['.off', '.on', '-', '$', '.restart', '.svcmd'];
 
-            let menu = ''
-            let counter = 1
+            // Filter commands berdasarkan hak akses pengguna
+            const filteredCommands = cmds.filter((cmd) => isOwner || !ownerOnlyCommands.includes(cmd.cmd));
 
-            orderedTags.forEach(tag => {
-                if (commandGroups[tag]) {
-                    const upperTag = tag.toUpperCase()
-                    menu += `${tagEmojis[tag] || '📋'} *# ${upperTag} MENU* (${commandGroups[tag].length})\n`
-                    commandGroups[tag].forEach(command => {
-                        menu += `${counter}. ${command}\n`
-                        counter++
-                    })
-                    menu += '\n'
-                }
-            })
+            // Buat daftar commands berdasarkan kategori/tag
+            let menuPerTag = {};
+            filteredCommands.forEach((cmd) => {
+                if (!menuPerTag[cmd.tags]) menuPerTag[cmd.tags] = [];
+                menuPerTag[cmd.tags].push(`│๑ *${prefix}${cmd.cmd}* - ${cmd.desc || 'No description'}`);
+            });
 
-            const maxChars = 1300
-            let pages = []
-            let tempMenu = header + menu
+            // Gabungkan menu commands berdasarkan kategori/tag dengan emoji
+            let allMenus = Object.entries(menuPerTag)
+                .map(([tag, commands]) => `${tagEmojis[tag] || '📋'} *${tag.toUpperCase()}*\n${commands.join('\n')}`)
+                .join('\n\n');
 
+            // Tambahkan fitur khusus dan salam ke halaman pertama
+            const menuFirstPage = greetings + myVibesFeature + allMenus;
+
+            // Maksimal karakter per halaman
+            const maxChars = 1300;
+            let menuPages = [];
+            let tempMenu = menuFirstPage;
             while (tempMenu.length > 0) {
                 if (tempMenu.length > maxChars) {
-                    let splitIndex = tempMenu.lastIndexOf('\n\n', maxChars)
-                    pages.push(tempMenu.slice(0, splitIndex).trim())
-                    tempMenu = tempMenu.slice(splitIndex).trim()
+                    let splitIndex = tempMenu.lastIndexOf('\n\n', maxChars);
+                    menuPages.push(tempMenu.slice(0, splitIndex));
+                    tempMenu = tempMenu.slice(splitIndex).trim();
                 } else {
-                    pages.push(tempMenu.trim())
-                    tempMenu = ''
+                    menuPages.push(tempMenu);
+                    tempMenu = '';
                 }
             }
 
-            const pageRequested = parseInt(m.body.split(' ')[1] || '1')
-            const selectedPage = pages[pageRequested - 1]
+            // Deteksi halaman menu yang diminta
+            const pageRequested = parseInt(m.body.split(' ')[1] || '1');
+            const selectedPage = menuPages[pageRequested - 1];
+
+            // Tambahkan navigasi untuk setiap halaman
+            const pageFooter = `\n\n✦ Halaman ${pageRequested} dari ${menuPages.length}.\n✦ Ketik *${prefix}menu ${pageRequested + 1}* untuk ke halaman berikutnya.\n✦ Chat *Ami AI* dengan ketik *Ami*\n\n╶ 𝗧𝗵𝗮𝗻𝗸 𝘆𝗼𝘂 🎀`;
 
             if (selectedPage) {
-                const footer = `\n\n✦ Halaman ${pageRequested} dari ${pages.length}\n✦ Ketik *.menu ${pageRequested + 1}* untuk halaman berikutnya.`
-                await sock.sendMessage(m.from, { text: selectedPage + footer }, { quoted: m })
+                // Kirim menu sesuai halaman yang diminta
+                sock.sendMessage(m.from, { text: selectedPage + pageFooter }, { quoted: m });
             } else {
-                await sock.sendMessage(m.from, { text: `Halaman ${pageRequested} tidak ditemukan. Total halaman: ${pages.length}.` }, { quoted: m })
+                // Jika halaman tidak ditemukan
+                sock.sendMessage(m.from, { text: `Halaman ${pageRequested} tidak ditemukan. Total halaman: ${menuPages.length}.` }, { quoted: m });
             }
-        }
-    })
-}
+        },
+    });
+};
