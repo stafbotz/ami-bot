@@ -90,16 +90,18 @@ export default (handler) => {
 
             const allMenu = `${greetings}${mySpace}${intro}${menu.trim()}`
             const maxChars = 1300
-            let pages = []
+            const pages = []
 
-            while (allMenu.length > 0) {
-                if (allMenu.length > maxChars) {
-                    let splitIndex = allMenu.lastIndexOf('\n\n', maxChars)
-                    pages.push(allMenu.slice(0, splitIndex).trim())
-                    allMenu = allMenu.slice(splitIndex).trim()
+            // Menghindari TypeError dengan menggunakan variabel `let`
+            let remainingMenu = allMenu
+            while (remainingMenu.length > 0) {
+                if (remainingMenu.length > maxChars) {
+                    const splitIndex = remainingMenu.lastIndexOf('\n\n', maxChars)
+                    pages.push(remainingMenu.slice(0, splitIndex).trim())
+                    remainingMenu = remainingMenu.slice(splitIndex).trim()
                 } else {
-                    pages.push(allMenu.trim())
-                    allMenu = ''
+                    pages.push(remainingMenu.trim())
+                    remainingMenu = ''
                 }
             }
 
