@@ -121,13 +121,21 @@ export default handler => {
                 if (pages.length > 1) {
                     navigation =
                         pageRequested === 1
-                            ? `✦ Ketik *.menu ${pageRequested + 1}* untuk ke halaman berikutnya.`
+                            ? `✦ Ketik *.menu ${
+                                  pageRequested + 1
+                              }* untuk ke halaman berikutnya.`
                             : pageRequested === pages.length
-                            ? `✦ Ketik *.menu ${pageRequested - 1}* untuk ke halaman sebelumnya.`
-                            : `✦ Ketik *.menu ${pageRequested + 1}* untuk ke halaman berikutnya.\n✦ Ketik *.menu ${pageRequested - 1}* untuk ke halaman sebelumnya.`;
+                            ? `✦ Ketik *.menu ${
+                                  pageRequested - 1
+                              }* untuk ke halaman sebelumnya.`
+                            : `✦ Ketik *.menu ${
+                                  pageRequested + 1
+                              }* untuk ke halaman berikutnya.\n✦ Ketik *.menu ${
+                                  pageRequested - 1
+                              }* untuk ke halaman sebelumnya.`;
                 }
 
-                const footer = `\n\n${navigation}\n✦ Chat *Ami AI* dengan ketik *Ami*\n\n╶ 𝗧𝗵𝗮𝗻𝗸 𝘆𝗼𝘂 🎀`;
+                const footer = `\n\n✦ Halaman ${pageRequested} dari ${pages.length}\n${navigation}\n✦ Chat *Ami AI* dengan ketik *Ami*\n\n╶ 𝗧𝗵𝗮𝗻𝗸 𝘆𝗼𝘂 🎀`;
                 await sock.sendMessage(
                     m.from,
                     { text: selectedPage + footer },
