@@ -94,7 +94,7 @@ export default handler => {
             }
 
             const allMenu = `${greetings}${mySpace}${intro}${menu.trim()}`;
-            const maxChars = 1300;
+            const maxChars = 765; // Batas baru 765 karakter
             const pages = [];
 
             let remainingMenu = allMenu;
@@ -118,22 +118,13 @@ export default handler => {
             if (selectedPage) {
                 let navigation = "";
 
-                // Tambahkan navigasi hanya jika jumlah halaman lebih dari 1
                 if (pages.length > 1) {
                     navigation =
                         pageRequested === 1
-                            ? `✦ Ketik *.menu ${
-                                  pageRequested + 1
-                              }* untuk ke halaman berikutnya.`
+                            ? `✦ Ketik *.menu ${pageRequested + 1}* untuk ke halaman berikutnya.`
                             : pageRequested === pages.length
-                            ? `✦ Ketik *.menu ${
-                                  pageRequested - 1
-                              }* untuk ke halaman sebelumnya.`
-                            : `✦ Ketik *.menu ${
-                                  pageRequested + 1
-                              }* untuk ke halaman berikutnya.\n✦ Ketik *.menu ${
-                                  pageRequested - 1
-                              }* untuk ke halaman sebelumnya.`;
+                            ? `✦ Ketik *.menu ${pageRequested - 1}* untuk ke halaman sebelumnya.`
+                            : `✦ Ketik *.menu ${pageRequested + 1}* untuk ke halaman berikutnya.\n✦ Ketik *.menu ${pageRequested - 1}* untuk ke halaman sebelumnya.`;
                 }
 
                 const footer = `\n\n${navigation}\n✦ Chat *Ami AI* dengan ketik *Ami*\n\n╶ 𝗧𝗵𝗮𝗻𝗸 𝘆𝗼𝘂 🎀`;
