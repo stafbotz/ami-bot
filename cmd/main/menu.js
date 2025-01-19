@@ -122,13 +122,9 @@ export default handler => {
                 }\n✦ Ketik *.menu ${
                     pageRequested + 1
                 }* untuk ke halaman berikutnya.\n✦ Chat *Ami AI* dengan ketik *Ami*\n\n╶ 𝗧𝗵𝗮𝗻𝗸 𝘆𝗼𝘂 🎀`;
-                const response =
-                    pageRequested === 1
-                        ? greetings + mySpace + selectedPage + footer
-                        : selectedPage + footer;
                 await sock.sendMessage(
                     m.from,
-                    { text: response },
+                    { text: selectedPage + footer },
                     { quoted: m }
                 );
             } else {
