@@ -42,14 +42,15 @@ export default (handler) => {
 
             for (const [command, details] of cmds) {
                 const tag = details.tags || 'LAINNYA'
+
+                // Jangan tambahkan tag owner jika user bukan owner
+                if (tag === 'owner' && !m.isOwner) continue
+
                 if (!commandGroups[tag]) {
                     commandGroups[tag] = []
                 }
 
                 const commandText = `${command}${details.isLimit ? ' ♤' : ''}\n> ${details.desc}`
-
-                // Pastikan command untuk owner tidak ditampilkan jika bukan owner
-                if (tag === 'owner' && !m.isOwner) continue
 
                 if (!commandGroups[tag].some(cmd => cmd.includes(`\n> ${details.desc}`))) {
                     commandGroups[tag].push(commandText)
@@ -78,8 +79,8 @@ export default (handler) => {
             let counter = 1
 
             orderedTags.forEach(tag => {
-                const upperTag = tag.toUpperCase()
                 if (commandGroups[tag]) {
+                    const upperTag = tag.toUpperCase()
                     menu += `${tagEmojis[tag] || '📋'} *# ${upperTag} MENU* (${commandGroups[tag].length})\n`
                     commandGroups[tag].forEach(command => {
                         menu += `${counter}. ${command}\n`
