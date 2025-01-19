@@ -44,7 +44,7 @@ export default handler => {
             };
 
             loadCommands(baseDir);
-            m.reply(JSON.stringify(cmds));
+            m.reply(cmds);
             for (const [command, details] of cmds) {
                 const tag = details.tags || "LAINNYA";
 
