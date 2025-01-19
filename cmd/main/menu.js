@@ -59,21 +59,24 @@ export default handler => {
             loadCommands(baseDir);
 
             for (const [command, details] of cmds) {
-                const tag = details.tags || "lainnya";
+    const tag = details.tags || "lainnya";
 
-                // Jangan tambahkan tag owner jika user bukan owner
-                if (tag === "owner" && !m.isOwner) continue;
+    // Jangan tambahkan tag owner jika user bukan owner
+    if (tag === "owner" && !m.isOwner) continue;
 
-                if (!commandGroups[tag]) {
-                    commandGroups[tag] = [];
-                }
+    // Abaikan alias tambahan (tampilkan hanya command utama)
+    const primaryAlias = Array.isArray(details.cmd) ? details.cmd[0] : command;
 
-                const commandText = `│๑ *.${command}* - ${details.desc}`;
+    if (!commandGroups[tag]) {
+        commandGroups[tag] = [];
+    }
 
-                if (!commandGroups[tag].includes(commandText)) {
-                    commandGroups[tag].push(commandText);
-                }
-            }
+    const commandText = `│๑ *.${primaryAlias}* - ${details.desc}`;
+
+    if (!commandGroups[tag].includes(commandText)) {
+        commandGroups[tag].push(commandText);
+    }
+}
 
             const greetings = `Hai, *@${m.sender.split("@")[0]}* 👋\n\n`;
             const mySpace = `*MY SPACE*\n│Vibe : *Senang*\n│Zodiac : *Libra*\n│Saldo : *Rp 0*\n ✦ Ketik *.myspace* buat atur tampilan space kamu.\n\n`;
