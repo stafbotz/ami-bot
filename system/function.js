@@ -443,6 +443,23 @@ export function time(numer, options = {}) {
     return formattedTime
 }
 
+/* greeting */
+export function getGreeting(timeZone = "Asia/Jakarta") {
+    const hour = parseInt(
+        time(Date.now(), { format: "HH:mm", timeZone }).split(":")[0]
+    );
+
+    if (hour >= 4 && hour < 12) {
+        return "Pagi"; // 04:00 - 11:59
+    } else if (hour >= 12 && hour < 15) {
+        return "Siang"; // 12:00 - 14:59
+    } else if (hour >= 15 && hour < 18) {
+        return "Sore"; // 15:00 - 17:59
+    } else {
+        return "Malam"; // 18:00 - 03:59
+    }
+}
+
 /* fetch buffer */
 export async function fetchBuffer(string, options = {}) {
     if (/^https?:\/\//i.test(string)) {
