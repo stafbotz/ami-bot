@@ -207,15 +207,15 @@ ${getFeaturesList(cmds)} akan diisi dengan fitur-fitur yang tersedia.`
 
             // Simbol Loading Custom
             const loadingSymbols = [
-                "Tunggu Sebentar •||၊|။||||၊၊|၊|။•",
-                "Tunggu Sebentar •၊||၊|။||၊|||၊|။•",
-                "Tunggu Sebentar •|။||||၊၊|||၊|။•",
-                "Tunggu Sebentar •|||၊|။၊||၊||||။•",
-                "Tunggu Sebentar •||၊|။|||||၊||၊။•",
-                "Tunggu Sebentar •၊|||၊|။||၊|||၊။•",
-                "Tunggu Sebentar •|||၊||၊|။|||၊|။•",
-                "Tunggu Sebentar •||||၊|။|||၊||၊။•",
-                "Tunggu Sebentar •||၊||၊|||။၊||၊•",
+                "── .✦ Ami sedang berpikir ||၊|။||||၊|၊|။",
+                "── .✦ Ami sedang berpikir ၊||၊|။|||||၊|။",
+                "── .✦ Ami sedang berpikir |။||||၊၊|||၊|။",
+                "── .✦ Ami sedang berpikir |||၊|။၊||၊|||။",
+                "── .✦ Ami sedang berpikir ||၊|။||||၊||၊။",
+                "── .✦ Ami sedang berpikir ၊|||၊|။|||||၊။",
+                "── .✦ Ami sedang berpikir |||၊||၊|။||၊|။",
+                "── .✦ Ami sedang berpikir ||||၊|။||၊||၊။",
+                "── .✦ Ami sedang berpikir ||၊|။||||၊|၊|။"
             ];
             let loadingMessage = await sock.sendMessage(m.from, {
                 text: loadingSymbols[0]
@@ -241,9 +241,9 @@ ${getFeaturesList(cmds)} akan diisi dengan fitur-fitur yang tersedia.`
                     temperature: 0.8,
                     max_completion_tokens: 1000
                 });
-                
+
                 clearInterval(loadingInterval); // Hentikan interval loading setelah mendapatkan jawaban
-                
+
                 const response = chatCompletion.choices[0]?.message?.content;
                 if (response) {
                     // Simpan respons bot ke konteks
