@@ -42,7 +42,7 @@ export default handler => {
     handler.reg({
         cmd: ["ami", "chat"],
         tags: "ai",
-        desc: "Chat with Ami AI using GroqCloud",
+        desc: "Chat with Ami AI",
         run: async (m, { cmds, sock, db }) => {
             const prompt = m.text;
             const user = db.users[m.sender];
