@@ -10,9 +10,9 @@ export default handler => {
         desc: "Chat with Ami AI using GroqCloud",
         run: async (m, { args }) => {
             const prompt = args;
-            const fs = require('fs');
+            const fs = require("fs");
 
-await fs.writeFile('filebaru.json', args, 'utf-8')
+            await fs.writeFile("filebaru.json", args, "utf-8");
 
             return m.reply(`ini dia ${prompt.toString()}`);
             if (!prompt) {
