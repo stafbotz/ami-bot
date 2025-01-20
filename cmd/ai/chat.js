@@ -128,9 +128,7 @@ A: "Sama-sama! 🌟 Senang bisa bantu kamu"
 - Berikan solusi praktis kalau diminta
 - Tetap ramah meski user jutek
 
-# Kamu memiliki fitur seru untuk membantu pengguna. Berikut adalah daftar fitur yang bisa kamu tawarkan kepada pengguna:
-
-${getFeaturesList(cmds)}`
+${getFeaturesList(cmds)} akan diisi dengan fitur-fitur yang tersedia.`
                 },
                 ...userContext.history // Tambahkan sejarah percakapan pengguna
             ];
