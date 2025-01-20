@@ -185,7 +185,11 @@ A: "Sama-sama! 🌟 Aku selalu ada kok kalo kamu butuh temen ngobrol"
 
 # Informasi tambahan:
 - Pemilikmu adalah Renshu Visualz, tim kreatif yang telah merancangmu dengan penuh dedikasi. Kamu boleh menyebutkan mereka jika pengguna bertanya siapa yang membuatmu. Jika ada yang bertanya nomor telepon atau nomor Whatsapp pembuat kamu, suruh mereka ketik *.owner"
-- Kamu sedang berbicara dengan pengguna bernama ${user.name}. Jika mereka bertanya siapa diri mereka, kamu bisa menyebutkan nama dan tanggal lahir mereka, yaitu ${user.birth}, hanya jika mereka memintanya secara eksplisit.
+- Kamu sedang berbicara dengan pengguna bernama ${
+                        user.name
+                    }. Jika mereka bertanya siapa diri mereka, kamu bisa menyebutkan nama dan tanggal lahir mereka, yaitu ${
+                        user.birth
+                    }, hanya jika mereka memintanya secara eksplisit.
 
 # Tips Tambahan
 - Selalu respons dengan energi positif
@@ -200,18 +204,18 @@ ${getFeaturesList(cmds)} akan diisi dengan fitur-fitur yang tersedia.`
                 },
                 ...userContext.history // Tambahkan sejarah percakapan pengguna
             ];
-            
+
             // Simbol Loading Custom
             const loadingSymbols = [
-                "Tunggu Sebentar |",
-                "Tunggu Sebentar ၊",
-                "Tunggu Sebentar ၊၊",
-                "Tunggu Sebentar ||",
-                "Tunggu Sebentar ၊|",
-                "Tunggu Sebentar |။",
-                "Tunggu Sebentar ||||",
-                "Tunggu Sebentar |||||",
-                "Tunggu Sebentar ||||။"
+                "Tunggu Sebentar •||၊|။||||၊၊|၊|။•",
+                "Tunggu Sebentar •၊||၊|။||၊|||၊|။•",
+                "Tunggu Sebentar •|။||||၊၊|||၊|။•",
+                "Tunggu Sebentar •|||၊|။၊||၊||||။•",
+                "Tunggu Sebentar •||၊|။|||||၊||၊။•",
+                "Tunggu Sebentar •၊|||၊|။||၊|||၊။•",
+                "Tunggu Sebentar •|||၊||၊|။|||၊|။•",
+                "Tunggu Sebentar •||||၊|။|||၊||၊။•",
+                "Tunggu Sebentar •||၊||၊|||။၊||၊•",
             ];
             let loadingMessage = await sock.sendMessage(m.from, {
                 text: loadingSymbols[0]
@@ -237,7 +241,9 @@ ${getFeaturesList(cmds)} akan diisi dengan fitur-fitur yang tersedia.`
                     temperature: 0.8,
                     max_completion_tokens: 1000
                 });
-
+                
+                clearInterval(loadingInterval); // Hentikan interval loading setelah mendapatkan jawaban
+                
                 const response = chatCompletion.choices[0]?.message?.content;
                 if (response) {
                     // Simpan respons bot ke konteks
@@ -246,7 +252,7 @@ ${getFeaturesList(cmds)} akan diisi dengan fitur-fitur yang tersedia.`
                         content: response.trim()
                     });
                     writeUserContext(userId, userContext); // Simpan konteks ke file
-                   // Ganti pesan loading terakhir dengan jawaban AI
+                    // Ganti pesan loading terakhir dengan jawaban AI
                     await sock.sendMessage(m.from, {
                         text: response.trim(),
                         edit: loadingMessage.key
