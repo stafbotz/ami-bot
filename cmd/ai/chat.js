@@ -62,7 +62,7 @@ Berikut adalah daftar fitur yang bisa kamu tawarkan kepada pengguna:
 ${getFeaturesList(cmds)}
 
 Jawablah pertanyaan pengguna berdasarkan fitur yang tersedia.
-Jika pertanyaan tidak relevan dengan fitur, cukup beri jawaban umum dengan ramah.``
+Jika pertanyaan tidak relevan dengan fitur, cukup beri jawaban umum dengan ramah.`
                 },
                 {
                     role: "user",
