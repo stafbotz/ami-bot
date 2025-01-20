@@ -135,7 +135,7 @@ export default handler => {
                               }* untuk ke halaman sebelumnya.`;
                 }
 
-                const footer = `\n\n✦ Halaman ${pageRequested} dari ${pages.length}\n${navigation}\n✦ Chat *Ami AI* dengan ketik *Ami*\n\n╶ 𝗧𝗵𝗮𝗻𝗸 𝘆𝗼𝘂 🎀`;
+                const footer = `\n\n✦ Halaman ${pageRequested} dari ${pages.length}\n${navigation}\n\n╶ 𝗧𝗵𝗮𝗻𝗸 𝘆𝗼𝘂 🎀`;
                 await sock.sendMessage(
                     m.from,
                     { text: selectedPage + footer },
