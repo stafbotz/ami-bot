@@ -63,7 +63,7 @@ export default handler => {
 
             // Tambahkan pesan user ke konteks
             userContext.history.push({ role: "user", content: m.text });
-            userContext.history = userContext.history.slice(-10); // Simpan maksimal 10 pesan terakhir
+            userContext.history = userContext.history.slice(-15); // Simpan maksimal 10 pesan terakhir
 
             const context = [
                 {
@@ -183,6 +183,10 @@ A: "Sama-sama! 🌟 Aku selalu ada kok kalo kamu butuh temen ngobrol"
 - Jangan beri saran medis
 - Jangan bersikap menggurui
 
+# Informasi tambahan:
+- Pemilikmu adalah Renshu Visualz, tim kreatif yang telah merancangmu dengan penuh dedikasi. Kamu boleh menyebutkan mereka jika pengguna bertanya siapa yang membuatmu. Jika ada yang bertanya nomor telepon atau nomor Whatsapp pembuat kamu, suruh mereka ketik *.owner"
+- Kamu sedang berbicara dengan pengguna bernama ${user.name}. Jika mereka bertanya siapa diri mereka, kamu bisa menyebutkan nama dan tanggal lahir mereka, yaitu ${user.birth}, hanya jika mereka memintanya secara eksplisit.
+
 # Tips Tambahan
 - Selalu respons dengan energi positif
 - Tunjukkan empati saat user sedih/kesal
@@ -196,11 +200,42 @@ ${getFeaturesList(cmds)} akan diisi dengan fitur-fitur yang tersedia.`
                 },
                 ...userContext.history // Tambahkan sejarah percakapan pengguna
             ];
+            
+            // Simbol Loading Custom
+            const loadingSymbols = [
+                "Tunggu Sebentar |",
+                "Tunggu Sebentar ၊",
+                "Tunggu Sebentar ၊၊",
+                "Tunggu Sebentar ||",
+                "Tunggu Sebentar ၊|",
+                "Tunggu Sebentar |။",
+                "Tunggu Sebentar ||||",
+                "Tunggu Sebentar |||||",
+                "Tunggu Sebentar ||||။"
+            ];
+            let loadingMessage = await sock.sendMessage(m.from, {
+                text: loadingSymbols[0]
+            });
+
+            let loadingIndex = 1;
+            const loadingInterval = setInterval(async () => {
+                if (loadingIndex < loadingSymbols.length) {
+                    await sock.sendMessage(m.from, {
+                        text: loadingSymbols[loadingIndex],
+                        edit: loadingMessage.key
+                    });
+                    loadingIndex++;
+                } else {
+                    loadingIndex = 0; // Ulangi simbol dari awal
+                }
+            }, 1000); // Ubah simbol loading setiap 1 detik
 
             try {
                 const chatCompletion = await groq.chat.completions.create({
                     messages: context,
-                    model: "llama-3.3-70b-versatile" // Model yang digunakan
+                    model: "llama-3.3-70b-versatile", // Model yang digunakan
+                    temperature: 0.8,
+                    max_completion_tokens: 1000
                 });
 
                 const response = chatCompletion.choices[0]?.message?.content;
@@ -211,17 +246,25 @@ ${getFeaturesList(cmds)} akan diisi dengan fitur-fitur yang tersedia.`
                         content: response.trim()
                     });
                     writeUserContext(userId, userContext); // Simpan konteks ke file
-                    m.reply(response.trim()); // Balas pesan user dengan hasil dari GroqCloud
+                   // Ganti pesan loading terakhir dengan jawaban AI
+                    await sock.sendMessage(m.from, {
+                        text: response.trim(),
+                        edit: loadingMessage.key
+                    });
                 } else {
-                    m.reply(
-                        "Ami AI nggak nemu jawaban. Coba tanyakan hal lain, ya!"
-                    );
+                    // Jika tidak ada jawaban
+                    await sock.sendMessage(m.from, {
+                        text: "Ami AI nggak nemu jawaban. Coba tanyakan hal lain, ya!",
+                        edit: loadingMessage.key
+                    });
                 }
             } catch (error) {
                 console.error("Error:", error);
-                m.reply(
-                    "Waduh, ada masalah waktu proses pesanmu. Coba lagi nanti ya."
-                );
+                // Ganti pesan loading terakhir dengan pesan error
+                await sock.sendMessage(m.from, {
+                    text: "Waduh, ada masalah waktu proses pesanmu. Coba lagi nanti ya.",
+                    edit: loadingMessage.key
+                });
             }
         }
     });
