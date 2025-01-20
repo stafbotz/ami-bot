@@ -2,7 +2,41 @@ import fs from "fs";
 import Groq from "groq-sdk";
 import setting from "../../setting.js";
 
-const groq = new Groq({ apiKey: setting.groqApiKey }); // Ganti dengan API Key kamu
+const groq = new Groq({ apiKey: setting.groqApiKey }); 
+const getFeaturesList = (cmds) => {
+    const commandGroups = {};
+    const tagEmojis = {
+        main: "📜",
+        convert: "🔄",
+        ai: "🤖",
+        downloader: "📥",
+        group: "👥",
+        channel: "📣",
+        owner: "🛠",
+        tools: "🛠",
+        anime: "🍥",
+        lainnya: "📌"
+    };
+
+    for (const [command, details] of cmds) {
+        const tag = details.tags || "lainnya";
+        if (!commandGroups[tag]) commandGroups[tag] = [];
+        const commandText = `*.${command}* - ${details.desc}`;
+        if (!commandGroups[tag].includes(commandText)) {
+            commandGroups[tag].push(commandText);
+        }
+    }
+
+    let features = "Berikut adalah fitur yang tersedia:\n\n";
+    for (const [tag, commands] of Object.entries(commandGroups)) {
+        const emoji = tagEmojis[tag] || tagEmojis["lainnya"];
+        features += `${emoji} *${tag.toUpperCase()}*\n`;
+        features += commands.map(cmd => `  │๑ ${cmd}`).join("\n");
+        features += "\n\n";
+    }
+
+    return features.trim();
+};
 
 export default handler => {
     handler.reg({
@@ -20,7 +54,15 @@ export default handler => {
             const context = [
                 {
                     role: "system",
-                    content: `Kamu adalah Ami Bot, asisten AI yang ramah. Selalu jawab dalam bahasa Indonesia. Pengguna bernama ${user.name} dan tanggal lahirnya adalah ${user.birth}.`
+                    content: `
+Kamu adalah Ami AI, asisten AI yang ramah. Selalu jawab dalam bahasa Indonesia sebagai bahasa utama. 
+Kamu sedang berbicara dengan pengguna bernama ${user.name} dan tanggal lahirnya adalah ${user.birth}.
+Berikut adalah daftar fitur yang bisa kamu tawarkan kepada pengguna:
+
+${getFeaturesList(cmds)}
+
+Jawablah pertanyaan pengguna berdasarkan fitur yang tersedia.
+Jika pertanyaan tidak relevan dengan fitur, cukup beri jawaban umum dengan ramah.``
                 },
                 {
                     role: "user",
