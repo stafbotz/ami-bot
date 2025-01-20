@@ -4,7 +4,7 @@ import setting from "../../setting.js";
 import {
     readUserContext,
     writeUserContext
-} from "../../system/contextProvider.js"; // Import fungsi contextProvider.js
+} from "../../system/db/contextProvider.js"; // Import fungsi contextProvider.js
 
 const groq = new Groq({ apiKey: setting.groqApiKey });
 
@@ -51,7 +51,10 @@ export default handler => {
         run: async (m, { cmds, sock, db }) => {
             const userId = m.sender;
             const userContext = readUserContext(userId); // Ambil konteks pengguna
-            const user = db.users[userId] || { name: "Pengguna", birth: "Tidak diketahui" };
+            const user = db.users[userId] || {
+                name: "Pengguna",
+                birth: "Tidak diketahui"
+            };
 
             if (!m.text)
                 return m.reply(
@@ -67,7 +70,9 @@ export default handler => {
                     role: "system",
                     content: `
 Kamu adalah Ami AI, asisten AI yang ramah. Selalu jawab dalam bahasa Indonesia sebagai bahasa utama. 
-Kamu sedang berbicara dengan pengguna bernama ${user.name} dan tanggal lahirnya adalah ${user.birth}.
+Kamu sedang berbicara dengan pengguna bernama ${
+                        user.name
+                    } dan tanggal lahirnya adalah ${user.birth}.
 Hanya berikan jawaban yang relevan dengan pertanyaan atau pesan pengguna. Jangan menyebutkan informasi pribadi pengguna, kecuali pengguna secara eksplisit memintanya.
 Berikut adalah daftar fitur yang bisa kamu tawarkan kepada pengguna:
 
