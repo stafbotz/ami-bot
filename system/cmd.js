@@ -1,5 +1,4 @@
 import { createRequire } from "module";
-import fs from "fs";
 import color from "./color.js";
 
 const require = createRequire(import.meta.url);
