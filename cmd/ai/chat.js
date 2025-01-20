@@ -2,8 +2,8 @@ import fs from "fs";
 import Groq from "groq-sdk";
 import setting from "../../setting.js";
 
-const groq = new Groq({ apiKey: setting.groqApiKey }); 
-const getFeaturesList = (cmds) => {
+const groq = new Groq({ apiKey: setting.groqApiKey });
+const getFeaturesList = cmds => {
     const commandGroups = {};
     const tagEmojis = {
         main: "📜",
@@ -43,7 +43,7 @@ export default handler => {
         cmd: ["ami", "chat"],
         tags: "ai",
         desc: "Chat with Ami AI using GroqCloud",
-        run: async (m, { sock, db }) => {
+        run: async (m, { cmds, sock, db }) => {
             const prompt = m.text;
             const user = db.users[m.sender];
 
@@ -56,7 +56,9 @@ export default handler => {
                     role: "system",
                     content: `
 Kamu adalah Ami AI, asisten AI yang ramah. Selalu jawab dalam bahasa Indonesia sebagai bahasa utama. 
-Kamu sedang berbicara dengan pengguna bernama ${user.name} dan tanggal lahirnya adalah ${user.birth}.
+Kamu sedang berbicara dengan pengguna bernama ${
+                        user.name
+                    } dan tanggal lahirnya adalah ${user.birth}.
 Berikut adalah daftar fitur yang bisa kamu tawarkan kepada pengguna:
 
 ${getFeaturesList(cmds)}
