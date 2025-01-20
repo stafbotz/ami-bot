@@ -70,7 +70,11 @@ export default handler => {
 
                 const commandText = `│๑ *.${command}* - ${details.desc}`;
 
-                if (!commandGroups[tag].some(cmd => cmd.includes(`- ${details.desc}`))) {
+                if (
+                    !commandGroups[tag].some(cmd =>
+                        cmd.includes(`- ${details.desc}`)
+                    )
+                ) {
                     commandGroups[tag].push(commandText);
                 }
             }
@@ -94,7 +98,7 @@ export default handler => {
             }
 
             const allMenu = `${greetings}${mySpace}${intro}${menu.trim()}`;
-            const maxChars = 765; // Batas baru 765 karakter
+            const maxChars = 765; // Batas 765 karakter per halaman menu
             const pages = [];
 
             let remainingMenu = allMenu;
