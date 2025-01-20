@@ -9,23 +9,25 @@ export default handler => {
         cmd: ["ami", "chat"],
         tags: "ai",
         desc: "Chat with Ami AI using GroqCloud",
-        run: async (m) => {
-          
+        run: async (m, { sock, db }) => {
             const prompt = m.text;
             const user = db.users[m.sender];
-            
-            if (!prompt) return m.reply("Ketik pertanyaan atau pesan yang ingin kamu tanyakan ke Ami AI.");
+
+            if (!prompt)
+                return m.reply(
+                    "Ketik pertanyaan atau pesan yang ingin kamu tanyakan ke Ami AI."
+                );
             const context = [
-                    {
-                        role: "system",
-                        content: `Kamu adalah Ami Bot, asisten AI yang ramah. Selalu jawab dalam bahasa Indonesia. Pengguna bernama ${userName} dan tanggal lahirnya adalah ${userBirth}.`
-                    },
-                    {
-                        role: "user",
-                        content: m.text
-                    }
-                ];
-                
+                {
+                    role: "system",
+                    content: `Kamu adalah Ami Bot, asisten AI yang ramah. Selalu jawab dalam bahasa Indonesia. Pengguna bernama ${user.name} dan tanggal lahirnya adalah ${user.birth}.`
+                },
+                {
+                    role: "user",
+                    content: m.text
+                }
+            ];
+
             try {
                 const chatCompletion = await groq.chat.completions.create({
                     messages: context,
@@ -36,11 +38,15 @@ export default handler => {
                 if (response) {
                     m.reply(response.trim()); // Balas pesan user dengan hasil dari GroqCloud
                 } else {
-                    m.reply("Ami AI nggak nemu jawaban. Coba tanyakan hal lain, ya!");
+                    m.reply(
+                        "Ami AI nggak nemu jawaban. Coba tanyakan hal lain, ya!"
+                    );
                 }
             } catch (error) {
                 console.error("Error:", error);
-                m.reply("Waduh, ada masalah waktu proses pesanmu. Coba lagi nanti ya.");
+                m.reply(
+                    "Waduh, ada masalah waktu proses pesanmu. Coba lagi nanti ya."
+                );
             }
         }
     });
