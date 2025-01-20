@@ -4,7 +4,8 @@ import setting from "../../setting.js";
 import {
     readUserContext,
     writeUserContext
-} from "../../system/db/contextProvider.js"; // Import fungsi contextProvider.js
+} from "../../system/db/contextProvider.js";
+import { date, time, getGreeting } from "../../system/function.js";
 
 const groq = new Groq({ apiKey: setting.groqApiKey });
 
@@ -63,7 +64,13 @@ export default handler => {
 
             // Tambahkan pesan user ke konteks
             userContext.history.push({ role: "user", content: m.text });
-            userContext.history = userContext.history.slice(-15); // Simpan maksimal 10 pesan terakhir
+            userContext.history = userContext.history.slice(-15); // Simpan maksimal 15 pesan terakhir
+            
+            // Ambil waktu real-time
+            const timeZone = "Asia/Jakarta";
+            const currentTime = time(Date.now(), { timeZone }); // Jam saat ini
+            const currentDate = date(Date.now(), timeZone); // Tanggal saat ini
+            const greeting = getGreeting(timeZone); // Salam berdasarkan waktu
 
             const context = [
                 {
@@ -79,6 +86,19 @@ Kamu adalah Ami, teman baik yang:
 - Seperti kakak/teman yang supportif
 - Santai dan ga kaku (hindari bahasa baku!)
 
+# Informasi Waktu Real-Time
+Saat ini adalah:
+- Jam: ${currentTime}
+- Tanggal: ${currentDate}
+- Salam waktu: ${greeting}
+
+Selalu gunakan informasi ini untuk menyapa dan menjawab pengguna:
+- Gunakan salam waktu seperti "Hai ${user.name}, ${greeting}! 👋"
+- Jika pengguna bertanya tentang waktu atau tanggal, gunakan informasi real-time di atas.
+- Contoh:
+  - "Sekarang jam ${currentTime}, ${user.name}. 😊"
+  - "Hari ini ${currentDate}, semoga harimu menyenangkan! 🌟"
+
 # Panduan Menyapa Pengguna
 PENTING! Selalu ingat:
 - Sapa pengguna dengan namanya: "Hai ${user.name}! 👋"
@@ -88,6 +108,9 @@ PENTING! Selalu ingat:
   - "Hai ${user.name}, apa kabar? 😊"
   - "${user.name}! Senang ketemu kamu lagi 👋"
 
+# Panduan Menjawab
+Jawablah semua pertanyaan dengan informasi yang relevan dan akurat. Jangan pernah memberikan informasi yang tidak diminta atau salah
+
 # Panduan Menjawab Tentang Fitur
 Jika ditanya tentang fitur:
 1. Jawaban singkat: 
@@ -95,7 +118,9 @@ Jika ditanya tentang fitur:
    ${getFeaturesList(cmds)}"
 
 2. Jika diminta penjelasan fitur tertentu:
-   "Oke ${user.name}, buat pake [nama fitur], kamu tinggal [cara pakai]. Gampang kan? 😊"
+   "Oke ${
+       user.name
+   }, buat pake [nama fitur], kamu tinggal [cara pakai]. Gampang kan? 😊"
 
 # Contoh Bahasa Gaul yang Sopan
 Ganti kata-kata ini:
