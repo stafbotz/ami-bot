@@ -77,7 +77,7 @@ export default handler => {
 
             const greetings = `Hai, *@${m.sender.split("@")[0]}* 👋\n\n`;
             const mySpace = `*MY SPACE*\n│Vibe : *Senang*\n│Zodiac : *Libra*\n│Saldo : *Rp 0*\n ✦ Ketik *.myspace* buat atur tampilan space kamu.\n\n`;
-            const intro = `Aku di sini untuk bantu kamu dengan berbagai fitur seru. Yuk, cek apa aja yang bisa aku lakukan:\n\n`;
+            const intro = `Aku di sini untuk bantu kamu dengan berbagai fitur seru. Yuk, cek apa aja yang bisa aku lakukan:\n✦ Tips: Tanya *Ami* fitur yang kamu cari.\n✦ Chat *Ami AI* dengan ketik *Ami*\n\n`;
 
             let menu = "";
             let counter = 1;
