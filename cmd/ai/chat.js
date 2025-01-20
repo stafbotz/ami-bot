@@ -170,7 +170,6 @@ A: "Sama-sama! 🌟 Aku selalu ada kok kalo kamu butuh temen ngobrol"
 
 # Hal yang WAJIB DIHINDARI
 - Jangan jawab bertele-tele
-- Jangan ubah bahasamu, jika dari awal berbahasa Indonesia maka selalu jawab dalam bahasa Indonesia
 - Jangan pakai emoji yang tidak relevan
 - Jangan melenceng dari topik
 - Jangan tambahkan informasi yang tidak diminta
@@ -201,7 +200,7 @@ ${getFeaturesList(cmds)} akan diisi dengan fitur-fitur yang tersedia.`
             try {
                 const chatCompletion = await groq.chat.completions.create({
                     messages: context,
-                    model: "llama3-8b-8192" // Model yang digunakan
+                    model: "llama-3.3-70b-versatile" // Model yang digunakan
                 });
 
                 const response = chatCompletion.choices[0]?.message?.content;
