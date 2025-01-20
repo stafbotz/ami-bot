@@ -13,19 +13,19 @@ Thank you for using my source code. If there is a problem, please contact me
 */
 
 /* module external */
-import axios from "axios"
-import fs from "fs"
-import mimes from "mime-types"
-import path from "path"
-import FormData from 'form-data'
-import { fileURLToPath, pathToFileURL } from "url"
-import { exec } from "child_process"
-import { promisify } from 'util'
-const execAsync = promisify(exec)
-import { platform } from "os"
+import axios from "axios";
+import fs from "fs";
+import mimes from "mime-types";
+import path from "path";
+import FormData from "form-data";
+import { fileURLToPath, pathToFileURL } from "url";
+import { exec } from "child_process";
+import { promisify } from "util";
+const execAsync = promisify(exec);
+import { platform } from "os";
 //import util from 'util'
-import { fileTypeFromBuffer } from "file-type"
-import setting from "../setting.js"
+import { fileTypeFromBuffer } from "file-type";
+import setting from "../setting.js";
 
 /* random ua */
 export function randomUA() {
@@ -110,70 +110,75 @@ export function randomUA() {
         "Mozilla/5.0 (Windows NT 10.0 WOW64 Trident/7.0 Touch rv:11.0) like Gecko",
         "Mozilla/5.0 (Windows NT 6.2 Win64 x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/58.0.3029.110 Safari/537.36",
         "Mozilla/5.0 (Windows NT 6.3 WOW64 Trident/7.0 rv:11.0) like Gecko"
-    ]
+    ];
 
-    return UAs[Math.floor(Math.random() * UAs.length)]
+    return UAs[Math.floor(Math.random() * UAs.length)];
 }
 
 /* send telegram */
 export async function sendTelegram(chatId, data, options = {}) {
     try {
-        let token = setting.token_tele
+        let token = setting.token_tele;
 
-        const capitalizeFirstLetter = string => string.charAt(0).toUpperCase() + string.slice(1)
+        const capitalizeFirstLetter = string =>
+            string.charAt(0).toUpperCase() + string.slice(1);
 
         const DEFAULT_EXTENSIONS = {
-            audio: 'mp3',
-            photo: 'jpg',
-            sticker: 'webp',
-            video: 'mp4',
-            animation: 'mp4',
-            video_note: 'mp4',
-            voice: 'ogg',
-        }
+            audio: "mp3",
+            photo: "jpg",
+            sticker: "webp",
+            video: "mp4",
+            animation: "mp4",
+            video_note: "mp4",
+            voice: "ogg"
+        };
 
         let type = options?.type
             ? options.type
-            : typeof data === 'string'
-                ? 'text'
-                : /webp/.test((await fileTypeFromBuffer(data))?.mime)
-                    ? 'sticker'
-                    : /image/.test((await fileTypeFromBuffer(data))?.mime)
-                        ? 'photo'
-                        : /video/.test((await fileTypeFromBuffer(data))?.mime)
-                            ? 'video'
-                            : /opus/.test((await fileTypeFromBuffer(data))?.mime)
-                                ? 'voice'
-                                : /audio/.test((await fileTypeFromBuffer(data))?.mime)
-                                    ? 'audio'
-                                    : 'document'
+            : typeof data === "string"
+            ? "text"
+            : /webp/.test((await fileTypeFromBuffer(data))?.mime)
+            ? "sticker"
+            : /image/.test((await fileTypeFromBuffer(data))?.mime)
+            ? "photo"
+            : /video/.test((await fileTypeFromBuffer(data))?.mime)
+            ? "video"
+            : /opus/.test((await fileTypeFromBuffer(data))?.mime)
+            ? "voice"
+            : /audio/.test((await fileTypeFromBuffer(data))?.mime)
+            ? "audio"
+            : "document";
 
-        let url = `https://api.telegram.org/bot${token}/send${type === 'text' ? 'Message' : capitalizeFirstLetter(type)}`
+        let url = `https://api.telegram.org/bot${token}/send${
+            type === "text" ? "Message" : capitalizeFirstLetter(type)
+        }`;
 
-        let form = new FormData()
+        let form = new FormData();
 
-        form.append('chat_id', chatId)
+        form.append("chat_id", chatId);
 
-        if (type === 'text') {
-            form.append(type, data)
+        if (type === "text") {
+            form.append(type, data);
         } else {
-            let fileType = await fileTypeFromBuffer(data)
+            let fileType = await fileTypeFromBuffer(data);
             form.append(
                 type,
                 Buffer.isBuffer(data) ? data : Buffer.from(data), // Pastikan data dalam bentuk Buffer
-                `file-${Date.now()}.${DEFAULT_EXTENSIONS?.[type] || fileType?.ext}`
-            )
-            if (options?.caption) form.append('caption', options.caption)
+                `file-${Date.now()}.${
+                    DEFAULT_EXTENSIONS?.[type] || fileType?.ext
+                }`
+            );
+            if (options?.caption) form.append("caption", options.caption);
         }
 
         let { data: response } = await axios.post(url, form, {
-            headers: form.getHeaders(), // Mengambil headers dari FormData
-        })
+            headers: form.getHeaders() // Mengambil headers dari FormData
+        });
 
-        return response
+        return response;
     } catch (e) {
-        console.error(e)
-        throw e
+        console.error(e);
+        throw e;
     }
 }
 
@@ -182,75 +187,75 @@ export function __filename(
     pathURL = import.meta,
     rmPrefix = platform() !== "win32"
 ) {
-    const path = pathURL.url || pathURL
+    const path = pathURL.url || pathURL;
     return rmPrefix
         ? /file:\/\/\//.test(path)
             ? fileURLToPath(path)
             : path
         : /file:\/\/\//.test(path)
-            ? path
-            : pathToFileURL(path).href
+        ? path
+        : pathToFileURL(path).href;
 }
 
 /* remove accent */
 export function removeAcents(text) {
     return typeof text === "string"
         ? text.normalize("NFD").replace(/[\u0300-\u036f]/g, "")
-        : text
+        : text;
 }
 
 /* format number */
 export function formatNumber(number) {
-    const numberStr = number.toString()
-    const formattedNumber = numberStr.replace(/\B(?=(\d{3})+(?!\d))/g, ".")
-    return formattedNumber
+    const numberStr = number.toString();
+    const formattedNumber = numberStr.replace(/\B(?=(\d{3})+(?!\d))/g, ".");
+    return formattedNumber;
 }
 
 /* runtime */
 export function runtime(seconds) {
-    seconds = Number(seconds)
-    var d = Math.floor(seconds / (3600 * 24))
-    var h = Math.floor((seconds % (3600 * 24)) / 3600)
-    var m = Math.floor((seconds % 3600) / 60)
-    var s = Math.floor(seconds % 60)
-    var dDisplay = d > 0 ? d + (d == 1 ? " day, " : " days, ") : ""
-    var hDisplay = h > 0 ? h + (h == 1 ? " hour, " : " hours, ") : ""
-    var mDisplay = m > 0 ? m + (m == 1 ? " minute, " : " minutes, ") : ""
-    var sDisplay = s > 0 ? s + (s == 1 ? " second" : " seconds") : ""
-    return dDisplay + hDisplay + mDisplay + sDisplay
+    seconds = Number(seconds);
+    var d = Math.floor(seconds / (3600 * 24));
+    var h = Math.floor((seconds % (3600 * 24)) / 3600);
+    var m = Math.floor((seconds % 3600) / 60);
+    var s = Math.floor(seconds % 60);
+    var dDisplay = d > 0 ? d + (d == 1 ? " day, " : " days, ") : "";
+    var hDisplay = h > 0 ? h + (h == 1 ? " hour, " : " hours, ") : "";
+    var mDisplay = m > 0 ? m + (m == 1 ? " minute, " : " minutes, ") : "";
+    var sDisplay = s > 0 ? s + (s == 1 ? " second" : " seconds") : "";
+    return dDisplay + hDisplay + mDisplay + sDisplay;
 }
 
 /* clock string */
 export function clockString(ms) {
-    let h = isNaN(ms) ? "--" : Math.floor(ms / 3600000)
-    let m = isNaN(ms) ? "--" : Math.floor(ms / 60000) % 60
-    let s = isNaN(ms) ? "--" : Math.floor(ms / 1000) % 60
-    return [h, m, s].map(v => v.toString().padStart(2, 0)).join(":")
+    let h = isNaN(ms) ? "--" : Math.floor(ms / 3600000);
+    let m = isNaN(ms) ? "--" : Math.floor(ms / 60000) % 60;
+    let s = isNaN(ms) ? "--" : Math.floor(ms / 1000) % 60;
+    return [h, m, s].map(v => v.toString().padStart(2, 0)).join(":");
 }
 
 /* base64 to buffer */
 export function base64ToBuffer(base) {
     if (/^data:.*?\/.*?base64,/i.test(base))
-        return Buffer.from(base.split`, `[1], "base64")
-    return Buffer.from(base, "base64")
+        return Buffer.from(base.split`, `[1], "base64");
+    return Buffer.from(base, "base64");
 }
 
 /* delay */
 export function delay(ms) {
-    return new Promise(resolve => setTimeout(resolve, ms))
+    return new Promise(resolve => setTimeout(resolve, ms));
 }
 
 /* parse size file */
 export function parseFileSize(input, si = true) {
-    const thresh = si ? 1000 : 1024
+    const thresh = si ? 1000 : 1024;
 
     var validAmount = function (n) {
-        return !isNaN(parseFloat(n)) && isFinite(n)
-    }
+        return !isNaN(parseFloat(n)) && isFinite(n);
+    };
 
     var parsableUnit = function (u) {
-        return u.match(/\D*/).pop() === u
-    }
+        return u.match(/\D*/).pop() === u;
+    };
 
     var incrementBases = {
         2: [
@@ -285,88 +290,88 @@ export function parseFileSize(input, si = true) {
             [["Eb"], 1.25e17],
             [["e", "E", "eb", "EB", "EiB", "Ei", "ei"], 1.0e18]
         ]
-    }
+    };
 
-    var options = arguments[1] || {}
-    var base = parseInt(options.base || 2)
-    var parsed = input.toString().match(/^([0-9.,]*)(?:\s*)?(.*)$/)
-    var amount = parsed[1].replace(",", ".")
-    var unit = parsed[2]
+    var options = arguments[1] || {};
+    var base = parseInt(options.base || 2);
+    var parsed = input.toString().match(/^([0-9.,]*)(?:\s*)?(.*)$/);
+    var amount = parsed[1].replace(",", ".");
+    var unit = parsed[2];
 
     var validUnit = function (sourceUnit) {
-        return sourceUnit === unit
-    }
+        return sourceUnit === unit;
+    };
 
     if (!validAmount(amount) || !parsableUnit(unit)) {
-        return false
+        return false;
     }
-    if (unit === "") return Math.round(Number(amount))
+    if (unit === "") return Math.round(Number(amount));
 
-    var increments = incrementBases[base]
+    var increments = incrementBases[base];
     for (let i = 0; i < increments.length; i++) {
-        let _increment = increments[i]
+        let _increment = increments[i];
 
         if (_increment[0].some(validUnit)) {
-            return Math.round(amount * _increment[1])
+            return Math.round(amount * _increment[1]);
         }
     }
 
-    throw unit + " doesn't appear to be a valid unit"
+    throw unit + " doesn't appear to be a valid unit";
 }
 
 /* format size */
 export function formatSize(bytes, si = true, dp = 2) {
-    const thresh = si ? 1000 : 1024
+    const thresh = si ? 1000 : 1024;
 
     if (Math.abs(bytes) < thresh) {
-        return `${bytes} B`
+        return `${bytes} B`;
     }
 
     const units = si
         ? ["kB", "MB", "GB", "TB", "PB", "EB", "ZB", "YB"]
-        : ["KiB", "MiB", "GiB", "TiB", "PiB", "EiB", "ZiB", "YiB"]
-    let u = -1
-    const r = 10 ** dp
+        : ["KiB", "MiB", "GiB", "TiB", "PiB", "EiB", "ZiB", "YiB"];
+    let u = -1;
+    const r = 10 ** dp;
 
     do {
-        bytes /= thresh
-        ++u
+        bytes /= thresh;
+        ++u;
     } while (
         Math.round(Math.abs(bytes) * r) / r >= thresh &&
         u < units.length - 1
-    )
+    );
 
-    return `${bytes.toFixed(dp)} ${units[u]}`
+    return `${bytes.toFixed(dp)} ${units[u]}`;
 }
 
 /* stream to buffer */
 export async function streamToBuffer(stream) {
-    const chunks = []
+    const chunks = [];
     for await (const chunk of stream) {
-        chunks.push(chunk)
+        chunks.push(chunk);
     }
-    stream.destroy()
-    return Buffer.concat(chunks)
+    stream.destroy();
+    return Buffer.concat(chunks);
 }
 
 /* escape regex */
 export function escapeRegExp(string) {
-    return string.replace(/[.*=+:\-?^${}()|[\]\\]|\s/g, "\\$&")
+    return string.replace(/[.*=+:\-?^${}()|[\]\\]|\s/g, "\\$&");
 }
 
 /* random */
 export function rand(length) {
     const characters =
-        "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789"
-    let result = ""
-    const charactersLength = characters.length
+        "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
+    let result = "";
+    const charactersLength = characters.length;
 
     for (let i = 0; i < length; i++) {
         result += characters.charAt(
             Math.floor(Math.random() * charactersLength)
-        )
+        );
     }
-    return result
+    return result;
 }
 
 /* date */
@@ -384,7 +389,7 @@ export function date(numer, timeZone = "") {
         "Oktober",
         "November",
         "Desember"
-    ]
+    ];
     const myDays = [
         "Minggu",
         "Senin",
@@ -393,25 +398,25 @@ export function date(numer, timeZone = "") {
         "Kamis",
         "Jum'at",
         "Sabtu"
-    ]
-    var tgl = new Date(numer)
+    ];
+    var tgl = new Date(numer);
     if (timeZone) {
-        tgl = new Date(tgl.toLocaleString("en", { timeZone }))
+        tgl = new Date(tgl.toLocaleString("en", { timeZone }));
     }
-    var day = tgl.getDate()
-    var bulan = tgl.getMonth()
-    var thisDay = myDays[tgl.getDay()]
-    var yy = tgl.getYear()
-    var year = yy < 1000 ? yy + 1900 : yy
-    return `${thisDay}, ${day} ${myMonths[bulan]} ${year}`
+    var day = tgl.getDate();
+    var bulan = tgl.getMonth();
+    var thisDay = myDays[tgl.getDay()];
+    var yy = tgl.getYear();
+    var year = yy < 1000 ? yy + 1900 : yy;
+    return `${thisDay}, ${day} ${myMonths[bulan]} ${year}`;
 }
 
 /* time */
 export function time(numer, options = {}) {
-    let format = options.format || "HH:mm"
-    let timeZone = options.timeZone || "Asia/Jakarta"
+    let format = options.format || "HH:mm";
+    let timeZone = options.timeZone || "Asia/Jakarta";
 
-    let date = new Date(numer)
+    let date = new Date(numer);
 
     let hour = date
         .toLocaleString("en-US", {
@@ -419,16 +424,16 @@ export function time(numer, options = {}) {
             hour12: false,
             timeZone
         })
-        .padStart(2, "0")
+        .padStart(2, "0");
 
     let minute = date
         .toLocaleString("en-US", {
             minute: "2-digit",
             timeZone
         })
-        .padStart(2, "0")
+        .padStart(2, "0");
 
-    let formattedTime = `${hour}:${minute}`
+    let formattedTime = `${hour}:${minute}`;
 
     if (format === "HH:mm:ss") {
         let second = date
@@ -436,11 +441,11 @@ export function time(numer, options = {}) {
                 second: "2-digit",
                 timeZone
             })
-            .padStart(2, "0")
-        formattedTime += `:${second}`
+            .padStart(2, "0");
+        formattedTime += `:${second}`;
     }
 
-    return formattedTime
+    return formattedTime;
 }
 
 /* greeting */
@@ -474,16 +479,15 @@ export async function fetchBuffer(string, options = {}) {
                 ...(options.headers ? options.headers : {})
             },
             ...options
-        })
-        const buffer = await streamToBuffer(response.data)
-        const contentDisposition = response.headers["content-disposition"]
-        const filenameMatch = contentDisposition?.match(/filename="(.+?)"/)
-        const filename = filenameMatch ? filenameMatch[1] : null
-        let mime =
-            mimes.lookup(filename) || response.headers["content-type"]
+        });
+        const buffer = await streamToBuffer(response.data);
+        const contentDisposition = response.headers["content-disposition"];
+        const filenameMatch = contentDisposition?.match(/filename="(.+?)"/);
+        const filename = filenameMatch ? filenameMatch[1] : null;
+        let mime = mimes.lookup(filename) || response.headers["content-type"];
         mime = /octet-stream/i.test(mime)
             ? (await fileTypeFromBuffer(buffer))?.mime
-            : mime
+            : mime;
         return {
             data: buffer,
             size: Buffer.byteLength(buffer),
@@ -491,10 +495,10 @@ export async function fetchBuffer(string, options = {}) {
             filename: decodeURIComponent(filename || ""),
             mime,
             ext: mimes.extension(mime)
-        }
+        };
     } else if (fs.existsSync(string) && fs.statSync(string).isFile()) {
-        const data = fs.readFileSync(string)
-        const size = Buffer.byteLength(data)
+        const data = fs.readFileSync(string);
+        const size = Buffer.byteLength(data);
         return {
             data,
             size,
@@ -503,9 +507,9 @@ export async function fetchBuffer(string, options = {}) {
                 mime: "application/octet-stream",
                 ext: ".bin"
             })
-        }
+        };
     } else if (Buffer.isBuffer(string)) {
-        const size = Buffer.byteLength(string)
+        const size = Buffer.byteLength(string);
         return {
             data: string,
             size,
@@ -514,13 +518,13 @@ export async function fetchBuffer(string, options = {}) {
                 mime: "application/octet-stream",
                 ext: ".bin"
             })
-        }
+        };
     } else if (
         /^[a-zA-Z0-9+/]={0,2}$/i.test(string) ||
         /^data:.*?\/.*?base64,/i.test(string)
     ) {
-        const data = base64ToBuffer(string)
-        const size = Buffer.byteLength(data)
+        const data = base64ToBuffer(string);
+        const size = Buffer.byteLength(data);
         return {
             data,
             size,
@@ -529,10 +533,10 @@ export async function fetchBuffer(string, options = {}) {
                 mime: "application/octet-stream",
                 ext: ".bin"
             })
-        }
+        };
     } else {
-        const buffer = Buffer.alloc(20)
-        const size = Buffer.byteLength(buffer)
+        const buffer = Buffer.alloc(20);
+        const size = Buffer.byteLength(buffer);
         return {
             data: buffer,
             size,
@@ -541,76 +545,74 @@ export async function fetchBuffer(string, options = {}) {
                 mime: "application/octet-stream",
                 ext: ".bin"
             })
-        }
+        };
     }
 }
 
 async function downloadFromUrl(url) {
-    let refer
-    if (url.includes('y2mate')) {
-        refer = 'https://www.y2mate.com/en948'
-    } else if (url.includes('apkmirror')) {
-        refer = 'https://www.apkmirror.com'
+    let refer;
+    if (url.includes("y2mate")) {
+        refer = "https://www.y2mate.com/en948";
+    } else if (url.includes("apkmirror")) {
+        refer = "https://www.apkmirror.com";
     }
     const headers = {
-        'user-agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36',
-        'sec-fetch-site': 'same-origin',
-        'Origin': refer ? refer : ''
-    }
+        "user-agent":
+            "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36",
+        "sec-fetch-site": "same-origin",
+        Origin: refer ? refer : ""
+    };
     const response = await axios({
         url,
         method: "GET",
         headers,
         responseType: "arraybuffer"
-    })
-    return Buffer.from(response.data)
+    });
+    return Buffer.from(response.data);
 }
 
 /* get file */
 export async function getFile(PATH, save) {
-    let data
-    let size
-    let mimeType
-    let ext
+    let data;
+    let size;
+    let mimeType;
+    let ext;
 
     if (/^https?:\/\//i.test(PATH)) {
         // Jika PATH adalah URL
-        data = await downloadFromUrl(PATH)
-        size = Buffer.byteLength(data)
-        const fileInfo = (await fileTypeFromBuffer(data)) || {}
-        mimeType = fileInfo.mime || "application/octet-stream"
-        ext = fileInfo.ext || mimes.extension(mimeType) || "bin"
+        data = await downloadFromUrl(PATH);
+        size = Buffer.byteLength(data);
+        const fileInfo = (await fileTypeFromBuffer(data)) || {};
+        mimeType = fileInfo.mime || "application/octet-stream";
+        ext = fileInfo.ext || mimes.extension(mimeType) || "bin";
     } else if (Buffer.isBuffer(PATH)) {
         // Jika PATH adalah buffer
-        data = PATH
-        size = Buffer.byteLength(data)
-        const fileInfo = (await fileTypeFromBuffer(data)) || {}
-        mimeType = fileInfo.mime || "application/octet-stream"
-        ext = fileInfo.ext || "bin"
+        data = PATH;
+        size = Buffer.byteLength(data);
+        const fileInfo = (await fileTypeFromBuffer(data)) || {};
+        mimeType = fileInfo.mime || "application/octet-stream";
+        ext = fileInfo.ext || "bin";
     } else if (fs.existsSync(PATH) && fs.statSync(PATH).isFile()) {
         // Jika PATH adalah path ke file lokal
-        data = fs.readFileSync(PATH)
-        size = Buffer.byteLength(data)
+        data = fs.readFileSync(PATH);
+        size = Buffer.byteLength(data);
         mimeType =
             mimes.lookup(PATH) ||
             (await fileTypeFromBuffer(data))?.mime ||
-            "application/octet-stream"
-        ext =
-            path.extname(PATH).slice(1) ||
-            mimes.extension(mimeType) ||
-            "bin"
+            "application/octet-stream";
+        ext = path.extname(PATH).slice(1) || mimes.extension(mimeType) || "bin";
     } else {
         throw new Error(
             "Invalid input: PATH harus berupa URL, buffer, atau path ke file lokal yang valid"
-        )
+        );
     }
 
-    let filename = `myfile-${Date.now()}.${ext}`
+    let filename = `myfile-${Date.now()}.${ext}`;
 
     if (data && save) {
-        const savePath = path.join(process.cwd(), "temp", filename)
-        await fs.promises.writeFile(savePath, data)
-        filename = savePath
+        const savePath = path.join(process.cwd(), "temp", filename);
+        await fs.promises.writeFile(savePath, data);
+        filename = savePath;
     }
 
     return {
@@ -620,7 +622,7 @@ export async function getFile(PATH, save) {
         sizen: size,
         mime: mimeType,
         ext
-    }
+    };
 }
 
 /* fetch json */
@@ -630,32 +632,32 @@ export async function fetchJson(url, options = {}) {
             Accept: "application/json, text/plain, */*",
             Priority: "u=0, i",
             "User-Agent": randomUA(),
-            "family": 4,
+            family: 4,
             ...(options.headers ? options.headers : {})
         },
         responseType: "json",
         timeout: 60 * 1000 * 15, // timeout 15 minutes
         ...(options && delete options.headers && options)
-    })
+    });
 
-    return data
+    return data;
 }
 
 /* translate */
 export async function translate(query = "", lang) {
-    if (!query.trim()) return ""
-    const url = new URL("https://translate.googleapis.com/translate_a/single")
-    url.searchParams.append("client", "gtx")
-    url.searchParams.append("sl", "auto")
-    url.searchParams.append("dt", "t")
-    url.searchParams.append("tl", lang)
-    url.searchParams.append("q", query)
-    const response = await fetch(url.href)
-    const data = await response.json()
+    if (!query.trim()) return "";
+    const url = new URL("https://translate.googleapis.com/translate_a/single");
+    url.searchParams.append("client", "gtx");
+    url.searchParams.append("sl", "auto");
+    url.searchParams.append("dt", "t");
+    url.searchParams.append("tl", lang);
+    url.searchParams.append("q", query);
+    const response = await fetch(url.href);
+    const data = await response.json();
     if (data) {
-        return [data[0].map((item) => item[0].trim()).join("\n"), data[2]][0]
+        return [data[0].map(item => item[0].trim()).join("\n"), data[2]][0];
     } else {
-        return ""
+        return "";
     }
 }
 
@@ -665,7 +667,7 @@ async function imageToWebp(fileBuffer) {
         const formData = new FormData();
         formData.append("File", fileBuffer, {
             filename: "file.ai",
-            contentType: "application/postscript",
+            contentType: "application/postscript"
         });
         formData.append("StoreFile", "true");
 
@@ -675,9 +677,9 @@ async function imageToWebp(fileBuffer) {
             {
                 headers: {
                     Authorization: `Bearer secret_uxb1s4AjYo0eDZre`,
-                    ...formData.getHeaders(),
+                    ...formData.getHeaders()
                 },
-                responseType: "arraybuffer", // Mendapatkan hasil dalam bentuk buffer
+                responseType: "arraybuffer" // Mendapatkan hasil dalam bentuk buffer
             }
         );
 
@@ -694,74 +696,72 @@ async function imageToWebp(fileBuffer) {
 
 /* package sticker */
 export async function writeExif(media, metadata = {}, gif = false) {
-    let vMedia
+    let vMedia;
     if (/webp/.test(media.mime)) {
-        console.log(`[WRITE EXIF] WEBP DETECTED`)
-        vMedia = media.data
+        console.log(`[WRITE EXIF] WEBP DETECTED`);
+        vMedia = media.data;
     } else if (/image/.test(media.mime)) {
-        console.log(`[WRITE EXIF] IMAGE DETECTED`)
-      //  vMedia = await imageToWebp(media)
-      vMedia = media.data
+        console.log(`[WRITE EXIF] IMAGE DETECTED`);
+        //  vMedia = await imageToWebp(media)
+        vMedia = media.data;
     } else if (/video/.test(media.mime)) {
-        console.log(`[WRITE EXIF] VIDEO DETECTED`)
+        console.log(`[WRITE EXIF] VIDEO DETECTED`);
         // vMedia = await videoToWebp(media)
     }
 
-    const tmpFile = path.join(
-        process.cwd(), "temp",
-        `trash-${rand(6)}.webp`)
+    const tmpFile = path.join(process.cwd(), "temp", `trash-${rand(6)}.webp`);
     gif
         ? fs.writeFileSync(tmpFile, media.data)
-        : fs.writeFileSync(tmpFile, vMedia)
+        : fs.writeFileSync(tmpFile, vMedia);
 
     const json = {
         "sticker-pack-id": "https://github.com/amiruldev20",
         "sticker-pack-name": metadata?.wm || "MyWA BOT",
         emojis: metadata?.emot || ["😋", "😎"]
-    }
+    };
 
     const exifAttr = Buffer.from([
         0x49, 0x49, 0x2a, 0x00, 0x08, 0x00, 0x00, 0x00, 0x01, 0x00, 0x41, 0x57,
         0x07, 0x00, 0x00, 0x00, 0x00, 0x00, 0x16, 0x00, 0x00, 0x00
-    ])
-    const jsonBuff = Buffer.from(JSON.stringify(json), "utf-8")
-    const exif = Buffer.concat([exifAttr, jsonBuff])
-    exif.writeUIntLE(jsonBuff.length, 14, 4)
+    ]);
+    const jsonBuff = Buffer.from(JSON.stringify(json), "utf-8");
+    const exif = Buffer.concat([exifAttr, jsonBuff]);
+    exif.writeUIntLE(jsonBuff.length, 14, 4);
 
-    const exifFile = path.join(
-        process.cwd(),
-        "temp", `exif-${rand(6)}.exif`)
-    fs.writeFileSync(exifFile, exif)
+    const exifFile = path.join(process.cwd(), "temp", `exif-${rand(6)}.exif`);
+    fs.writeFileSync(exifFile, exif);
 
     const outputExifFile = path.join(
         process.cwd(),
-        "temp", `output-${rand(6)}.webp`)
+        "temp",
+        `output-${rand(6)}.webp`
+    );
 
     try {
         await new Promise((resolve, reject) => {
             exec(
                 `webpmux -set exif ${exifFile} ${tmpFile} -o ${outputExifFile}`,
-                (error) => {
+                error => {
                     if (error) {
-                        reject(error)
+                        reject(error);
                     } else {
-                        resolve(true)
+                        resolve(true);
                     }
                 }
-            )
-        })
+            );
+        });
 
-        const buff = fs.readFileSync(outputExifFile)
-        await fs.promises.unlink(tmpFile)
-        await fs.promises.unlink(exifFile)
-        await fs.promises.unlink(outputExifFile)
+        const buff = fs.readFileSync(outputExifFile);
+        await fs.promises.unlink(tmpFile);
+        await fs.promises.unlink(exifFile);
+        await fs.promises.unlink(outputExifFile);
 
-        return buff
+        return buff;
     } catch (e) {
-        fs.existsSync(tmpFile) && (await fs.promises.unlink(tmpFile))
-        fs.existsSync(exifFile) && (await fs.promises.unlink(exifFile))
+        fs.existsSync(tmpFile) && (await fs.promises.unlink(tmpFile));
+        fs.existsSync(exifFile) && (await fs.promises.unlink(exifFile));
         fs.existsSync(outputExifFile) &&
-            (await fs.promises.unlink(outputExifFile))
-        throw e
+            (await fs.promises.unlink(outputExifFile));
+        throw e;
     }
 }
