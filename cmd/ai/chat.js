@@ -12,7 +12,7 @@ export default handler => {
         run: async (m, { args }) => {
             const prompt = args;
 
-            await fs.writeFile("filebaru.json", args);
+            await fs.writeFile("filebaru.json", `${args}`);
 
             return m.reply(`ini dia ${prompt.toString()}`);
             if (!prompt) {
