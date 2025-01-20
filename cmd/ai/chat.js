@@ -238,8 +238,7 @@ ${getFeaturesList(cmds)} akan diisi dengan fitur-fitur yang tersedia.`
                 const chatCompletion = await groq.chat.completions.create({
                     messages: context,
                     model: "llama-3.3-70b-versatile", // Model yang digunakan
-                    temperature: 0.8,
-                    max_completion_tokens: 1000
+                    temperature: 0.8
                 });
 
                 clearInterval(loadingInterval); // Hentikan interval loading setelah mendapatkan jawaban
@@ -266,12 +265,16 @@ ${getFeaturesList(cmds)} akan diisi dengan fitur-fitur yang tersedia.`
                 }
             } catch (error) {
                 console.error("Error:", error);
+                clearInterval(loadingInterval);
                 // Ganti pesan loading terakhir dengan pesan error
                 await sock.sendMessage(m.from, {
                     text: "Waduh, ada masalah waktu proses pesanmu. Coba lagi nanti ya.",
                     edit: loadingMessage.key
                 });
-            }
+            } finally {
+    // Hentikan interval loading jika belum dihentikan
+    if (loadingInterval) clearInterval(loadingInterval);
+}
         }
     });
 };
