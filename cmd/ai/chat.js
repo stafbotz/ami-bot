@@ -10,7 +10,7 @@ export default handler => {
         desc: "Chat with Ami AI using GroqCloud",
         run: async (m, { args }) => {
             const prompt = args;
-            return m.reply(`ini dia ${JSON.stringify(prompt})`);
+            return m.reply(`ini dia ${JSON.stringify(prompt)}`);
             if (!prompt) {
                 return m.reply(
                     "Ketik pertanyaan atau pesan yang ingin kamu tanyakan ke Ami AI."
