@@ -10,7 +10,7 @@ export default {
     db: {
         local: "mywadb.json",
         mongo: "url"
-    }
+    },
     
     groqApiKey: "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",
     owner: ["6281360190018"],
