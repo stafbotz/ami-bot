@@ -12,7 +12,7 @@ export default {
         mongo: "url"
     },
     
-    groqApiKey: "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",
+    groqApiKey: "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",
     owner: ["6281360190018"],
     typedb: "json", // use json / mongo
 }
