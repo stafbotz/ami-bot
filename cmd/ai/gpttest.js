@@ -1,8 +1,13 @@
 import OpenAI from "openai";
-import { readUserContext, writeUserContext } from "../../system/db/contextProvider.js"; // Import untuk mengelola konteks pengguna
+import {
+    readUserContext,
+    writeUserContext
+} from "../../system/db/contextProvider.js"; // Import untuk mengelola konteks pengguna
 import setting from "../../setting.js";
 
-const openai = new OpenAI({ apiKey: "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" });
+const openai = new OpenAI({
+    apiKey: "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"
+});
 
 export default handler => {
     handler.reg({
@@ -42,7 +47,7 @@ Kamu adalah GPT AI yang ramah dan informatif. Kamu sedang berbicara dengan pengg
 # Gaya Bahasa
 - Gunakan bahasa santai dan ramah.
 - Sampaikan informasi dengan emoji jika relevan.
-- Hindari istilah teknis yang rumit kecuali diminta secara eksplisit.`,
+- Hindari istilah teknis yang rumit kecuali diminta secara eksplisit.`
                 },
                 ...userContext.history // Tambahkan sejarah percakapan pengguna
             ];
@@ -51,7 +56,7 @@ Kamu adalah GPT AI yang ramah dan informatif. Kamu sedang berbicara dengan pengg
             const loadingSymbols = [
                 "── .✦ GPT sedang memikirkan jawabannya ...",
                 "── .✦ GPT sedang mencari informasi ...",
-                "── .✦ GPT hampir selesai ...",
+                "── .✦ GPT hampir selesai ..."
             ];
 
             let loadingMessage = await sock.sendMessage(m.from, {
@@ -73,8 +78,8 @@ Kamu adalah GPT AI yang ramah dan informatif. Kamu sedang berbicara dengan pengg
 
             try {
                 const completion = await openai.chat.completions.create({
-                    model: "gpt-4o-mini", // Model yang digunakan
-                    messages: context,
+                    model: "o1", // Model yang digunakan
+                    messages: [{ role: "user", content: m.text }],
                     max_tokens: 1000,
                     temperature: 0.8
                 });
