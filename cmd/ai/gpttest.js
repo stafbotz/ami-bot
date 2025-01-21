@@ -78,7 +78,7 @@ Kamu adalah GPT AI yang ramah dan informatif. Kamu sedang berbicara dengan pengg
 
             try {
                 const completion = await openai.chat.completions.create({
-                    model: "chatgpt-4o-latest", // Model yang digunakan
+                    model: "gpt-4o", // Model yang digunakan
                     messages: [{ role: "user", content: m.text }],
                     max_tokens: 1000,
                     temperature: 0.8
