@@ -2,7 +2,7 @@ import fs from "fs";
 import Groq from "groq-sdk";
 import setting from "../../setting.js";
 
-const groq = new Groq({ apiKey: setting.groqApiKey() });
+const groq = new Groq({ apiKey: setting.groqApiKey });
 
 const getFeaturesList = cmds => {
     return Array.from(cmds)
