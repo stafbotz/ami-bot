@@ -9,20 +9,6 @@ import { date, time, getGreeting } from "../../system/function.js";
 
 const groq = new Groq({ apiKey: setting.groqApiKey });
 
-// Fungsi untuk mendeteksi fitur dinamis dari cmds
-const detectFeature = (text, cmds) => {
-    for (const [command, details] of cmds) {
-        // Periksa apakah teks mengandung nama command atau kata kunci deskripsi
-        if (
-            text.includes(command) ||
-            details.desc.toLowerCase().includes("download")
-        ) {
-            return command; // Return nama command yang cocok
-        }
-    }
-    return null; // Jika tidak ada fitur yang cocok
-};
-
 const getFeaturesList = cmds => {
     const commandGroups = {};
     const tagEmojis = {
@@ -78,15 +64,7 @@ export default handler => {
 
             // Tambahkan pesan user ke konteks
             userContext.history.push({ role: "user", content: m.text });
-            userContext.history = userContext.history.slice(-15); // Simpan maksimal 15 pesan terakhir
-
-            // Deteksi fitur dinamis
-            const feature = detectFeature(m.text, cmds);
-
-            // Ekstraksi URL dari teks
-            const extractUrls = text =>
-                text.match(/(https?:\/\/[^\s]+)/gi) || [];
-            const urls = extractUrls(m.text);
+            userContext.history = userContext.history.slice(-10); // Simpan maksimal 15 pesan terakhir
 
             // Ambil waktu real-time
             const timeZone = "Asia/Jakarta";
@@ -98,6 +76,7 @@ export default handler => {
                 {
                     role: "system",
                     content: `
+                    
 # Kepribadian Ami
 Kamu adalah Ami, teman baik yang:
 - Selalu tenang dan kalem dalam situasi apapun
@@ -215,6 +194,12 @@ A: "Sama-sama! 🌟 Aku selalu ada kok kalo kamu butuh temen ngobrol"
   - "sih"
   - "nih"
   - "loh"
+
+# Tugas Utama Kamu Adalah:
+1. Analisis teks pengguna dan tentukan fitur apa yang diminta. 
+2. Keluarkan nama fitur dalam format berikut: "FITUR:<nama_fitur>"
+3. Jika tidak yakin, keluarkan: "FITUR:tidak_diketahui".
+4. Kamu harus membedakan apakah pengguna meminta fitur atau hanya percakapan, jika percakapan, ikuti panduan yang ada.
 
 # Aturan Penting Menjawab!
 INGAT:
@@ -365,7 +350,7 @@ Kamu adalah Ami Bot, asisten AI ramah yang dibuat oleh Renshu Visualz. Kamu haru
                     });
                     writeUserContext(userId, userContext); // Simpan konteks ke file
 
-                    // Jika ada fitur dan URL, jalankan fitur otomatis
+                   /* // Jika ada fitur dan URL, jalankan fitur otomatis
                     if (feature && urls.length > 0) {
                         const mockMessage = {
                             ...m,
@@ -373,7 +358,7 @@ Kamu adalah Ami Bot, asisten AI ramah yang dibuat oleh Renshu Visualz. Kamu haru
                         };
                         return m.reply(`.${feature} ${urls[0]}`);
                         await execute(mockMessage, sock, db, func, color, util);
-                    }
+                    }*/
 
                     // Ganti pesan loading terakhir dengan jawaban AI
                     await sock.sendMessage(m.from, {
