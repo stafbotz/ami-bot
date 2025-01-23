@@ -19,15 +19,20 @@ const getFeaturesList = cmds => {
 
 export default handler => {
     handler.reg({
-        cmd: ["ami", "chat"],
+        cmd: ["testai", "cp"],
         tags: "ai",
         desc: "Chat with Ami AI",
         run: async (m, { cmds, sock, db }) => {
             const userId = m.sender;
-            const user = db.users[userId] || { name: "Pengguna", birth: "Tidak diketahui" };
+            const user = db.users[userId] || {
+                name: "Pengguna",
+                birth: "Tidak diketahui"
+            };
 
             if (!m.text) {
-                return m.reply("Ketik sesuatu untuk berbicara dengan Ami AI. 😊");
+                return m.reply(
+                    "Ketik sesuatu untuk berbicara dengan Ami AI. 😊"
+                );
             }
 
             const promptFeatures = `
@@ -43,12 +48,12 @@ Jangan menjawab apapun selain format di atas.
 `.trim();
 
             // Buat konteks AI
-            const context = [
-                { role: "system", content: promptFeatures }
-            ];
+            const context = [{ role: "system", content: promptFeatures }];
 
             // Loading awal
-            let loadingMessage = await sock.sendMessage(m.from, { text: "── Ami lagi mikir... 🤔" });
+            let loadingMessage = await sock.sendMessage(m.from, {
+                text: "── Ami lagi mikir... 🤔"
+            });
 
             try {
                 // Panggil API Groq
@@ -59,14 +64,15 @@ Jangan menjawab apapun selain format di atas.
                     max_completion_tokens: 100
                 });
 
-                const response = chatCompletion.choices[0]?.message?.content.trim();
+                const response =
+                    chatCompletion.choices[0]?.message?.content.trim();
                 if (!response || !response.startsWith("FITUR:")) {
                     throw new Error("Output AI tidak valid");
                 }
 
                 // Ekstraksi nama fitur dari respons
                 const detectedFeature = response.split("FITUR:")[1].trim();
-                return m.reply(detectedFeature)
+                return m.reply(detectedFeature);
                 if (detectedFeature === "tidak_diketahui") {
                     // Jika AI tidak yakin
                     await sock.sendMessage(m.from, {
