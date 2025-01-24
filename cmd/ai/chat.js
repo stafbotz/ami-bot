@@ -47,7 +47,7 @@ const getFeaturesList = cmds => {
 export default handler => {
     handler.reg({
         cmd: ["ami", "chat"],
-        noPrefix = false,
+        noPrefix: false,
         tags: "ai",
         desc: "Chat with Ami AI",
         run: async (m, { cmds, sock, db }) => {
