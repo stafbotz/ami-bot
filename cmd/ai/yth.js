@@ -151,7 +151,7 @@ Gunakan informasi ini untuk menyapa dan menjawab pengguna:
             ];
 
             // Kirim permintaan ke model AI dengan konteks yang relevan
-            const response = await groq.complete({
+            const response = await groq.chat.completions.create({
                 prompt: context,
                 maxTokens: 150,
                 temperature: 0.7,
