@@ -154,10 +154,7 @@ Gunakan informasi ini untuk menyapa dan menjawab pengguna:
             const response = await groq.chat.completions.create({
                 prompt: context,
                 maxTokens: 150,
-                temperature: 0.7,
-                topP: 0.9,
-                frequencyPenalty: 0,
-                presencePenalty: 0
+                temperature: 0.7
             });
 
             // Tambahkan respons AI ke konteks
