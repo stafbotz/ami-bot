@@ -1,10 +1,13 @@
 import fs from "fs";
 import natural from "natural";
+import Groq from "groq-sdk";
 import {
     readUserContext,
     writeUserContext
 } from "../../system/db/contextProvider.js";
 import { date, time, getGreeting } from "../../system/function.js";
+import setting from "../../setting.js";
+const groq = new Groq({ apiKey: setting.groqApiKey });
 
 const tokenizer = new natural.WordTokenizer();
 const tfidf = new natural.TfIdf();
@@ -64,7 +67,8 @@ export default handler => {
                 userContext.history,
                 m.text
             );
-
+            
+            m.reply(JSON.stringify(...relevantContext))
             // Ambil waktu real-time
             const timeZone = "Asia/Jakarta";
             const currentTime = time(Date.now(), { timeZone });
