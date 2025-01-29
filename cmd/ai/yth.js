@@ -103,7 +103,7 @@ export default handler => {
                 m.text
             );
 
-            m.reply(...relevantContext);
+            
             // Ambil waktu real-time
             const timeZone = "Asia/Jakarta";
             const currentTime = time(Date.now(), { timeZone });
