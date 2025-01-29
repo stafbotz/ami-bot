@@ -22,7 +22,11 @@ const cosineSimilarity = (vecA, vecB) => {
 };
 
 // Fungsi untuk memilih konteks yang paling relevan
-const selectRelevantContext = async (history, currentMessage, maxTokens = 1500) => {
+const selectRelevantContext = async (
+    history,
+    currentMessage,
+    maxTokens = 1500
+) => {
     if (!history.length) return [];
 
     // Ambil embeddings untuk pesan pengguna
@@ -40,7 +44,10 @@ const selectRelevantContext = async (history, currentMessage, maxTokens = 1500) 
             input: message.content
         });
 
-        const similarity = cosineSimilarity(userEmbedding.data[0].embedding, messageEmbedding.data[0].embedding);
+        const similarity = cosineSimilarity(
+            userEmbedding.data[0].embedding,
+            messageEmbedding.data[0].embedding
+        );
 
         // Tambahkan pesan ke daftar jika relevansi tinggi
         if (similarity > 0.65) {
@@ -92,7 +99,7 @@ export default handler => {
 
             // Pilih konteks yang relevan
             const relevantContext = selectRelevantContext(
-                userContext.history,
+                ...userContext.history,
                 m.text
             );
 
