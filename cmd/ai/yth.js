@@ -149,10 +149,10 @@ Gunakan informasi ini untuk menyapa dan menjawab pengguna:
                 relevantContext,
                 { role: "user", content: m.text }
             ];
-           m.reply(JSON.stringify(relevantContext))
+            m.reply(JSON.stringify(relevantContext));
             // Kirim permintaan ke model AI dengan konteks yang relevan
             const response = await groq.chat.completions.create({
-                prompt: context,
+                messages: context,
                 max_tokens: 150,
                 temperature: 0.7
             });
