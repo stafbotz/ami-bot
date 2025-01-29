@@ -239,7 +239,7 @@ Hal yang Harus Diingat
                     temperature: 0.8
                 });
 
-                clearInterval(loadingInterval); // Hentikan interval loading setelah mendapatkan jawaban
+                await clearInterval(loadingInterval); // Hentikan interval loading setelah mendapatkan jawaban
 
                 const response = chatCompletion.choices[0]?.message?.content;
                 if (response) {
