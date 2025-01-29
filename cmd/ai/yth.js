@@ -1,7 +1,10 @@
-import fs from 'fs';
-import natural from 'natural';
-import { readUserContext, writeUserContext } from '../../system/db/contextProvider.js';
-import { date, time, getGreeting } from '../../system/function.js';
+import fs from "fs";
+import natural from "natural";
+import {
+    readUserContext,
+    writeUserContext
+} from "../../system/db/contextProvider.js";
+import { date, time, getGreeting } from "../../system/function.js";
 
 const tokenizer = new natural.WordTokenizer();
 const tfidf = new natural.TfIdf();
@@ -11,7 +14,7 @@ const selectRelevantContext = (history, currentMessage, maxTokens = 1500) => {
     let tokenCount = 0;
 
     // Tambahkan semua pesan dalam riwayat ke dalam TfIdf
-    history.forEach((message) => {
+    history.forEach(message => {
         tfidf.addDocument(message.content);
     });
 
@@ -30,38 +33,47 @@ const selectRelevantContext = (history, currentMessage, maxTokens = 1500) => {
     relevantMessages.sort((a, b) => b.score - a.score);
 
     // Kembalikan hanya konten pesan yang relevan
-    return relevantMessages.map((item) => item.message);
+    return relevantMessages.map(item => item.message);
 };
 
 export default handler => {
     handler.reg({
-        cmd: ['ami', 'chat'],
+        cmd: ["alok", "cd"],
         noPrefix: true,
-        tags: 'ai',
-        desc: 'Chat with Ami AI',
+        tags: "ai",
+        desc: "Chat with Ami AI",
         run: async (m, { cmds, sock, db }) => {
             const userId = m.sender;
             const userContext = readUserContext(userId);
-            const user = db.users[userId] || { name: 'Pengguna', birth: 'Tidak diketahui' };
+            const user = db.users[userId] || {
+                name: "Pengguna",
+                birth: "Tidak diketahui"
+            };
 
-            if (!m.text) return m.reply('Ketik pertanyaan atau pesan yang ingin kamu tanyakan ke Ami AI.');
+            if (!m.text)
+                return m.reply(
+                    "Ketik pertanyaan atau pesan yang ingin kamu tanyakan ke Ami AI."
+                );
 
             // Tambahkan pesan user ke konteks
-            userContext.history.push({ role: 'user', content: m.text });
+            userContext.history.push({ role: "user", content: m.text });
             writeUserContext(userId, userContext);
 
             // Pilih konteks yang relevan
-            const relevantContext = selectRelevantContext(userContext.history, m.text);
+            const relevantContext = selectRelevantContext(
+                userContext.history,
+                m.text
+            );
 
             // Ambil waktu real-time
-            const timeZone = 'Asia/Jakarta';
+            const timeZone = "Asia/Jakarta";
             const currentTime = time(Date.now(), { timeZone });
             const currentDate = date(Date.now(), timeZone);
             const greeting = getGreeting(timeZone);
 
             const context = [
                 {
-                    role: 'system',
+                    role: "system",
                     content: `
 # Kepribadian Ami
 Kamu adalah Ami, teman baik yang:
@@ -97,7 +109,7 @@ Gunakan informasi ini untuk menyapa dan menjawab pengguna:
                 `
                 },
                 ...relevantContext,
-                { role: 'user', content: m.text }
+                { role: "user", content: m.text }
             ];
 
             // Kirim permintaan ke model AI dengan konteks yang relevan
@@ -111,7 +123,7 @@ Gunakan informasi ini untuk menyapa dan menjawab pengguna:
             });
 
             // Tambahkan respons AI ke konteks
-            userContext.history.push({ role: 'assistant', content: response });
+            userContext.history.push({ role: "assistant", content: response });
             writeUserContext(userId, userContext);
 
             // Kirim respons ke pengguna
