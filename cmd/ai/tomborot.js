@@ -66,12 +66,14 @@ Jangan menjawab apapun selain format di atas.
 
                 const response =
                     chatCompletion.choices[0]?.message?.content.trim();
+                    
+                  return m.reply(response);
                 if (!response || !response.startsWith("FITUR:")) {
                     throw new Error("Output AI tidak valid");
                 }
 
                 // Ekstraksi nama fitur dari respons
-                return m.reply(response);
+                
                 const detectedFeature = response.split("FITUR:")[1].trim();
                 return m.reply(detectedFeature);
                 if (detectedFeature === "tidak_diketahui") {
