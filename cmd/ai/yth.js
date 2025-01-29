@@ -1,5 +1,5 @@
 import fs from "fs";
-import natural from "natural";
+import OpenAI from "openai";
 import Groq from "groq-sdk";
 import {
     readUserContext,
@@ -9,34 +9,62 @@ import { date, time, getGreeting } from "../../system/function.js";
 import setting from "../../setting.js";
 const groq = new Groq({ apiKey: setting.groqApiKey });
 
-const tokenizer = new natural.WordTokenizer();
-const tfidf = new natural.TfIdf();
+const openai = new OpenAI({
+    apiKey: "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"
+});
 
-const selectRelevantContext = (history, currentMessage, maxTokens = 1500) => {
+// Fungsi untuk menghitung kemiripan vektor embeddings
+const cosineSimilarity = (vecA, vecB) => {
+    const dotProduct = vecA.reduce((sum, a, i) => sum + a * vecB[i], 0);
+    const magnitudeA = Math.sqrt(vecA.reduce((sum, a) => sum + a * a, 0));
+    const magnitudeB = Math.sqrt(vecB.reduce((sum, b) => sum + b * b, 0));
+    return dotProduct / (magnitudeA * magnitudeB);
+};
+
+// Fungsi untuk memilih konteks yang paling relevan
+const selectRelevantContext = async (history, currentMessage, maxTokens = 1500) => {
+    if (!history.length) return [];
+
+    // Ambil embeddings untuk pesan pengguna
+    const userEmbedding = await openai.embeddings.create({
+        model: "text-embedding-ada-002",
+        input: currentMessage
+    });
+
     const relevantMessages = [];
-    let tokenCount = 0;
 
-    // Tambahkan semua pesan dalam riwayat ke dalam TfIdf
-    history.forEach(message => {
-        tfidf.addDocument(message.content);
-    });
+    // Hitung similarity dengan semua pesan dalam history
+    for (const message of history) {
+        const messageEmbedding = await openai.embeddings.create({
+            model: "text-embedding-ada-002",
+            input: message.content
+        });
 
-    // Hitung skor TfIdf untuk pesan saat ini terhadap setiap pesan dalam riwayat
-    tfidf.tfidfs(currentMessage, (i, measure) => {
-        const message = history[i];
-        const messageTokens = tokenizer.tokenize(message.content).length;
+        const similarity = cosineSimilarity(userEmbedding.data[0].embedding, messageEmbedding.data[0].embedding);
 
-        if (tokenCount + messageTokens <= maxTokens) {
-            relevantMessages.push({ message, score: measure });
-            tokenCount += messageTokens;
+        // Tambahkan pesan ke daftar jika relevansi tinggi
+        if (similarity > 0.65) {
+            relevantMessages.push({ message, similarity });
         }
-    });
+    }
 
-    // Urutkan pesan berdasarkan skor relevansi
-    relevantMessages.sort((a, b) => b.score - a.score);
+    // Urutkan berdasarkan relevansi tertinggi
+    relevantMessages.sort((a, b) => b.similarity - a.similarity);
 
-    // Kembalikan hanya konten pesan yang relevan
-    return relevantMessages.map(item => item.message);
+    // Pilih pesan yang total tokennya nggak melebihi batas
+    let tokenCount = 0;
+    const selectedMessages = [];
+    for (const { message } of relevantMessages) {
+        const messageTokens = message.content.split(/\s+/).length; // Perkiraan jumlah token
+        if (tokenCount + messageTokens <= maxTokens) {
+            selectedMessages.push(message);
+            tokenCount += messageTokens;
+        } else {
+            break;
+        }
+    }
+
+    return selectedMessages;
 };
 
 export default handler => {
@@ -67,8 +95,8 @@ export default handler => {
                 userContext.history,
                 m.text
             );
-            
-            m.reply(JSON.stringify(...relevantContext))
+
+            m.reply(JSON.stringify(...relevantContext));
             // Ambil waktu real-time
             const timeZone = "Asia/Jakarta";
             const currentTime = time(Date.now(), { timeZone });
