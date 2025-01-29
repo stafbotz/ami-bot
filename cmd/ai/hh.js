@@ -2,6 +2,6 @@ import { date, time, getGreeting } from "../../system/function.js";
 
 export default function (handler) {
     handler.addFunction(async (m, { sock, db }) => {
-        if (m.body == "halop") return m.reply(`halo apa ${time}`);
+        if (m.body == "halop") return m.reply(`halo apa ${time(Date.now(), { timeZone: "Asia/Jakarta" })}`);
     });
 }
