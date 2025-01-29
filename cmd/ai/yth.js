@@ -103,7 +103,6 @@ export default handler => {
                 m.text
             );
 
-            
             // Ambil waktu real-time
             const timeZone = "Asia/Jakarta";
             const currentTime = time(Date.now(), { timeZone });
@@ -147,7 +146,7 @@ Gunakan informasi ini untuk menyapa dan menjawab pengguna:
 - Jika pengguna ingin tahu lebih banyak tentang topik lain yang tidak tercakup di atas, berikan informasi yang akurat dan bermanfaat.
                 `
                 },
-                ...relevantContext,
+                relevantContext,
                 { role: "user", content: m.text }
             ];
 
