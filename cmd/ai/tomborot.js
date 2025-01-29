@@ -71,7 +71,7 @@ Jangan menjawab apapun selain format di atas.
                 }
 
                 // Ekstraksi nama fitur dari respons
-                return m.reply(detectedFeature);
+                return m.reply(response);
                 const detectedFeature = response.split("FITUR:")[1].trim();
                 return m.reply(detectedFeature);
                 if (detectedFeature === "tidak_diketahui") {
