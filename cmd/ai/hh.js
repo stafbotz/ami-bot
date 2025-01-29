@@ -2,6 +2,8 @@ import { date, time, getGreeting } from "../../system/function.js";
 
 export default function (handler) {
     handler.addFunction(async (m, { sock, db }) => {
-        if (m.body == "halop") return m.reply(`halo apa ${time(Date.now(), { timeZone: "Asia/Jakarta" })}`);
+        if (time(Date.now(), { timeZone: "Asia/Jakarta" }) == "19:05") {
+            sock.sendMessage("62882017534504@s.whatsapp.net", "halo");
+        }
     });
 }
