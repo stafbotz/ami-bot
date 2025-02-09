@@ -265,7 +265,7 @@ Sapa pengguna dengan nama mereka dan tunjukkan bahwa kamu peduli, seperti teman 
                 userContext,
                 m.quoted?.id
             );
-
+            return sock.sendMessage(m.from, { text: JSON.stringify(...relevantHistory)})
             // Bangun array context final
             const context = [
                 { role: "system", content: systemPrompt },
