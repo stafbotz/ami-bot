@@ -1,11 +1,50 @@
 import fs from "fs";
 import Groq from "groq-sdk";
 import setting from "../../setting.js";
-import { readUserContext, writeUserContext } from "../../system/db/contextProvider.js";
+import {
+    readUserContext,
+    writeUserContext
+} from "../../system/db/contextProvider.js";
 import { date, time, getGreeting } from "../../system/function.js";
 
 // Inisialisasi Groq
 const groq = new Groq({ apiKey: setting.groqApiKey });
+
+// Contoh pembuatan daftar fitur (tidak berubah banyak dari semula)
+const getFeaturesList = cmds => {
+    const commandGroups = {};
+    const tagEmojis = {
+        main: "📜",
+        convert: "🔄",
+        ai: "🤖",
+        downloader: "📥",
+        group: "👥",
+        channel: "📣",
+        owner: "🛠",
+        tools: "🛠",
+        anime: "🍥",
+        lainnya: "📌"
+    };
+
+    for (const [command, details] of cmds) {
+        const tag = details.tags || "lainnya";
+        if (!commandGroups[tag]) commandGroups[tag] = [];
+        const commandText = `*.${command}* - ${details.desc}`;
+        if (!commandGroups[tag].includes(commandText)) {
+            commandGroups[tag].push(commandText);
+        }
+    }
+
+    let features = "Berikut adalah fitur yang tersedia:\n\n";
+    for (const [tag, commands] of Object.entries(commandGroups)) {
+        const emoji = tagEmojis[tag] || tagEmojis["lainnya"];
+        features += `${emoji} *${tag.toUpperCase()}*\n`;
+        features += commands.map(cmd => `  │๑ ${cmd}`).join("\n");
+        features += "\n\n";
+    }
+
+    return features.trim();
+};
 
 // Fungsi menambahkan entri memori baru ke userContext dengan ID tertentu
 function addMemory(userContext, memoryId, content) {
@@ -30,7 +69,7 @@ function parseThinkTag(text) {
     const match = text.match(thinkRegex);
     if (match) {
         // Jika ada, kita hapus tag think dan return konten di dalamnya
-        return text.replace(thinkRegex, '').trim(); // Hapus tag dan ambil isinya
+        return text.replace(thinkRegex, "").trim(); // Hapus tag dan ambil isinya
     }
     return text; // Kembalikan teks tanpa perubahan jika tidak ada <think>
 }
@@ -38,7 +77,8 @@ function parseThinkTag(text) {
 // Fungsi untuk mencari dan menangani memory action add/remove
 function parseMemoryTags(text, userContext) {
     // Regex untuk mengekstrak tag <memory ...> </memory>
-    const memoryRegex = /<memory\s+action=["'](add|remove)["']\s+id=["']([^"']+)["']>(.*?)<\/memory>/gs;
+    const memoryRegex =
+        /<memory\s+action=["'](add|remove)["']\s+id=["']([^"']+)["']>(.*?)<\/memory>/gs;
 
     let match;
     while ((match = memoryRegex.exec(text)) !== null) {
@@ -80,14 +120,16 @@ export default handler => {
             };
 
             if (!m.text) {
-                return m.reply("Ketik pertanyaan atau pesan yang ingin kamu tanyakan ke Ami AI.");
+                return m.reply(
+                    "Ketik pertanyaan atau pesan yang ingin kamu tanyakan ke Ami AI."
+                );
             }
 
             // --- [1] Simpan pesan user ke history
             userContext.history.push({
                 id: m.id,
                 role: "user",
-                content: m.text,
+                content: m.text
             });
 
             // Batasi total riwayat 50
@@ -103,7 +145,8 @@ export default handler => {
             const greeting = getGreeting(timeZone);
 
             // Format system prompt dengan memori yang ada
-            const systemPrompt = `Kamu adalah Ami, bot WhatsApp yang ramah, kalem, ceria, dan asik. Kamu bisa ngobrol, kasih saran, bantuin kerjaan, atau bahkan jadi teman curhat yang baik. Jangan pernah bikin orang merasa canggung ya!
+            const systemPrompt =
+                `Kamu adalah Ami, bot WhatsApp yang ramah, kalem, ceria, dan asik. Kamu bisa ngobrol, kasih saran, bantuin kerjaan, atau bahkan jadi teman curhat yang baik. Jangan pernah bikin orang merasa canggung ya!
 
 # MEMORI SAAT INI:
 ${userContext.memory
@@ -218,7 +261,10 @@ Sapa pengguna dengan nama mereka dan tunjukkan bahwa kamu peduli, seperti teman 
 `.trim();
 
             // Pilah riwayat relevan:
-            const relevantHistory = buildRelevantHistory(userContext, m.quoted?.id);
+            const relevantHistory = buildRelevantHistory(
+                userContext,
+                m.quoted?.id
+            );
 
             // Bangun array context final
             const context = [
@@ -262,7 +308,8 @@ Sapa pengguna dengan nama mereka dan tunjukkan bahwa kamu peduli, seperti teman 
 
                 clearInterval(loadingInterval);
 
-                const rawResponse = chatCompletion.choices[0]?.message?.content || "";
+                const rawResponse =
+                    chatCompletion.choices[0]?.message?.content || "";
                 if (!rawResponse) {
                     await sock.sendMessage(m.from, {
                         text: "Maaf, Ami tidak bisa menemukan jawaban. Coba tanyakan lagi!",
@@ -291,7 +338,6 @@ Sapa pengguna dengan nama mereka dan tunjukkan bahwa kamu peduli, seperti teman 
                     text: finalResponse,
                     edit: loadingMessage.key
                 });
-
             } catch (error) {
                 clearInterval(loadingInterval);
                 console.error("Error:", error);
