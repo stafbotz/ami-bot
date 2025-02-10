@@ -333,7 +333,8 @@ Sapa pengguna dengan nama mereka dan tunjukkan bahwa kamu peduli, seperti teman 
                     text: finalResponse,
                     edit: loadingMessage.key
                 });
-                                // Simpan jawaban AI ke history
+                
+                // Simpan jawaban AI ke history
                 userContext.history.push({
                     id: responseMessage.key.id,
                     role: "assistant",
