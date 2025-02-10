@@ -13,7 +13,8 @@ import fs from "fs";
 import Boom from "@hapi/boom";
 import NodeCache from "node-cache";
 
-export default {
+export default (handler) => {
+  handler.reg({
     tags: "owner",
     cmd: ["pair"],
     isOwner: true,
@@ -62,4 +63,5 @@ export default {
             }
         }, 1000);
     }
-};
+})
+}
