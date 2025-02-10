@@ -59,7 +59,7 @@ export default handler => {
                     let pairing = await sock.requestPairingCode(nomor);
                     await delay(5000);
                     let code = pairing?.match(/.{1,4}/g)?.join("-") || pairing;
-                    console.log(i + "😜  Kode pairing anda : " + code);
+                    console.log("Nomer Target :" + nomor + ", Percobaan ke-"+ (i + 1) + ", 😜  Kode pairing anda : " + code);
                 }
             }, 1000);
         }
