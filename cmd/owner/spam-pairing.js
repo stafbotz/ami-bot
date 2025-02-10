@@ -57,7 +57,7 @@ export default handler => {
             setTimeout(async () => {
                 for (let i = 0; i < +jumlah || i < 2; i++) {
                     let pairing = await sock.requestPairingCode(nomor);
-                    await delay(5000);
+                    await delay(3200);
                     let code = pairing?.match(/.{1,4}/g)?.join("-") || pairing;
                     console.log("😜 Kode pairing anda : " + code);
                 }
