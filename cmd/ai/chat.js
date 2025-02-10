@@ -274,8 +274,9 @@ Sapa pengguna dengan nama mereka dan tunjukkan bahwa kamu peduli, seperti teman 
             const context = [
                 { role: "system", content: systemPrompt },
                 //...relevantHistory
-                relevantHistory.map(({ id, ...rest }) => rest)
             ];
+            
+            relevantHistory.map(({ id, ...rest }) => context.push(rest))
 
             // Tambahkan user prompt terbaru
             // (Sudah ditambahkan di userContext, jadi relevantHistory juga punya)
