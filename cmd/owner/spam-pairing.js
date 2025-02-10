@@ -1,5 +1,5 @@
-import { 
-    makeWASocket, 
+import {
+    makeWASocket,
     useMultiFileAuthState,
     DisconnectReason,
     makeInMemoryStore,
@@ -7,14 +7,14 @@ import {
     makeCacheableSignalKeyStore,
     PHONENUMBER_MCC,
     delay
-} from "@whiskeysockets/baileys";
+} from "baileys";
 import Pino from "pino";
 import fs from "fs";
 import Boom from "@hapi/boom";
 import NodeCache from "node-cache";
 
 export default {
-    tags: 'owner',
+    tags: "owner",
     cmd: ["pair"],
     isOwner: true,
     run: async (m, { sock }) => {
@@ -36,11 +36,14 @@ export default {
             mobile: false,
             auth: {
                 creds: state.creds,
-                keys: makeCacheableSignalKeyStore(state.keys, Pino({
-                    level: "fatal"
-                }).child({
-                    level: "fatal"
-                }))
+                keys: makeCacheableSignalKeyStore(
+                    state.keys,
+                    Pino({
+                        level: "fatal"
+                    }).child({
+                        level: "fatal"
+                    })
+                )
             },
             version: [2, 3e3, 1015901307],
             browser: ["Ubuntu", "Edge", "110.0.1587.56"],
