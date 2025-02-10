@@ -47,20 +47,20 @@ const getFeaturesList = cmds => {
 };
 
 // Fungsi menambahkan entri memori baru ke userContext dengan ID tertentu
-function addMemory(userContext, memoryId, content) {
+function addMemory(userContext, memoryId, userId, content) {
     userContext.memory = userContext.memory || [];
     // Jika sudah ada ID yang sama, hapus dulu (agar tidak duplikat)
     userContext.memory = userContext.memory.filter(m => m.id !== memoryId);
 
     userContext.memory.push({ id: memoryId, content });
-    writeUserContext(userContext);
+    writeUserContext(userId, userContext);
 }
 
 // Fungsi menghapus entri memori dengan ID tertentu
-function removeMemory(userContext, memoryId) {
+function removeMemory(userContext, memoryId, userId) {
     userContext.memory = userContext.memory || [];
     userContext.memory = userContext.memory.filter(m => m.id !== memoryId);
-    writeUserContext(userContext);
+    writeUserContext(userId, userContext);
 }
 
 // Fungsi untuk menghapus tag <think></think> jika ada
@@ -77,19 +77,19 @@ function parseThinkTag(text) {
 // Fungsi untuk mencari dan menangani memory action add/remove
 function parseMemoryTags(text, userContext) {
     // Regex untuk mengekstrak tag <memory ...> </memory>
-    const memoryRegex =
-        /<memory\s+action=["'](add|remove)["']\s+id=["']([^"']+)["']>(.*?)<\/memory>/gs;
+const memoryRegex = 
+    /<memory\s+action=["'](add|remove)["']\s+id=["']([^"']+)["']\s+userId=["']([^"']+)["']>(.*?)<\/memory>/gs;
 
     let match;
     while ((match = memoryRegex.exec(text)) !== null) {
-        const [fullTag, action, memId, content] = match; // match[0..3]
+        const [fullTag, action, memId, userId, content] = match; // match[0..3]
 
         if (action === "add") {
             // Tambah memori
-            addMemory(userContext, memId, content.trim());
+            addMemory(userContext, memId, userId, content.trim());
         } else if (action === "remove") {
             // Hapus memori
-            removeMemory(userContext, memId);
+            removeMemory(userContext, memId, userId);
         }
     }
 
@@ -155,7 +155,7 @@ ${userContext.memory
 
 # RULES:
 1. **Jika ada informasi penting yang harus diingat** atau **user minta melupakan sesuatu**, kamu harus beri jawaban yang sesuai dan gunakan blok memory seperti ini di akhir jawaban:
-   - **Untuk mengingat**: <memory action="add" id="${generateMemoryId()}">ISI INFORMASI</memory>
+   - **Untuk mengingat**: <memory action="add" id="${generateMemoryId()}" userId="${userId}">ISI INFORMASI</memory>
    - **Untuk melupakan**: <memory action="remove" id="ID_YANG_INGIN_DIHAPUS"></memory>
    
 2. **ID** harus unik untuk setiap entri memori yang disimpan. Jika action=add, pastikan **ID berbeda** setiap kali.
@@ -265,11 +265,11 @@ Sapa pengguna dengan nama mereka dan tunjukkan bahwa kamu peduli, seperti teman 
                 userContext,
                 m.quoted?.id
             );
-            relevantHistory.map(({ id, ...rest }) =>
+            /*relevantHistory.map(({ id, ...rest }) =>
                 sock.sendMessage(m.from, {
                     text: JSON.stringify(rest)
                 })
-            );
+            );*/
             // Bangun array context final
             const context = [
                 { role: "system", content: systemPrompt }
@@ -330,7 +330,7 @@ Sapa pengguna dengan nama mereka dan tunjukkan bahwa kamu peduli, seperti teman 
 
                 // Simpan jawaban AI ke history
                 userContext.history.push({
-                    id: `responseMessage.key.id`,
+                    id: responseMessage.key.id,
                     role: "assistant",
                     content: finalResponse
                 });
