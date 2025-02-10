@@ -272,11 +272,11 @@ Sapa pengguna dengan nama mereka dan tunjukkan bahwa kamu peduli, seperti teman 
             );
             // Bangun array context final
             const context = [
-                { role: "system", content: systemPrompt },
+                { role: "system", content: systemPrompt }
                 //...relevantHistory
             ];
-            
-            relevantHistory.map(({ id, ...rest }) => context.push(rest))
+
+            relevantHistory.map(({ id, ...rest }) => context.push(rest));
 
             // Tambahkan user prompt terbaru
             // (Sudah ditambahkan di userContext, jadi relevantHistory juga punya)
@@ -312,7 +312,7 @@ Sapa pengguna dengan nama mereka dan tunjukkan bahwa kamu peduli, seperti teman 
                     temperature: 0.8
                 });
 
-                clearInterval(loadingInterval);
+                await clearInterval(loadingInterval);
 
                 const rawResponse =
                     chatCompletion.choices[0]?.message?.content || "";
