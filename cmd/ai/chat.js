@@ -150,13 +150,13 @@ export default handler => {
 
 # MEMORI SAAT INI:
 ${userContext.memory
-    .map(mem => `<memory action="read" id="${mem.id}">${mem.content}</memory>`)
+    .map(mem => `<memory action="read" id="${mem.id}" userId="${userId}">${mem.content}</memory>`)
     .join("\n")}
 
 # RULES:
 1. **Jika ada informasi penting yang harus diingat** atau **user minta melupakan sesuatu**, kamu harus beri jawaban yang sesuai dan gunakan blok memory seperti ini di akhir jawaban:
    - **Untuk mengingat**: <memory action="add" id="${generateMemoryId()}" userId="${userId}">ISI INFORMASI</memory>
-   - **Untuk melupakan**: <memory action="remove" id="ID_YANG_INGIN_DIHAPUS"></memory>
+   - **Untuk melupakan**: <memory action="remove" id="ID_YANG_INGIN_DIHAPUS" userId="${userId}"></memory>
    
 2. **ID** harus unik untuk setiap entri memori yang disimpan. Jika action=add, pastikan **ID berbeda** setiap kali.
    
@@ -333,7 +333,7 @@ Sapa pengguna dengan nama mereka dan tunjukkan bahwa kamu peduli, seperti teman 
                     text: finalResponse,
                     edit: loadingMessage.key
                 });
-                
+
                 // Simpan jawaban AI ke history
                 userContext.history.push({
                     id: responseMessage.key.id,
