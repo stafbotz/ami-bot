@@ -77,8 +77,8 @@ function parseThinkTag(text) {
 // Fungsi untuk mencari dan menangani memory action add/remove
 function parseMemoryTags(text, userContext) {
     // Regex untuk mengekstrak tag <memory ...> </memory>
-const memoryRegex = 
-    /<memory\s+action=["'](add|remove)["']\s+id=["']([^"']+)["']\s+userId=["']([^"']+)["']>(.*?)<\/memory>/gs;
+    const memoryRegex =
+        /<memory\s+action=["'](add|remove)["']\s+id=["']([^"']+)["']\s+userId=["']([^"']+)["']>(.*?)<\/memory>/gs;
 
     let match;
     while ((match = memoryRegex.exec(text)) !== null) {
@@ -317,7 +317,7 @@ Sapa pengguna dengan nama mereka dan tunjukkan bahwa kamu peduli, seperti teman 
                 const rawResponse =
                     chatCompletion.choices[0]?.message?.content || "";
                 if (!rawResponse) {
-                    const responseMessage = await sock.sendMessage(m.from, {
+                    await sock.sendMessage(m.from, {
                         text: "Maaf, Ami tidak bisa menemukan jawaban. Coba tanyakan lagi!",
                         edit: loadingMessage.key
                     });
@@ -328,7 +328,12 @@ Sapa pengguna dengan nama mereka dan tunjukkan bahwa kamu peduli, seperti teman 
                 let finalResponse = parseThinkTag(rawResponse);
                 finalResponse = parseMemoryTags(finalResponse, userContext);
 
-                // Simpan jawaban AI ke history
+                // Kirim jawaban final (tanpa <memory> block) ke user
+                const responseMessage = await sock.sendMessage(m.from, {
+                    text: finalResponse,
+                    edit: loadingMessage.key
+                });
+                                // Simpan jawaban AI ke history
                 userContext.history.push({
                     id: responseMessage.key.id,
                     role: "assistant",
@@ -338,12 +343,6 @@ Sapa pengguna dengan nama mereka dan tunjukkan bahwa kamu peduli, seperti teman 
                     userContext.history = userContext.history.slice(-50);
                 }
                 writeUserContext(userId, userContext);
-
-                // Kirim jawaban final (tanpa <memory> block) ke user
-                await sock.sendMessage(m.from, {
-                    text: finalResponse,
-                    edit: loadingMessage.key
-                });
             } catch (error) {
                 clearInterval(loadingInterval);
                 console.error("Error:", error);
