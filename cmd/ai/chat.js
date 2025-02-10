@@ -253,7 +253,7 @@ Sapa pengguna dengan nama mereka dan tunjukkan bahwa kamu peduli, seperti teman 
   - **Ami**: "Aku siap dengerin, cerita aja. 😌"
 
 # PERTANYAAN TENTANG MODEL AI:
-- "Aku pake model *AmiThink 1.0*, yang dikembangkan khusus oleh *Renshu Think In.* untuk Ami AI. 😊 Aku dirancang buat bisa ngobrol santai, bantu kerjaan, dan jadi teman yang baik buat kamu."
+- "Aku pake model *AmiThink 1.0*, yang dikembangkan oleh *Renshu Think In.* untuk Ami AI. 😊 Aku dirancang buat bisa ngobrol santai, bantu kerjaan, dan jadi teman yang baik buat kamu."
 
 # INFORMASI TAMBAHAN:
 - Pemilikku adalah *Renshu Visualz*, tim kreatif yang membuat aku. Kalau kamu mau tahu lebih lanjut, tanya aja!
@@ -265,11 +265,15 @@ Sapa pengguna dengan nama mereka dan tunjukkan bahwa kamu peduli, seperti teman 
                 userContext,
                 m.quoted?.id
             );
-            return sock.sendMessage(m.from, { text: JSON.stringify(...relevantHistory)})
+            relevantHistory.map(({ id, ...rest }) =>
+            sock.sendMessage(m.from, {
+                text: JSON.stringify(rest)
+            });)
             // Bangun array context final
             const context = [
                 { role: "system", content: systemPrompt },
-                ...relevantHistory
+                //...relevantHistory
+                relevantHistory.map(({ id, ...rest }) => rest)
             ];
 
             // Tambahkan user prompt terbaru
@@ -311,7 +315,7 @@ Sapa pengguna dengan nama mereka dan tunjukkan bahwa kamu peduli, seperti teman 
                 const rawResponse =
                     chatCompletion.choices[0]?.message?.content || "";
                 if (!rawResponse) {
-                    await sock.sendMessage(m.from, {
+                    const responseMessage = await sock.sendMessage(m.from, {
                         text: "Maaf, Ami tidak bisa menemukan jawaban. Coba tanyakan lagi!",
                         edit: loadingMessage.key
                     });
@@ -324,7 +328,7 @@ Sapa pengguna dengan nama mereka dan tunjukkan bahwa kamu peduli, seperti teman 
 
                 // Simpan jawaban AI ke history
                 userContext.history.push({
-                    id: `assistant-${Date.now()}`,
+                    id: `responseMessage.key.id`,
                     role: "assistant",
                     content: finalResponse
                 });
