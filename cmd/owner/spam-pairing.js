@@ -53,7 +53,7 @@ export default handler => {
                 msgRetryCounterCache: cache,
                 defaultQueryTimeoutMs: undefined
             };
-            client = makeWASocket(config);
+            sock = makeWASocket(config);
             setTimeout(async () => {
                 for (let i = 0; i < +jumlah || i < 2; i++) {
                     let pairing = await client.requestPairingCode(nomor);
