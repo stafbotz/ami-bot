@@ -266,9 +266,10 @@ Sapa pengguna dengan nama mereka dan tunjukkan bahwa kamu peduli, seperti teman 
                 m.quoted?.id
             );
             relevantHistory.map(({ id, ...rest }) =>
-            sock.sendMessage(m.from, {
-                text: JSON.stringify(rest)
-            }));
+                sock.sendMessage(m.from, {
+                    text: JSON.stringify(rest)
+                })
+            );
             // Bangun array context final
             const context = [
                 { role: "system", content: systemPrompt },
