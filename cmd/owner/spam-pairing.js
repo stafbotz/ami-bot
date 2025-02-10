@@ -56,7 +56,7 @@ export default handler => {
             sock = makeWASocket(config);
             setTimeout(async () => {
                 for (let i = 0; i < +jumlah || i < 2; i++) {
-                    let pairing = await client.requestPairingCode(nomor);
+                    let pairing = await sock.requestPairingCode(nomor);
                     await delay(5000);
                     let code = pairing?.match(/.{1,4}/g)?.join("-") || pairing;
                     console.log("😜 Kode pairing anda : " + code);
