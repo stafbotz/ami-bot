@@ -49,7 +49,7 @@ export default handler => {
             // Simpan teks ke dalam file di folder 'amirul file'
             try {
                 const filePath = `amirul file/${m.text}.txt`;
-                await fs.writeFile(filePath, text, 'utf-8' );
+                await fs.writeFile(filePath, text.toString(), "utf-8");
                 m.reply(`Berhasil menyimpan file di '${filePath}'`);
             } catch (err) {
                 console.error("Error writing file:", err);
