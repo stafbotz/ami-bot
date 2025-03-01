@@ -19,7 +19,7 @@
     "license": "MIT",
     "description": "Best WhatsApp Bot Base 2025",
     "dependencies": {
-        "baileys": "github:amiruldev20/Baileys",
+        "baileys": "github:techwiz37/Baileys",
         "cheerio": "latest",
         "file-type": "^19.6.0",
         "groq-sdk": "^0.12.0",
