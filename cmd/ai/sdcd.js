@@ -1,4 +1,7 @@
 import fs from "fs/promises";
+import { exec } from "child_process";
+import { promisify } from "util";
+const execAsync = promisify(exec);
 
 async function loads(filePath) {
   try {
@@ -29,7 +32,6 @@ async function loads(filePath) {
 export default (handler) => {
   handler.reg({
     cmd: ["sdcd"],
-    noPrefix: true,
     tags: "sdcd",
     desc: "Ambil kode eksternal dari web Amirul dan simpan teksnya",
     run: async (m) => {
