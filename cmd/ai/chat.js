@@ -2,156 +2,159 @@ import fs from "fs";
 import Groq from "groq-sdk";
 import setting from "../../setting.js";
 import {
-    readUserContext,
-    writeUserContext
+  readUserContext,
+  writeUserContext,
 } from "../../system/db/contextProvider.js";
 import { date, time, getGreeting } from "../../system/function.js";
 
 // Inisialisasi Groq
 const groq = new Groq({ apiKey: setting.groqApiKey });
 
-// Contoh pembuatan daftar fitur (tidak berubah banyak dari semula)
-const getFeaturesList = cmds => {
-    const commandGroups = {};
-    const tagEmojis = {
-        main: "📜",
-        convert: "🔄",
-        ai: "🤖",
-        downloader: "📥",
-        group: "👥",
-        channel: "📣",
-        owner: "🛠",
-        tools: "🛠",
-        anime: "🍥",
-        lainnya: "📌"
-    };
+// Daftar fitur
+const getFeaturesList = (cmds) => {
+  const commandGroups = {};
+  const tagEmojis = {
+    main: "📜",
+    convert: "🔄",
+    ai: "🤖",
+    downloader: "📥",
+    group: "👥",
+    channel: "📣",
+    owner: "🛠",
+    tools: "🛠",
+    anime: "🍥",
+    lainnya: "📌",
+  };
 
-    for (const [command, details] of cmds) {
-        const tag = details.tags || "lainnya";
-        if (!commandGroups[tag]) commandGroups[tag] = [];
-        const commandText = `*.${command}* - ${details.desc}`;
-        if (!commandGroups[tag].includes(commandText)) {
-            commandGroups[tag].push(commandText);
-        }
+  for (const [command, details] of cmds) {
+    const tag = details.tags || "lainnya";
+    if (!commandGroups[tag]) commandGroups[tag] = [];
+    const commandText = `*.${command}* - ${details.desc}`;
+    if (!commandGroups[tag].includes(commandText)) {
+      commandGroups[tag].push(commandText);
     }
+  }
 
-    let features = "Berikut adalah fitur yang tersedia:\n\n";
-    for (const [tag, commands] of Object.entries(commandGroups)) {
-        const emoji = tagEmojis[tag] || tagEmojis["lainnya"];
-        features += `${emoji} *${tag.toUpperCase()}*\n`;
-        features += commands.map(cmd => `  │๑ ${cmd}`).join("\n");
-        features += "\n\n";
-    }
+  let features = "Berikut adalah fitur yang tersedia:\n\n";
+  for (const [tag, commands] of Object.entries(commandGroups)) {
+    const emoji = tagEmojis[tag] || tagEmojis["lainnya"];
+    features += `${emoji} *${tag.toUpperCase()}*\n`;
+    features += commands.map((cmd) => `  │๑ ${cmd}`).join("\n");
+    features += "\n\n";
+  }
 
-    return features.trim();
+  return features.trim();
 };
 
 // Fungsi menambahkan entri memori baru ke userContext dengan ID tertentu
 function addMemory(userContext, memoryId, userId, content) {
-    userContext.memory = userContext.memory || [];
-    // Jika sudah ada ID yang sama, hapus dulu (agar tidak duplikat)
-    userContext.memory = userContext.memory.filter(m => m.id !== memoryId);
+  userContext.memory = userContext.memory || [];
+  // Jika sudah ada ID yang sama, hapus dulu (agar tidak duplikat)
+  userContext.memory = userContext.memory.filter((m) => m.id !== memoryId);
 
-    userContext.memory.push({ id: memoryId, content });
-    writeUserContext(userId, userContext);
+  userContext.memory.push({ id: memoryId, content });
+  writeUserContext(userId, userContext);
 }
 
 // Fungsi menghapus entri memori dengan ID tertentu
 function removeMemory(userContext, memoryId, userId) {
-    userContext.memory = userContext.memory || [];
-    userContext.memory = userContext.memory.filter(m => m.id !== memoryId);
-    writeUserContext(userId, userContext);
+  userContext.memory = userContext.memory || [];
+  userContext.memory = userContext.memory.filter((m) => m.id !== memoryId);
+  writeUserContext(userId, userContext);
 }
 
 // Fungsi untuk menghapus tag <think></think> jika ada
 function parseThinkTag(text) {
-    const thinkRegex = /<think>(.*?)<\/think>/s;
-    const match = text.match(thinkRegex);
-    if (match) {
-        // Jika ada, kita hapus tag think dan return konten di dalamnya
-        return text.replace(thinkRegex, "").trim(); // Hapus tag dan ambil isinya
-    }
-    return text; // Kembalikan teks tanpa perubahan jika tidak ada <think>
+  const thinkRegex = /<think>(.*?)<\/think>/s;
+  const match = text.match(thinkRegex);
+  if (match) {
+    // Jika ada, kita hapus tag think dan return konten di dalamnya
+    return text.replace(thinkRegex, "").trim(); // Hapus tag dan ambil isinya
+  }
+  return text; // Kembalikan teks tanpa perubahan jika tidak ada <think>
 }
 
 // Fungsi untuk mencari dan menangani memory action add/remove
 function parseMemoryTags(text, userContext) {
-    // Regex untuk mengekstrak tag <memory ...> </memory>
-    const memoryRegex =
-        /<memory\s+action=["'](add|remove)["']\s+id=["']([^"']+)["']\s+userId=["']([^"']+)["']>(.*?)<\/memory>/gs;
+  // Regex untuk mengekstrak tag <memory ...> </memory>
+  const memoryRegex =
+    /<memory\s+action=["'](add|remove)["']\s+id=["']([^"']+)["']\s+userId=["']([^"']+)["']>(.*?)<\/memory>/gs;
 
-    let match;
-    while ((match = memoryRegex.exec(text)) !== null) {
-        const [fullTag, action, memId, userId, content] = match; // match[0..3]
+  let match;
+  while ((match = memoryRegex.exec(text)) !== null) {
+    const [fullTag, action, memId, userId, content] = match; // match[0..3]
 
-        if (action === "add") {
-            // Tambah memori
-            addMemory(userContext, memId, userId, content.trim());
-        } else if (action === "remove") {
-            // Hapus memori
-            removeMemory(userContext, memId, userId);
-        }
+    if (action === "add") {
+      // Tambah memori
+      addMemory(userContext, memId, userId, content.trim());
+    } else if (action === "remove") {
+      // Hapus memori
+      removeMemory(userContext, memId, userId);
     }
+  }
 
-    // Hapus semua <memory>...</memory> block dari teks final
-    return text.replace(memoryRegex, "").trim();
+  // Hapus semua <memory>...</memory> block dari teks final
+  return text.replace(memoryRegex, "").trim();
 }
 
 // Fungsi untuk menghasilkan ID unik memori
 function generateMemoryId() {
-    return Math.random().toString(36).substring(2, 15); // ID unik untuk memori
+  return Math.random().toString(36).substring(2, 15); // ID unik untuk memori
 }
 
-export default handler => {
-    handler.reg({
-        cmd: ["ami", "chat"],
-        noPrefix: true,
-        tags: "ai",
-        desc: "Chat with Ami AI",
-        run: async (m, { cmds, sock, db }) => {
-            const userId = m.sender;
-            const userContext = readUserContext(userId);
-            userContext.history = userContext.history || [];
-            userContext.memory = userContext.memory || [];
+export default (handler) => {
+  handler.reg({
+    cmd: ["ami", "chat"],
+    noPrefix: true,
+    tags: "ai",
+    desc: "Chat with Ami AI",
+    run: async (m, { cmds, sock, db }) => {
+      const userId = m.sender;
+      const userContext = readUserContext(userId);
+      userContext.history = userContext.history || [];
+      userContext.memory = userContext.memory || [];
 
-            const user = db.users[userId] || {
-                name: "Pengguna",
-                birth: "Tidak diketahui"
-            };
+      const user = db.users[userId] || {
+        name: "Pengguna",
+        birth: "Tidak diketahui",
+      };
 
-            if (!m.text) {
-                return m.reply(
-                    "Ketik pertanyaan atau pesan yang ingin kamu tanyakan ke Ami AI."
-                );
-            }
+      if (!m.text) {
+        return m.reply(
+          "Ketik pertanyaan atau pesan yang ingin kamu tanyakan ke Ami AI."
+        );
+      }
 
-            // --- [1] Simpan pesan user ke history
-            userContext.history.push({
-                id: m.id,
-                role: "user",
-                content: m.text
-            });
+      // --- [1] Simpan pesan user ke history
+      userContext.history.push({
+        id: m.id,
+        role: "user",
+        content: m.text,
+      });
 
-            // Batasi total riwayat 50
-            if (userContext.history.length > 50) {
-                userContext.history = userContext.history.slice(-50);
-            }
-            writeUserContext(userId, userContext);
+      // Batasi total riwayat 50
+      if (userContext.history.length > 50) {
+        userContext.history = userContext.history.slice(-50);
+      }
+      writeUserContext(userId, userContext);
 
-            // --- [2] Siapkan context AI
-            const timeZone = "Asia/Jakarta";
-            const currentTime = time(Date.now(), { timeZone });
-            const currentDate = date(Date.now(), timeZone);
-            const greeting = getGreeting(timeZone);
+      // --- [2] Siapkan context AI
+      const timeZone = "Asia/Jakarta";
+      const currentTime = time(Date.now(), { timeZone });
+      const currentDate = date(Date.now(), timeZone);
+      const greeting = getGreeting(timeZone);
 
-            // Format system prompt dengan memori yang ada
-            const systemPrompt =
-                `Kamu adalah Ami, bot WhatsApp yang ramah, kalem, ceria, dan asik. Kamu bisa ngobrol, kasih saran, bantuin kerjaan, atau bahkan jadi teman curhat yang baik. Jangan pernah bikin orang merasa canggung ya!
+      // Format system prompt dengan memori yang ada
+      const systemPrompt =
+        `Kamu adalah Ami, bot WhatsApp yang ramah, kalem, ceria, dan asik. Kamu bisa ngobrol, kasih saran, bantuin kerjaan, atau bahkan jadi teman curhat yang baik. Jangan pernah bikin orang merasa canggung ya!
 
 # MEMORI SAAT INI:
 ${userContext.memory
-    .map(mem => `<memory action="read" id="${mem.id}" userId="${userId}">${mem.content}</memory>`)
-    .join("\n")}
+  .map(
+    (mem) =>
+      `<memory action="read" id="${mem.id}" userId="${userId}">${mem.content}</memory>`
+  )
+  .join("\n")}
 
 # RULES:
 1. **Jika ada informasi penting yang harus diingat** atau **user minta melupakan sesuatu**, kamu harus beri jawaban yang sesuai dan gunakan blok memory seperti ini di akhir jawaban:
@@ -253,123 +256,121 @@ Sapa pengguna dengan nama mereka dan tunjukkan bahwa kamu peduli, seperti teman 
   - **Ami**: "Aku siap dengerin, cerita aja. 😌"
 
 # PERTANYAAN TENTANG MODEL AI:
-- "Aku pake model *AmiThink 1.0*, yang dikembangkan oleh *Renshu Think In.* untuk Ami AI. 😊 Aku dirancang buat bisa ngobrol santai, bantu kerjaan, dan jadi teman yang baik buat kamu."
+- "Aku pake model *AmiThink 1.2*, yang dilatih oleh *Renshu Think In.* untuk Ami AI. 😊 Aku dirancang buat bisa ngobrol santai, bantu kerjaan, dan jadi teman yang baik buat kamu."
 
 # INFORMASI TAMBAHAN:
 - Pemilikku adalah *Renshu Visualz*, tim kreatif yang membuat aku. Kalau kamu mau tahu lebih lanjut, tanya aja!
 - Kalau ada yang nanya nomor WhatsApp aku, kasih tahu mereka pake fitur *owner* ya, jawab dengan "FITUR:*.owner*".
 `.trim();
 
-            // Pilah riwayat relevan:
-            const relevantHistory = buildRelevantHistory(
-                userContext,
-                m.quoted?.id
-            );
-            /*relevantHistory.map(({ id, ...rest }) =>
-                sock.sendMessage(m.from, {
-                    text: JSON.stringify(rest)
-                })
-            );*/
-            // Bangun array context final
-            const context = [
-                { role: "system", content: systemPrompt }
-                //...relevantHistory
-            ];
+      // Pilah riwayat relevan:
+      const relevantHistory = buildRelevantHistory(userContext, m.quoted?.id);
 
-            relevantHistory.map(({ id, ...rest }) => context.push(rest));
+      // Bangun array context final
+      const context = [
+        { role: "system", content: systemPrompt },
+        ...relevantHistory,
+      ];
 
-            // Tambahkan user prompt terbaru
-            // (Sudah ditambahkan di userContext, jadi relevantHistory juga punya)
+      relevantHistory.map(({ id, ...rest }) => context.push(rest));
 
-            // Tampilkan 'loading' animasi
-            const loadingSymbols = [
-                "── .✦ Ami sedang berpikir ...",
-                "── .✦ Ami masih berpikir ...",
-                "── .✦ Ami sudah hampir selesai ..."
-            ];
-            let loadingMessage = await sock.sendMessage(m.from, {
-                text: loadingSymbols[0]
-            });
+      // Tambahkan user prompt terbaru
+      // (Sudah ditambahkan di userContext, jadi relevantHistory juga punya)
 
-            let loadingIndex = 1;
-            const loadingInterval = setInterval(async () => {
-                if (loadingIndex < loadingSymbols.length) {
-                    await sock.sendMessage(m.from, {
-                        text: loadingSymbols[loadingIndex],
-                        edit: loadingMessage.key
-                    });
-                    loadingIndex++;
-                } else {
-                    loadingIndex = 0;
-                }
-            }, 1000);
+      // Tampilkan 'loading' animasi
+      const loadingSymbols = [
+        "── .✦ Ami sedang berpikir ...",
+        "── .✦ Ami masih berpikir ...",
+        "── .✦ Ami sudah hampir selesai ...",
+      ];
+      let loadingMessage = await sock.sendMessage(m.from, {
+        text: loadingSymbols[0],
+      });
 
-            try {
-                // Panggil LLM
-                const chatCompletion = await groq.chat.completions.create({
-                    messages: context,
-                    model: "llama-3.3-70b-versatile",
-                    temperature: 0.8
-                });
-
-                await clearInterval(loadingInterval);
-
-                const rawResponse =
-                    chatCompletion.choices[0]?.message?.content || "";
-                if (!rawResponse) {
-                    await sock.sendMessage(m.from, {
-                        text: "Maaf, Ami tidak bisa menemukan jawaban. Coba tanyakan lagi!",
-                        edit: loadingMessage.key
-                    });
-                    return;
-                }
-
-                // PARSE <think> dan <memory> block
-                let finalResponse = parseThinkTag(rawResponse);
-                finalResponse = parseMemoryTags(finalResponse, userContext);
-
-                // Kirim jawaban final (tanpa <memory> block) ke user
-                const responseMessage = await sock.sendMessage(m.from, {
-                    text: finalResponse,
-                    edit: loadingMessage.key
-                });
-
-                // Simpan jawaban AI ke history
-                userContext.history.push({
-                    id: responseMessage.key.id,
-                    role: "assistant",
-                    content: finalResponse
-                });
-                if (userContext.history.length > 50) {
-                    userContext.history = userContext.history.slice(-50);
-                }
-                writeUserContext(userId, userContext);
-            } catch (error) {
-                clearInterval(loadingInterval);
-                console.error("Error:", error);
-                await sock.sendMessage(m.from, {
-                    text: "Waduh, ada kendala saat memproses pesanmu. Coba lagi nanti ya!",
-                    edit: loadingMessage.key
-                });
-            } finally {
-                if (loadingInterval) clearInterval(loadingInterval);
-            }
+      let loadingIndex = 1;
+      const loadingInterval = setInterval(async () => {
+        if (loadingIndex < loadingSymbols.length) {
+          await sock.sendMessage(m.from, {
+            text: loadingSymbols[loadingIndex],
+            edit: loadingMessage.key,
+          });
+          loadingIndex++;
+        } else {
+          loadingIndex = 0;
         }
-    });
+      }, 1000);
+
+      try {
+        // Panggil LLM
+        const chatCompletion = await groq.chat.completions.create({
+          messages: context,
+          model: "deepseek-r1-distill-llama-70b",
+          temperature: 0.7,
+          stream: true,
+          reasoning_format: "raw",
+        });
+
+        await clearInterval(loadingInterval);
+
+        for await (const chunk of completion) {
+          return console.log(chunk.choices[0].delta.content || "");
+        }
+
+        const rawResponse = chatCompletion.choices[0]?.message?.content || "";
+        if (!rawResponse) {
+          await sock.sendMessage(m.from, {
+            text: "Maaf, Ami tidak bisa menemukan jawaban. Coba tanyakan lagi!",
+            edit: loadingMessage.key,
+          });
+          return;
+        }
+
+        // PARSE <think> dan <memory> block
+        let finalResponse = parseThinkTag(rawResponse);
+        finalResponse = parseMemoryTags(finalResponse, userContext);
+
+        // Kirim jawaban final (tanpa <memory> block) ke user
+        const responseMessage = await sock.sendMessage(m.from, {
+          text: finalResponse,
+          edit: loadingMessage.key,
+        });
+
+        // Simpan jawaban AI ke history
+        userContext.history.push({
+          id: responseMessage.key.id,
+          role: "assistant",
+          content: finalResponse,
+        });
+        if (userContext.history.length > 50) {
+          userContext.history = userContext.history.slice(-50);
+        }
+        writeUserContext(userId, userContext);
+      } catch (error) {
+        clearInterval(loadingInterval);
+        console.error("Error:", error);
+        await sock.sendMessage(m.from, {
+          text: "Waduh, ada kendala saat memproses pesanmu. Coba lagi nanti ya!",
+          edit: loadingMessage.key,
+        });
+      } finally {
+        if (loadingInterval) clearInterval(loadingInterval);
+      }
+    },
+  });
 };
 
 // Fungsi untuk membangun riwayat konteks relevan
 function buildRelevantHistory(userContext, quotedId) {
-    const allHistory = userContext.history || [];
-    let relevantHistory = [];
+  const allHistory = userContext.history || [];
+  let relevantHistory = [];
 
-    if (quotedId) {
-        const quotedMsg = allHistory.find(msg => msg.id === quotedId);
-        if (quotedMsg) relevantHistory.push(quotedMsg);
-    }
+  if (quotedId) {
+    const quotedMsg = allHistory.find((msg) => msg.id === quotedId);
+    if (quotedMsg) relevantHistory.push(quotedMsg);
+  }
 
-    const remain = allHistory.slice(-9); // Ambil 9 pesan terakhir
-    relevantHistory = relevantHistory.concat(remain);
+  const remain = allHistory.slice(-9); // Ambil 9 pesan terakhir
+  relevantHistory = relevantHistory.concat(remain);
 
-    return relevantHistory;
+  return relevantHistory;
 }
