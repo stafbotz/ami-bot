@@ -267,13 +267,8 @@ Sapa pengguna dengan nama mereka dan tunjukkan bahwa kamu peduli, seperti teman 
       const relevantHistory = buildRelevantHistory(userContext, m.quoted?.id);
 
       // Bangun array context final
-      const context = [
-        { role: "system", content: systemPrompt },
-        ...relevantHistory,
-      ];
-
+      const context = [{ role: "system", content: systemPrompt }];    
       relevantHistory.map(({ id, ...rest }) => context.push(rest));
-
       // Tambahkan user prompt terbaru
       // (Sudah ditambahkan di userContext, jadi relevantHistory juga punya)
 
