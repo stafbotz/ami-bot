@@ -10,6 +10,39 @@ import { date, time, getGreeting } from "../../system/function.js";
 // Inisialisasi Groq
 const groq = new Groq({ apiKey: setting.groqApiKey });
 
+// Daftar fitur
+const getFeaturesList = (cmds) => {
+  const commandGroups = {};
+  const tagEmojis = {
+    main: "📜",
+    convert: "🔄",
+    ai: "🤖",
+    downloader: "📥",
+    group: "👥",
+    channel: "📣",
+    owner: "🛠",
+    tools: "🛠",
+    anime: "🍥",
+    lainnya: "📌",
+  };
+  for (const [command, details] of cmds) {
+    const tag = details.tags || "lainnya";
+    if (!commandGroups[tag]) commandGroups[tag] = [];
+    const commandText = `*.${command}* - ${details.desc}`;
+    if (!commandGroups[tag].includes(commandText)) {
+      commandGroups[tag].push(commandText);
+    }
+  }
+  let features = "Berikut adalah fitur yang tersedia:\n\n";
+  for (const [tag, commands] of Object.entries(commandGroups)) {
+    const emoji = tagEmojis[tag] || tagEmojis["lainnya"];
+    features += `${emoji} *${tag.toUpperCase()}*\n`;
+    features += commands.map((cmd) => ` │๑ ${cmd}`).join("\n");
+    features += "\n\n";
+  }
+  return features.trim();
+};
+
 // Fungsi menambahkan entri memori baru ke userContext dengan ID tertentu
 function addMemory(userContext, memoryId, userId, content) {
   userContext.memory = userContext.memory || [];
