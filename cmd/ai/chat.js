@@ -338,6 +338,9 @@ export default (handler) => {
           "🐾 Mengikuti jejak hewan kecil menuju informasi...",
           "🌱 Menyemai benih jawaban baru...",
           "🛸 Mengunjungi galaksi jauh mencari inspirasi...",
+          "☕ Menyeduh secangkir ide...",
+          "🌸 Sedang merangkai benang pemikiran...",
+          "📖 Mencatat catatan rahasia...",
         ];
 
         let loadingIndex = 0;
@@ -390,7 +393,7 @@ export default (handler) => {
                 await sock.sendMessage(m.from, {
                   text: `${
                     loadingSymbols[loadingIndex]
-                  }\n\n> ${thinkContent.trim()}`,
+                  }\n\n────────────────────────────\n\n> ${thinkContent.trim()}`,
                   edit: loadingMessage.key,
                 });
                 loadingIndex = (loadingIndex + 1) % loadingSymbols.length;
