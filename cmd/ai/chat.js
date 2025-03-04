@@ -416,7 +416,7 @@ export default (handler) => {
                 const endTime = Date.now();
                 const thinkingTime = ((endTime - startTime) / 1000).toFixed(1);
                 // Update pesan loading dengan notifikasi selesai berpikir
-                const animatedMessage = `🧠 Ami selesai berpikir dalam ${thinkingTime} detik.\n\n────────────────────────────\n\n*Pemikiran Ami:* ${formatThinkContent(
+                const animatedMessage = `🧠 Ami selesai berpikir dalam ${thinkingTime} detik.\n\n────────────────────────────\n\n*Pemikiran Ami:*\n\n${formatThinkContent(
                   thinkContent
                 )}`;
                 await sock.sendMessage(m.from, {
@@ -432,7 +432,7 @@ export default (handler) => {
                 // Update pesan think kepada pengguna
                 const animatedMessage = `${
                   loadingBases[baseIndex]
-                }${dots}\n\n────────────────────────────\n\n${
+                }${dots}\n\n────────────────────────────\n\n*Pemikiran Ami:*\n\n${
                   thinkContent.trim() ? formatThinkContent(thinkContent) : ""
                 }`;
                 await sock.sendMessage(m.from, {
