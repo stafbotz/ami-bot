@@ -108,7 +108,8 @@ export default (handler) => {
       const currentDate = date(Date.now(), timeZone);
       const greeting = getGreeting(timeZone);
 
-      const systemPrompt =  `Kamu adalah Ami, bot WhatsApp yang ramah, kalem, ceria, dan asik. Kamu bisa ngobrol, kasih saran, bantuin kerjaan, atau bahkan jadi teman curhat yang baik. Jangan pernah bikin orang merasa canggung ya!
+      const systemPrompt =
+        `Kamu adalah Ami, bot WhatsApp yang ramah, kalem, ceria, dan asik. Kamu bisa ngobrol, kasih saran, bantuin kerjaan, atau bahkan jadi teman curhat yang baik. Jangan pernah bikin orang merasa canggung ya!
 
       # MEMORI SAAT INI:
       ${userContext.memory
@@ -218,10 +219,10 @@ export default (handler) => {
         - **Ami**: "Aku siap dengerin, cerita aja. 😌"
       
       # PERTANYAAN TENTANG MODEL AI:
-      - "Aku pake model *AmiThink 1.2*, yang dilatih oleh *Renshu Think In.* untuk Ami AI. 😊 Aku dirancang buat bisa ngobrol santai, bantu kerjaan, dan jadi teman yang baik buat kamu."
+      - "Aku pake model AmiThink 1.2, yang dilatih oleh Renshu Think In. untuk Ami AI. Model ini memiliki 70 miliar parameter dan dibuat khusus untuk berpikir mendalam tentang berbagai topik serta disempurnakan agar bisa jadi temen chat yang asik, ceria, dan kalem. Aku juga ditenagai mesin pencari Google jadi bisa bantu kamu cari informasi di internet."
       
       # INFORMASI TAMBAHAN:
-      - Pemilikku adalah *Renshu Visualz*, tim kreatif yang membuat aku. Kalau kamu mau tahu lebih lanjut, tanya aja!
+      - Pemilikku adalah *Renshu Think In.*, tim kreatif yang membuat aku. Kalau kamu mau tahu lebih lanjut, tanya aja!
       - Kalau ada yang nanya nomor WhatsApp aku, kasih tahu mereka pake fitur *owner* ya, jawab dengan "FITUR:*.owner*".
       `.trim();
 
@@ -255,6 +256,91 @@ export default (handler) => {
         let thinkEnded = false;
         let buffer = "";
 
+        const loadingSymbols = [
+          "🌈 Membuat pelangi jawaban untukmu...",
+          "🚀 Meluncur ke angkasa pengetahuan...",
+          "🦄 Mencari unicorn informasi...",
+          "🌟 Mengumpulkan bintang-bintang inspirasi...",
+          "🍩 Sedang ngemil donat sambil berpikir...",
+          "🎲 Menggulung dadu ide-ide brilian...",
+          "🔮 Melihat ke bola kristal masa depan...",
+          "🎈 Meniup balon kreativitas...",
+          "🥁 Drum roll... jawaban segera tiba!",
+          "📚 Membuka buku rahasia...",
+          "🎧 Memasang lagu favorit untuk mood terbaik...",
+          "🧩 Menyatukan kepingan puzzle pengetahuan...",
+          "🌞 Menyerap sinar matahari inspirasi...",
+          "🌊 Menyelam ke lautan informasi...",
+          "✈️ Terbang melewati awan imajinasi...",
+          "🔥 Menyalakan api semangat berpikir...",
+          "🍀 Mencari daun keberuntungan...",
+          "🎨 Melukis jawaban yang indah untukmu...",
+          "🕰 Mengatur mesin waktu untuk jawaban tepat...",
+          "🎤 Melatih pidato jawaban terbaik...",
+          "🍉 Membelah semangka ide segar...",
+          "🛰 Menghubungi satelit informasi...",
+          "🧪 Mencampur ramuan jawaban sempurna...",
+          "🌌 Menjelajahi galaksi pengetahuan...",
+          "🌱 Menumbuhkan benih ide baru...",
+          "🍕 Memesan pizza kreativitas ekstra topping...",
+          "🤹‍♂️ Menggoyang-goyangkan ide di udara...",
+          "📡 Menangkap sinyal inspirasi...",
+          "🔋 Mengisi ulang baterai imajinasi...",
+          "🚧 Membuka jalan menuju jawaban...",
+          "🌿 Menyatu dengan alam sambil mencari jawaban...",
+          "🐾 Menapaki jejak kaki kecil menuju solusi...",
+          "🍃 Angin sepoi-sepoi membawa inspirasi...",
+          "🌸 Mekar bersama ide-ide segar...",
+          "☕ Menyeduh secangkir jawaban hangat...",
+          "📖 Menulis cerita indah untukmu...",
+          "🧸 Memeluk boneka penuh ide manis...",
+          "🦋 Mengejar kupu-kupu kreativitas...",
+          "🎈 Menerbangkan balon harapan...",
+          "🌷 Merangkai bunga pengetahuan...",
+          "🐚 Mendengarkan bisikan laut informasi...",
+          "🍯 Menuangkan madu inspirasi...",
+          "🕯 Menyalakan lilin pemikiran tenang...",
+          "🎐 Mendengar gemerincing angin ide...",
+          "🌙 Berlayar di bawah cahaya bulan menuju jawaban...",
+          "🍄 Menemukan jamur pengetahuan langka...",
+          "🌺 Menyusun karangan bunga kreativitas...",
+          "🛁 Berendam dalam lautan solusi...",
+          "🧁 Menghias kue jawaban spesial untukmu...",
+          "🐳 Menyelam bersama paus bijak mencari ide...",
+          "🌌 Mengukir bintang di langit inspirasi...",
+          "🍃 Daun-daun jatuh membawa pesan rahasia...",
+          "🐠 Berenang di antara lautan informasi...",
+          "☂️ Menikmati hujan ide di bawah payung imajinasi...",
+          "🍓 Memetik buah jawaban yang segar...",
+          "📬 Mengirim merpati pos berisi solusi...",
+          "🎇 Menyalakan kembang api kreativitas...",
+          "🍦 Menyajikan es krim pengetahuan manis...",
+          "🐢 Bergerak perlahan namun pasti menuju jawaban...",
+          "🌻 Menyapa matahari dengan senyuman ide...",
+          "🌴 Berteduh di bawah pohon inspirasi...",
+          "🐇 Melompat bersama kelinci pemikiran cepat...",
+          "☁️ Melukis bentuk awan penuh makna...",
+          "🍁 Menyambut musim gugur dengan ide baru...",
+          "🦜 Mendengarkan nyanyian burung pengetahuan...",
+          "🎵 Mengalunkan melodi jawaban untukmu...",
+          "🎀 Mengikat pita cantik pada solusi terbaik...",
+          "🌈 Mengumpulkan warna-warni inspirasi...",
+          "🐝 Mengumpulkan nektar ide dari bunga-bunga...",
+          "🍀 Menemukan keberuntungan dalam jawaban...",
+          "🥢 Menjepit ide-ide brilian dengan hati-hati...",
+          "🎁 Membuka hadiah kejutan informasi...",
+          "🧚‍♀️ Mendapatkan bantuan peri inspirasi...",
+          "🍥 Membuat pusaran pemikiran kreatif...",
+          "🌊 Mengikuti arus sungai pengetahuan...",
+          "🌟 Menggapai bintang harapanmu...",
+          "🍭 Menikmati lolipop ide manis...",
+          "🕊 Melepas burung merpati membawa solusi...",
+          "🐾 Mengikuti jejak hewan kecil menuju informasi...",
+          "🌱 Menyemai benih jawaban baru...",
+          "🛸 Mengunjungi galaksi jauh mencari inspirasi...",
+        ];
+
+        let loadingIndex = 0;
         // Iterasi melalui stream
         for await (const chunk of chatCompletion) {
           const content = chunk.choices[0]?.delta?.content || "";
@@ -291,7 +377,7 @@ export default (handler) => {
 
                 // Update pesan dengan waktu berpikir dan konten think
                 await sock.sendMessage(m.from, {
-                  text: `🧠 Ami selesai berpikir dalam ${thinkingTime} detik.\n\n> ${thinkContent}`,
+                  text: `🧠 Ami selesai berpikir dalam ${thinkingTime} detik.\n\n> ${thinkContent.trim()}`,
                   edit: loadingMessage.key,
                 });
                 processed = true;
@@ -302,9 +388,12 @@ export default (handler) => {
 
                 // Update pesan think kepada pengguna
                 await sock.sendMessage(m.from, {
-                  text: `> ${thinkContent}`,
+                  text: `${
+                    loadingSymbols[loadingIndex]
+                  }\n\n> ${thinkContent.trim()}`,
                   edit: loadingMessage.key,
                 });
+                loadingIndex = (loadingIndex + 1) % loadingSymbols.length;
               }
             } else if (thinkEnded) {
               // Tambahkan sisa buffer ke finalResponse
