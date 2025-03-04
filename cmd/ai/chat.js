@@ -27,6 +27,12 @@ function removeMemory(userContext, memoryId, userId) {
   writeUserContext(userId, userContext);
 }
 
+// Fungsi untuk menghasilkan ID unik memori
+function generateMemoryId() {
+  return Math.random().toString(36).substring(2, 15);
+  // ID unik untuk memori
+}
+
 export default (handler) => {
   handler.reg({
     cmd: ["ami", "chat"],
