@@ -369,7 +369,7 @@ export default (handler) => {
           dots = "";
           baseIndex = (baseIndex + 1) % loadingBases.length;
         }
-      }, 3000);
+      }, 1000);
 
       try {
         // Panggil LLM dengan streaming
@@ -416,7 +416,7 @@ export default (handler) => {
                 const endTime = Date.now();
                 const thinkingTime = ((endTime - startTime) / 1000).toFixed(1);
                 // Update pesan loading dengan notifikasi selesai berpikir
-                const animatedMessage = `🧠 Ami selesai berpikir dalam ${thinkingTime} detik.\n\n${formatThinkContent(
+                const animatedMessage = `🧠 Ami selesai berpikir dalam ${thinkingTime} detik.\n\n────────────────────────────\n\n*Pemikiran Ami:* ${formatThinkContent(
                   thinkContent
                 )}`;
                 await sock.sendMessage(m.from, {
@@ -463,18 +463,9 @@ export default (handler) => {
         finalResponse = parseMemoryTags(finalResponse, userContext);
 
         // Susun pesan akhir dengan format estetis:
-        // - Bagian "Pemikiran Ami" berupa blockquote tiap paragraf
-        // - Divider dan bagian jawaban akhir
-        let finalMessage = "";
-        if (thinkContent.trim()) {
-          finalMessage = `📓 *Pemikiran Ami:*\n\n${formatThinkContent(
-            thinkContent
-          )}\n\n────────────────────────────\n\n*Jawaban Ami:*\n\n${finalResponse.trim()}`;
-        } else {
-          finalMessage = finalResponse.trim();
-        }
+       
         const responseMessage = await sock.sendMessage(m.from, {
-          text: finalMessage,
+          text: `*Jawaban Ami:*\n\n${finalResponse.trim()}`,
           //edit: loadingMessage.key,
         });
 
