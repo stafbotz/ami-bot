@@ -308,10 +308,8 @@ Sapa pengguna dengan nama mereka dan tunjukkan bahwa kamu peduli, seperti teman 
         await clearInterval(loadingInterval);
 
         for await (const chunk of chatCompletion) {
-          return console.log(chunk.choices[0].delta.content || "");
+           console.log(chunk.choices[0].delta.content || "");
         }
-
-        return 
 
         const rawResponse = chatCompletion.choices[0]?.message?.content || "";
         if (!rawResponse) {
