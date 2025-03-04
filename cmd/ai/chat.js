@@ -267,7 +267,7 @@ Sapa pengguna dengan nama mereka dan tunjukkan bahwa kamu peduli, seperti teman 
       const relevantHistory = buildRelevantHistory(userContext, m.quoted?.id);
 
       // Bangun array context final
-      const context = [{ role: "system", content: systemPrompt }];    
+      const context = [{ role: "system", content: systemPrompt }];
       relevantHistory.map(({ id, ...rest }) => context.push(rest));
       // Tambahkan user prompt terbaru
       // (Sudah ditambahkan di userContext, jadi relevantHistory juga punya)
@@ -295,8 +295,10 @@ Sapa pengguna dengan nama mereka dan tunjukkan bahwa kamu peduli, seperti teman 
         }
       }, 1000);
 
+      await clearInterval(loadingInterval);
+
       try {
-        // Panggil LLM
+        // Panggil LLM dengan streaming
         const chatCompletion = await groq.chat.completions.create({
           messages: context,
           model: "deepseek-r1-distill-llama-70b",
@@ -305,13 +307,23 @@ Sapa pengguna dengan nama mereka dan tunjukkan bahwa kamu peduli, seperti teman 
           reasoning_format: "raw",
         });
 
-        await clearInterval(loadingInterval);
+        // Pastikan animasi loading berhenti
+        clearInterval(loadingInterval);
 
+        let rawResponse = "";
+
+        // Iterasi melalui stream
         for await (const chunk of chatCompletion) {
-           console.log(chunk.choices[0].delta.content || "");
+          const content = chunk.choices[0]?.delta?.content || "";
+          rawResponse += content;
+
+          // Jika ingin menampilkan progres kepada pengguna, kamu bisa mengedit pesan loading:
+          await sock.sendMessage(m.from, {
+            text: rawResponse,
+            edit: loadingMessage.key,
+          });
         }
 
-        const rawResponse = chatCompletion.choices[0]?.message?.content || "";
         if (!rawResponse) {
           await sock.sendMessage(m.from, {
             text: "Maaf, Ami tidak bisa menemukan jawaban. Coba tanyakan lagi!",
@@ -320,17 +332,17 @@ Sapa pengguna dengan nama mereka dan tunjukkan bahwa kamu peduli, seperti teman 
           return;
         }
 
-        // PARSE <think> dan <memory> block
+        // Memproses respons akhir
         let finalResponse = parseThinkTag(rawResponse);
         finalResponse = parseMemoryTags(finalResponse, userContext);
 
-        // Kirim jawaban final (tanpa <memory> block) ke user
+        // Mengirim jawaban ke pengguna
         const responseMessage = await sock.sendMessage(m.from, {
           text: finalResponse,
           edit: loadingMessage.key,
         });
 
-        // Simpan jawaban AI ke history
+        // Menyimpan jawaban AI ke history
         userContext.history.push({
           id: responseMessage.key.id,
           role: "assistant",
