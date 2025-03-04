@@ -369,15 +369,6 @@ export default (handler) => {
           dots = "";
           baseIndex = (baseIndex + 1) % loadingBases.length;
         }
-        const animatedMessage = `${
-          loadingBases[baseIndex]
-        }${dots}\n\n────────────────────────────\n\n${
-          thinkContent.trim() ? formatThinkContent(thinkContent) : ""
-        }`;
-        await sock.sendMessage(m.from, {
-          text: animatedMessage,
-          edit: loadingMessage.key,
-        });
       }, 3000);
 
       try {
@@ -437,6 +428,17 @@ export default (handler) => {
                 // Jika belum ketemu "</think>", tambahkan keseluruhan buffer ke thinkContent dan tunggu chunk berikutnya
                 thinkContent += buffer;
                 buffer = "";
+
+                // Update pesan think kepada pengguna
+                const animatedMessage = `${
+                  loadingBases[baseIndex]
+                }${dots}\n\n────────────────────────────\n\n${
+                  thinkContent.trim() ? formatThinkContent(thinkContent) : ""
+                }`;
+                await sock.sendMessage(m.from, {
+                  text: animatedMessage,
+                  edit: loadingMessage.key,
+                });
               }
             } else if (thinkEnded) {
               // Setelah mode <think> selesai, sisanya merupakan finalResponse
@@ -473,7 +475,7 @@ export default (handler) => {
         }
         const responseMessage = await sock.sendMessage(m.from, {
           text: finalMessage,
-          edit: loadingMessage.key,
+          //edit: loadingMessage.key,
         });
 
         // Simpan jawaban AI ke history
