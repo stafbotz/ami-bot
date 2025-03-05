@@ -10,15 +10,6 @@ import { date, time, getGreeting } from "../../system/function.js";
 // Inisialisasi Groq
 const groq = new Groq({ apiKey: setting.groqApiKey });
 
-// Helper untuk debounce
-function debounce(func, wait) {
-  let timeout;
-  return function (...args) {
-    clearTimeout(timeout);
-    timeout = setTimeout(() => func.apply(this, args), wait);
-  };
-}
-
 // Daftar fitur
 const getFeaturesList = (cmds) => {
   const commandGroups = {};
@@ -248,7 +239,7 @@ export default (handler) => {
 
       // Tampilkan pesan loading awal
       let loadingMessage = await sock.sendMessage(m.from, {
-        text: "🤖 Ami sedang berpikir",
+        text: "✨ Ami sedang berpikir",
       });
 
       // Waktu mulai berpikir
@@ -261,128 +252,6 @@ export default (handler) => {
       let thinkEnded = false;
       let buffer = "";
 
-      // Variabel animasi
-      let baseIndex = 0;
-      let dots = "";
-      let lastAnimationUpdate = Date.now();
-
-      // Loading animation: base messages ala Ghibli style
-      const loadingBases = [
-        "🌈 Mengukir pelangi rahasia di langit imajinasi",
-        "🚀 Meluncur perlahan ke angkasa pengetahuan yang hening",
-        "🦄 Mencari unicorn impian di lembah sunyi",
-        "🌟 Menyusun bintang-bintang inspirasi dalam diam",
-        "🍩 Menikmati donat lembut sambil merenung di pagi haru",
-        "🎲 Menggulung dadu nasib ide-ide halus dan tak terduga",
-        "🔮 Menatap bola kristal, menunggu bisikan masa depan",
-        "🎈 Meniup balon harapan dengan lembut di atas awan biru",
-        "🥁 Drum roll, bisikan jawaban mulai terurai",
-        "📚 Membuka buku rahasia alam semesta dengan ketenangan",
-        "🎧 Memutar melodi angin, menyejukkan pikiran yang riang",
-        "🧩 Menyatukan kepingan puzzle dari mimpi dan realita",
-        "🌞 Menyerap sinar mentari inspirasi dengan hati yang hangat",
-        "🌊 Menyelam ke dasar lautan keheningan pengetahuan",
-        "✈️ Terbang menyusuri awan lembut di atas cakrawala imajinasi",
-        "🔥 Menyalakan bara semangat dengan sentuhan kehangatan alam",
-        "🍀 Menyusuri embun pagi untuk menemukan keberuntungan",
-        "🎨 Melukis kanvas jawaban dengan warna-warna alam yang lembut",
-        "🕰 Mengatur detik demi detik dalam irama waktu yang tenang",
-        "🎤 Melatih bisikan alam dalam pidato penuh harapan",
-        "🍉 Membelah kesegaran ide-ide yang menggiurkan",
-        "🛰 Menangkap sinyal rahasia dari jauh di antara bintang-bintang",
-        "🧪 Meracik ramuan magis dengan sentuhan misteri alam",
-        "🌌 Menjelajahi galaksi sunyi yang penuh keajaiban",
-        "🌱 Menanam benih mimpi di taman inspirasi yang abadi",
-        "🍕 Memesan pizza kreativitas dengan topping kehangatan hati",
-        "🤹‍♂️ Menyulam ide bagai pertunjukan sirkus di malam sepi",
-        "📡 Menangkap bisikan alam dalam sinyal yang halus",
-        "🔋 Mengisi ulang spirit melalui pelukan embun pagi",
-        "🚧 Membuka jalan sunyi menuju jawaban yang tersembunyi",
-        "🌿 Menyatu dengan alam, mendengarkan hening yang dalam",
-        "🐾 Menapaki jejak lembut di jalan-jalan rahasia hutan",
-        "🍃 Dihembus angin sejuk, mengantar inspirasi yang tulus",
-        "🌸 Mekar bersama bunga-bunga mimpi yang wangi",
-        "☕ Menyeduh secangkir kehangatan di pagi yang permai",
-        "📖 Menulis puisi sunyi di lembaran rahasia alam",
-        "🧸 Memeluk kenangan manis dari dongeng masa kecil",
-        "🦋 Terbang bersama kupu-kupu, membawa pesan keajaiban",
-        "🎈 Mengangkat balon kecil, seakan berharap pada langit",
-        "🌷 Merangkai mawar pengetahuan dengan keanggunan alam",
-        "🐚 Mendengarkan suara lautan yang menceritakan kisah sunyi",
-        "🍯 Meneteskan madu Inspirasi ke dalam jiwa yang lelah",
-        "🕯 Menerangi malam dengan cahaya kecil yang menenangkan",
-        "🎐 Mengalunkan irama angin lembut yang berbisik rapi",
-        "🌙 Berlayar dalam keheningan malam dengan rembulan setia",
-        "🍄 Menjejak hutan mistis, menemukan keajaiban tersembunyi",
-        "🌺 Menyusun rangkaian bunga, mewarnai hari dengan harapan",
-        "🛁 Berendam dalam embun solusi yang menyejukkan",
-        "🧁 Menghias kelezatan jawaban bagaikan kue penuh cinta",
-        "🐳 Menyelam bersama paus bijak di samudra kebijaksanaan",
-        "🌌 Mengukir bintang dengan lembut di langit yang bersahaja",
-        "🍃 Daun-daun menari, menyampaikan pesan alam terindah",
-        "🐠 Berenang di antara rona biru lautan informasi",
-        "☂️ Menikmati tetesan hujan, membawa kisah imajinasi",
-        "🍓 Memetik buah segar dari kebun mimpi yang asri",
-        "📬 Mengirim surat oleh burung merpati dengan pesan damai",
-        "🎇 Menghidupkan kembang api emosi dalam diam yang mendalam",
-        "🍦 Menyajikan es krim pengetahuan dengan rasa manis alami",
-        "🐢 Bergerak perlahan, namun pasti, di jalan hidup yang sunyi",
-        "🌻 Menyambut fajar dengan senyum hangat ibarat matahari pagi",
-        "🌴 Berteduh di bawah naungan pohon hidup yang damai",
-        "🐇 Melompat ringan, menyusuri lembah mimpi yang riang",
-        "☁️ Melukis bentuk awan dengan irama asa yang lembut",
-        "🍁 Menerima gugur dedaunan sebagai tanda regenerasi jiwa",
-        "🦜 Mendengarkan simfoni burung, harmoni alam yang menenangkan",
-        "🎵 Menjadikan melodi alam sebagai lagu penyejuk hati",
-        "🎀 Mengikat simpul keindahan di setiap helai solusi",
-        "🌈 Mengumpulkan warna-warni mimpi di ufuk senja",
-        "🐝 Memetik madu dari bunga-bunga rahasia di taman sunyi",
-        "🍀 Menemukan sentuhan keberuntungan di setiap helaian embun",
-        "🥢 Menjepit ide-ide lembut dengan ketelitian dan cinta",
-        "🎁 Membuka kotak ajaib yang penuh kejutan alam",
-        "🧚‍♀️ Ditaburkan debu peri, membawa semangat yang menawan",
-        "🍥 Menganyam pusaran mimpi dalam tarian lembut waktu",
-        "🌊 Mengikuti arah sungai pengetahuan dengan tenang",
-        "🌟 Menggapai sinar bintang dengan penuh kepercayaan",
-        "🍭 Menikmati manisnya lolipop dalam mimpi yang lembut",
-        "🕊 Menerbangkan merpati damai, membawa pesan jiwa",
-        "🐾 Mengikuti jejak kecil di jalur sunyi penuh cerita",
-        "🌱 Menyemai harapan baru dengan benih cinta alam",
-        "🛸 Menjelajah alam semesta dalam bisikan rahasia",
-        "☕ Menyeduh secangkir ide, hangat dan mendamaikan",
-        "🌸 Menenun benang pemikiran di antara debu mimpi",
-        "📖 Mencatat lembaran kisah dalam buku waktu yang hening",
-        "🪐 Melintas orbit harapan dengan pesona alam semesta",
-        "🍂 Menyambut gugurnya dedaunan dengan syukur yang dalam",
-        "🌌 Menatap langit malam, penuh rahasia dan bintang",
-        "🌿 Menyegarkan jiwa dengan kelembutan aroma hutan",
-        "🚣 Menyusuri sungai kecil, pelajaran alam yang mendalam",
-        "⚘ Menyerap keindahan bunga liar di padang sunyi",
-        "🍀 Menyapa keberuntungan dengan kelembutan sentuhan alam",
-        "🌙 Merenung dalam cahaya rembulan yang purnama",
-        "✨ Mengira keajaiban dalam setiap tetes embun pagi",
-        "💫 Menganyam mimpi di antara kerlip bintang malam",
-        "🌄 Menyambut fajar dengan pelukan harapan baru",
-        "🏞 Mengarungi lembah sunyi, hening penuh bisikan alam",
-        "🌌 Menguak misteri galaksi dengan mata penuh harapan",
-        "🌺 Merayakan keindahan hari dalam setiap hembusan angin",
-        "💛 Menyeruput kehangatan matahari dengan jiwa yang murni",
-        "🌟 Mewarnai dunia dengan imajinasi seindah bintang",
-        "🏕 Mengabadikan keheningan malam di bawah langit penuh bintang",
-        "🌅 Menyatu dengan senja, meresapi bisikan alam yang syahdu",
-      ];
-
-      // Debounce untuk update pesan
-      const debouncedUpdate = debounce(async (messageContent) => {
-        try {
-          await sock.sendMessage(m.from, {
-            text: messageContent,
-            edit: loadingMessage.key,
-          });
-        } catch (error) {
-          console.error("Gagal update pesan:", error);
-        }
-      }, 500); // Update maksimal setiap 500ms
 
       try {
         // Panggil LLM dengan streaming
@@ -398,18 +267,6 @@ export default (handler) => {
         for await (const chunk of chatCompletion) {
           const content = chunk.choices[0]?.delta?.content || "";
           buffer += content;
-
-          // Update animasi setiap 1 detik
-          const now = Date.now();
-          if (now - lastAnimationUpdate >= 1000) {
-            if (dots.length < 3) {
-              dots += ".";
-            } else {
-              dots = "";
-              baseIndex = Math.floor(Math.random() * loadingBases.length);
-            }
-            lastAnimationUpdate = now;
-          }
 
           let processed = false;
           do {
@@ -435,23 +292,14 @@ export default (handler) => {
                 const thinkingTime = ((endTime - startTime) / 1000).toFixed(1);
 
                 // Update final think
-                const animatedMessage = `🧠 Selesai berpikir (${thinkingTime}s)\n\n${formatThinkContent(
-                  thinkContent
-                )}`;
                 await sock.sendMessage(m.from, {
-                  text: animatedMessage,
+                  text: `🧠 Selesai berpikir (${thinkingTime}s)\n\nPemikiran Ami:\n\n${formatThinkContent(thinkContent)}`,
                   edit: loadingMessage.key,
                 });
                 processed = true;
               } else {
                 thinkContent += buffer;
                 buffer = "";
-
-                // Update dengan debounce
-                /*const animatedMessage = `${
-                  loadingBases[baseIndex]
-                }${dots}\n\n${formatThinkContent(thinkContent)}`;
-                debouncedUpdate(animatedMessage);*/
               }
             } else if (thinkEnded) {
               finalResponse += buffer;
@@ -470,7 +318,7 @@ export default (handler) => {
 
         finalResponse = parseMemoryTags(finalResponse, userContext);
         const finalMessage = await sock.sendMessage(m.from, {
-          text: `*🤖 Jawaban Ami:*\n\n${finalResponse.trim()}`,
+          text: `*Jawaban Ami:*\n\n${finalResponse.trim()}`,
         });
 
         // Update history
