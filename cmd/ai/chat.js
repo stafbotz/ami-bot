@@ -5,10 +5,19 @@ import {
   readUserContext,
   writeUserContext,
 } from "../../system/db/contextProvider.js";
-import { date, time, getGreeting, translate } from "../../system/function.js";
+import { date, time, getGreeting } from "../../system/function.js";
 
 // Inisialisasi Groq
 const groq = new Groq({ apiKey: setting.groqApiKey });
+
+// Helper untuk debounce
+function debounce(func, wait) {
+  let timeout;
+  return function (...args) {
+    clearTimeout(timeout);
+    timeout = setTimeout(() => func.apply(this, args), wait);
+  };
+}
 
 // Daftar fitur
 const getFeaturesList = (cmds) => {
@@ -104,9 +113,9 @@ export default (handler) => {
       });
 
       // Batasi total riwayat 50
-      if (userContext.history.length > 50) {
+      /*if (userContext.history.length > 50) {
         userContext.history = userContext.history.slice(-50);
-      }
+      }*/
       writeUserContext(userId, userContext);
 
       // --- [2] Siapkan context AI
@@ -246,21 +255,134 @@ export default (handler) => {
       const startTime = Date.now();
 
       // Variabel untuk mengumpulkan isi <think> dan respon akhir
-      let currentResponse = "";
       let thinkContent = "";
       let finalResponse = "";
       let withinThink = false;
       let thinkEnded = false;
+      let buffer = "";
 
-      const CHUNK_SIZE = 20; // Adjust this value (number of characters per chunk)
-      const EDIT_DELAY = 300; // Adjust this value (milliseconds)
-      let lastEditTime = 0;
+      // Variabel animasi
+      let baseIndex = 0;
+      let dots = "";
+      let lastAnimationUpdate = Date.now();
 
-      // Terjemahkan isi pemikiran Ami (thinkContent) ke bahasa Indonesia
-      const translatedThink = await translate(
-        formatThinkContent(thinkContent.trim()),
-        "id"
-      );
+      // Loading animation: base messages ala Ghibli style
+      const loadingBases = [
+        "🌈 Mengukir pelangi rahasia di langit imajinasi",
+        "🚀 Meluncur perlahan ke angkasa pengetahuan yang hening",
+        "🦄 Mencari unicorn impian di lembah sunyi",
+        "🌟 Menyusun bintang-bintang inspirasi dalam diam",
+        "🍩 Menikmati donat lembut sambil merenung di pagi haru",
+        "🎲 Menggulung dadu nasib ide-ide halus dan tak terduga",
+        "🔮 Menatap bola kristal, menunggu bisikan masa depan",
+        "🎈 Meniup balon harapan dengan lembut di atas awan biru",
+        "🥁 Drum roll, bisikan jawaban mulai terurai",
+        "📚 Membuka buku rahasia alam semesta dengan ketenangan",
+        "🎧 Memutar melodi angin, menyejukkan pikiran yang riang",
+        "🧩 Menyatukan kepingan puzzle dari mimpi dan realita",
+        "🌞 Menyerap sinar mentari inspirasi dengan hati yang hangat",
+        "🌊 Menyelam ke dasar lautan keheningan pengetahuan",
+        "✈️ Terbang menyusuri awan lembut di atas cakrawala imajinasi",
+        "🔥 Menyalakan bara semangat dengan sentuhan kehangatan alam",
+        "🍀 Menyusuri embun pagi untuk menemukan keberuntungan",
+        "🎨 Melukis kanvas jawaban dengan warna-warna alam yang lembut",
+        "🕰 Mengatur detik demi detik dalam irama waktu yang tenang",
+        "🎤 Melatih bisikan alam dalam pidato penuh harapan",
+        "🍉 Membelah kesegaran ide-ide yang menggiurkan",
+        "🛰 Menangkap sinyal rahasia dari jauh di antara bintang-bintang",
+        "🧪 Meracik ramuan magis dengan sentuhan misteri alam",
+        "🌌 Menjelajahi galaksi sunyi yang penuh keajaiban",
+        "🌱 Menanam benih mimpi di taman inspirasi yang abadi",
+        "🍕 Memesan pizza kreativitas dengan topping kehangatan hati",
+        "🤹‍♂️ Menyulam ide bagai pertunjukan sirkus di malam sepi",
+        "📡 Menangkap bisikan alam dalam sinyal yang halus",
+        "🔋 Mengisi ulang spirit melalui pelukan embun pagi",
+        "🚧 Membuka jalan sunyi menuju jawaban yang tersembunyi",
+        "🌿 Menyatu dengan alam, mendengarkan hening yang dalam",
+        "🐾 Menapaki jejak lembut di jalan-jalan rahasia hutan",
+        "🍃 Dihembus angin sejuk, mengantar inspirasi yang tulus",
+        "🌸 Mekar bersama bunga-bunga mimpi yang wangi",
+        "☕ Menyeduh secangkir kehangatan di pagi yang permai",
+        "📖 Menulis puisi sunyi di lembaran rahasia alam",
+        "🧸 Memeluk kenangan manis dari dongeng masa kecil",
+        "🦋 Terbang bersama kupu-kupu, membawa pesan keajaiban",
+        "🎈 Mengangkat balon kecil, seakan berharap pada langit",
+        "🌷 Merangkai mawar pengetahuan dengan keanggunan alam",
+        "🐚 Mendengarkan suara lautan yang menceritakan kisah sunyi",
+        "🍯 Meneteskan madu Inspirasi ke dalam jiwa yang lelah",
+        "🕯 Menerangi malam dengan cahaya kecil yang menenangkan",
+        "🎐 Mengalunkan irama angin lembut yang berbisik rapi",
+        "🌙 Berlayar dalam keheningan malam dengan rembulan setia",
+        "🍄 Menjejak hutan mistis, menemukan keajaiban tersembunyi",
+        "🌺 Menyusun rangkaian bunga, mewarnai hari dengan harapan",
+        "🛁 Berendam dalam embun solusi yang menyejukkan",
+        "🧁 Menghias kelezatan jawaban bagaikan kue penuh cinta",
+        "🐳 Menyelam bersama paus bijak di samudra kebijaksanaan",
+        "🌌 Mengukir bintang dengan lembut di langit yang bersahaja",
+        "🍃 Daun-daun menari, menyampaikan pesan alam terindah",
+        "🐠 Berenang di antara rona biru lautan informasi",
+        "☂️ Menikmati tetesan hujan, membawa kisah imajinasi",
+        "🍓 Memetik buah segar dari kebun mimpi yang asri",
+        "📬 Mengirim surat oleh burung merpati dengan pesan damai",
+        "🎇 Menghidupkan kembang api emosi dalam diam yang mendalam",
+        "🍦 Menyajikan es krim pengetahuan dengan rasa manis alami",
+        "🐢 Bergerak perlahan, namun pasti, di jalan hidup yang sunyi",
+        "🌻 Menyambut fajar dengan senyum hangat ibarat matahari pagi",
+        "🌴 Berteduh di bawah naungan pohon hidup yang damai",
+        "🐇 Melompat ringan, menyusuri lembah mimpi yang riang",
+        "☁️ Melukis bentuk awan dengan irama asa yang lembut",
+        "🍁 Menerima gugur dedaunan sebagai tanda regenerasi jiwa",
+        "🦜 Mendengarkan simfoni burung, harmoni alam yang menenangkan",
+        "🎵 Menjadikan melodi alam sebagai lagu penyejuk hati",
+        "🎀 Mengikat simpul keindahan di setiap helai solusi",
+        "🌈 Mengumpulkan warna-warni mimpi di ufuk senja",
+        "🐝 Memetik madu dari bunga-bunga rahasia di taman sunyi",
+        "🍀 Menemukan sentuhan keberuntungan di setiap helaian embun",
+        "🥢 Menjepit ide-ide lembut dengan ketelitian dan cinta",
+        "🎁 Membuka kotak ajaib yang penuh kejutan alam",
+        "🧚‍♀️ Ditaburkan debu peri, membawa semangat yang menawan",
+        "🍥 Menganyam pusaran mimpi dalam tarian lembut waktu",
+        "🌊 Mengikuti arah sungai pengetahuan dengan tenang",
+        "🌟 Menggapai sinar bintang dengan penuh kepercayaan",
+        "🍭 Menikmati manisnya lolipop dalam mimpi yang lembut",
+        "🕊 Menerbangkan merpati damai, membawa pesan jiwa",
+        "🐾 Mengikuti jejak kecil di jalur sunyi penuh cerita",
+        "🌱 Menyemai harapan baru dengan benih cinta alam",
+        "🛸 Menjelajah alam semesta dalam bisikan rahasia",
+        "☕ Menyeduh secangkir ide, hangat dan mendamaikan",
+        "🌸 Menenun benang pemikiran di antara debu mimpi",
+        "📖 Mencatat lembaran kisah dalam buku waktu yang hening",
+        "🪐 Melintas orbit harapan dengan pesona alam semesta",
+        "🍂 Menyambut gugurnya dedaunan dengan syukur yang dalam",
+        "🌌 Menatap langit malam, penuh rahasia dan bintang",
+        "🌿 Menyegarkan jiwa dengan kelembutan aroma hutan",
+        "🚣 Menyusuri sungai kecil, pelajaran alam yang mendalam",
+        "⚘ Menyerap keindahan bunga liar di padang sunyi",
+        "🍀 Menyapa keberuntungan dengan kelembutan sentuhan alam",
+        "🌙 Merenung dalam cahaya rembulan yang purnama",
+        "✨ Mengira keajaiban dalam setiap tetes embun pagi",
+        "💫 Menganyam mimpi di antara kerlip bintang malam",
+        "🌄 Menyambut fajar dengan pelukan harapan baru",
+        "🏞 Mengarungi lembah sunyi, hening penuh bisikan alam",
+        "🌌 Menguak misteri galaksi dengan mata penuh harapan",
+        "🌺 Merayakan keindahan hari dalam setiap hembusan angin",
+        "💛 Menyeruput kehangatan matahari dengan jiwa yang murni",
+        "🌟 Mewarnai dunia dengan imajinasi seindah bintang",
+        "🏕 Mengabadikan keheningan malam di bawah langit penuh bintang",
+        "🌅 Menyatu dengan senja, meresapi bisikan alam yang syahdu",
+      ];
+
+      // Debounce untuk update pesan
+      const debouncedUpdate = debounce(async (messageContent) => {
+        try {
+          await sock.sendMessage(m.from, {
+            text: messageContent,
+            edit: loadingMessage.key,
+          });
+        } catch (error) {
+          console.error("Gagal update pesan:", error);
+        }
+      }, 500); // Update maksimal setiap 500ms
 
       try {
         // Panggil LLM dengan streaming
@@ -272,81 +394,95 @@ export default (handler) => {
           reasoning_format: "raw",
         });
 
+        // Iterasi melalui stream
         for await (const chunk of chatCompletion) {
-          finalResponse += chunk.choices[0]?.delta?.content || "";
+          const content = chunk.choices[0]?.delta?.content || "";
+          buffer += content;
 
-          if (!withinThink) {
-            const thinkStartIndex = finalResponse.indexOf("&lt;think&gt;");
-            if (thinkStartIndex !== -1) {
-              if (thinkStartIndex > 0) {
-                currentResponse += finalResponse.substring(0, thinkStartIndex);
-                finalResponse = finalResponse.substring(thinkStartIndex);
-              }
-              finalResponse = finalResponse.replace("&lt;think&gt;", "");
-              withinThink = true;
+          // Update animasi setiap 1 detik
+          const now = Date.now();
+          if (now - lastAnimationUpdate >= 1000) {
+            if (dots.length < 3) {
+              dots += ".";
             } else {
-              currentResponse += finalResponse;
-              finalResponse = "";
+              dots = "";
+              baseIndex = Math.floor(Math.random() * loadingBases.length);
             }
-          } else if (withinThink && !thinkEnded) {
-            const thinkEndIndex = finalResponse.indexOf("&lt;/think&gt;");
-            if (thinkEndIndex !== -1) {
-              thinkContent = finalResponse.substring(0, thinkEndIndex);
-              finalResponse = finalResponse.substring(thinkEndIndex + 8);
-              thinkEnded = true;
-            } else {
-              thinkContent += finalResponse;
-              finalResponse = "";
-            }
+            lastAnimationUpdate = now;
           }
 
-          // Chunking logic for currentResponse
-          if (currentResponse.length > 0) {
-            const now = Date.now();
-            if (currentResponse.length >= CHUNK_SIZE || thinkEnded) {
-              if (now - lastEditTime >= EDIT_DELAY) {
+          let processed = false;
+          do {
+            processed = false;
+            if (!withinThink) {
+              const thinkStartIndex = buffer.indexOf("<think>");
+              if (thinkStartIndex !== -1) {
+                finalResponse += buffer.substring(0, thinkStartIndex);
+                buffer = buffer.substring(thinkStartIndex + 7);
+                withinThink = true;
+                processed = true;
+              } else {
+                finalResponse += buffer;
+                buffer = "";
+              }
+            } else if (withinThink && !thinkEnded) {
+              const thinkEndIndex = buffer.indexOf("</think>");
+              if (thinkEndIndex !== -1) {
+                thinkContent += buffer.substring(0, thinkEndIndex);
+                buffer = buffer.substring(thinkEndIndex + 8);
+                thinkEnded = true;
+                const endTime = Date.now();
+                const thinkingTime = ((endTime - startTime) / 1000).toFixed(1);
+                
+                // Update final think
+                const animatedMessage = `🧠 Selesai berpikir (${thinkingTime}s)\n\n${formatThinkContent(thinkContent)}`;
                 await sock.sendMessage(m.from, {
-                  text: currentResponse.trim(),
+                  text: animatedMessage,
                   edit: loadingMessage.key,
                 });
+                processed = true;
+              } else {
+                thinkContent += buffer;
+                buffer = "";
 
-                currentResponse = "";
-                lastEditTime = now;
+                // Update dengan debounce
+                const animatedMessage = `${loadingBases[baseIndex]}${dots}\n\n${formatThinkContent(thinkContent)}`;
+                debouncedUpdate(animatedMessage);
               }
+            } else if (thinkEnded) {
+              finalResponse += buffer;
+              buffer = "";
             }
-          }
+          } while (processed && buffer.length > 0);
         }
-
-        if (thinkEnded) {
+    
+        if (!finalResponse.trim()) {
           await sock.sendMessage(m.from, {
-            text: `🧠 *Pemikiran Ami:* \n\n${formatThinkContent(thinkContent)}`,
+            text: "Maaf, Ami tidak bisa menemukan jawaban. Coba tanyakan lagi!",
             edit: loadingMessage.key,
           });
-          thinkEnded = false;
-          thinkContent = "";
+          return;
         }
 
-        // Final update after the stream ends
-        if (finalResponse.length > 0) {
-          const responseMessage = await sock.sendMessage(m.from, {
-            text: `*Jawaban Ami:*\n\n${parseMemoryTags(
-              finalResponse.trim(),
-              userContext
-            )}`,
+        // Final update setelah stream selesai
+        if (finalResponse.trim()) {
+          finalResponse = parseMemoryTags(finalResponse, userContext);
+          await sock.sendMessage(m.from, {
+            text: `*🤖 Jawaban Ami:*\n\n${finalResponse.trim()}`,
             edit: loadingMessage.key,
-          }); 
-          
-          // Simpan jawaban AI ke history
-          userContext.history.push({
-            id: responseMessage.key.id,
-            role: "assistant",
-            content: finalResponse,
           });
         }
+    
+        // Update history
+        userContext.history.push({
+          id: loadingMessage.key.id,
+          role: "assistant",
+          content: finalResponse,
+        });
 
-        if (userContext.history.length > 50) {
+        /*if (userContext.history.length > 50) {
           userContext.history = userContext.history.slice(-50);
-        }
+        }*/
         writeUserContext(userId, userContext);
       } catch (error) {
         console.error("Error:", error);
