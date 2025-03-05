@@ -347,7 +347,6 @@ export default (handler) => {
         }
         writeUserContext(userId, userContext);
       } catch (error) {
-        clearInterval(animateLoadingInterval);
         console.error("Error:", error);
         await sock.sendMessage(m.from, {
           text: "Waduh, ada kendala saat memproses pesanmu. Coba lagi nanti ya!",
