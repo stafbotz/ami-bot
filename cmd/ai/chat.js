@@ -433,9 +433,11 @@ export default (handler) => {
                 thinkEnded = true;
                 const endTime = Date.now();
                 const thinkingTime = ((endTime - startTime) / 1000).toFixed(1);
-                
+
                 // Update final think
-                const animatedMessage = `🧠 Selesai berpikir (${thinkingTime}s)\n\n${formatThinkContent(thinkContent)}`;
+                const animatedMessage = `🧠 Selesai berpikir (${thinkingTime}s)\n\n${formatThinkContent(
+                  thinkContent
+                )}`;
                 await sock.sendMessage(m.from, {
                   text: animatedMessage,
                   edit: loadingMessage.key,
@@ -446,7 +448,9 @@ export default (handler) => {
                 buffer = "";
 
                 // Update dengan debounce
-                const animatedMessage = `${loadingBases[baseIndex]}${dots}\n\n${formatThinkContent(thinkContent)}`;
+                const animatedMessage = `${
+                  loadingBases[baseIndex]
+                }${dots}\n\n${formatThinkContent(thinkContent)}`;
                 debouncedUpdate(animatedMessage);
               }
             } else if (thinkEnded) {
@@ -455,7 +459,7 @@ export default (handler) => {
             }
           } while (processed && buffer.length > 0);
         }
-    
+
         if (!finalResponse.trim()) {
           await sock.sendMessage(m.from, {
             text: "Maaf, Ami tidak bisa menemukan jawaban. Coba tanyakan lagi!",
@@ -464,18 +468,14 @@ export default (handler) => {
           return;
         }
 
-        // Final update setelah stream selesai
-        if (finalResponse.trim()) {
-          finalResponse = parseMemoryTags(finalResponse, userContext);
-          await sock.sendMessage(m.from, {
-            text: `*🤖 Jawaban Ami:*\n\n${finalResponse.trim()}`,
-            edit: loadingMessage.key,
-          });
-        }
-    
+        finalResponse = parseMemoryTags(finalResponse, userContext);
+        const finalMessage = await sock.sendMessage(m.from, {
+          text: `*🤖 Jawaban Ami:*\n\n${finalResponse.trim()}`,
+        });
+
         // Update history
         userContext.history.push({
-          id: loadingMessage.key.id,
+          id: finalMessage.key.id,
           role: "assistant",
           content: finalResponse,
         });
