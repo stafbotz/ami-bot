@@ -328,21 +328,22 @@ export default (handler) => {
 
         // Final update after the stream ends
         if (finalResponse.length > 0) {
-          let responseMessage = await sock.sendMessage(m.from, {
+          const responseMessage = await sock.sendMessage(m.from, {
             text: `*Jawaban Ami:*\n\n${parseMemoryTags(
               finalResponse.trim(),
               userContext
             )}`,
             edit: loadingMessage.key,
+          }); 
+          
+          // Simpan jawaban AI ke history
+          userContext.history.push({
+            id: responseMessage.key.id,
+            role: "assistant",
+            content: finalResponse,
           });
         }
 
-        // Simpan jawaban AI ke history
-        userContext.history.push({
-          id: responseMessage.key.id,
-          role: "assistant",
-          content: finalResponse,
-        });
         if (userContext.history.length > 50) {
           userContext.history = userContext.history.slice(-50);
         }
