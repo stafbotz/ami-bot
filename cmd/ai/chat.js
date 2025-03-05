@@ -326,9 +326,11 @@ export default (handler) => {
           thinkContent = "";
         }
 
+        let responseMessage;
+        
         // Final update after the stream ends
         if (finalResponse.length > 0) {
-          const responseMessage = await sock.sendMessage(m.from, {
+          responseMessage = await sock.sendMessage(m.from, {
             text: `*Jawaban Ami:*\n\n${parseMemoryTags(
               finalResponse.trim(),
               userContext
