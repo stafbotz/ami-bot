@@ -246,6 +246,7 @@ export default (handler) => {
       const startTime = Date.now();
 
       // Variabel untuk mengumpulkan isi <think> dan respon akhir
+      let currentResponse = "";
       let thinkContent = "";
       let finalResponse = "";
       let withinThink = false;
