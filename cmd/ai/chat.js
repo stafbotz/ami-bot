@@ -239,7 +239,7 @@ export default (handler) => {
 
       // Tampilkan pesan loading awal
       let loadingMessage = await sock.sendMessage(m.from, {
-        text: "✨ Ami sedang berpikir",
+        text: "✨ Ami sedang berpikir...",
       });
 
       // Waktu mulai berpikir
@@ -293,7 +293,7 @@ export default (handler) => {
 
                 // Update final think
                 await sock.sendMessage(m.from, {
-                  text: `🧠 Selesai berpikir (${thinkingTime}s)\n\nPemikiran Ami:\n\n${formatThinkContent(thinkContent)}`,
+                  text: `🧠 Selesai berpikir (${thinkingTime}s)\n\n*Pemikiran Ami:*\n\n${formatThinkContent(thinkContent)}`,
                   edit: loadingMessage.key,
                 });
                 processed = true;
