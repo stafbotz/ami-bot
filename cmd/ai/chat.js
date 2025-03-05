@@ -448,10 +448,10 @@ export default (handler) => {
                 buffer = "";
 
                 // Update dengan debounce
-                const animatedMessage = `${
+                /*const animatedMessage = `${
                   loadingBases[baseIndex]
                 }${dots}\n\n${formatThinkContent(thinkContent)}`;
-                debouncedUpdate(animatedMessage);
+                debouncedUpdate(animatedMessage);*/
               }
             } else if (thinkEnded) {
               finalResponse += buffer;
