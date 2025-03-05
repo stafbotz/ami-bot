@@ -5,7 +5,7 @@ import {
   readUserContext,
   writeUserContext,
 } from "../../system/db/contextProvider.js";
-import { date, time, getGreeting } from "../../system/function.js";
+import { date, time, getGreeting, translate } from "../../system/function.js";
 
 // Inisialisasi Groq
 const groq = new Groq({ apiKey: setting.groqApiKey });
@@ -258,7 +258,7 @@ export default (handler) => {
         "🚀 Meluncur perlahan ke angkasa pengetahuan yang hening",
         "🦄 Mencari unicorn impian di lembah sunyi",
         "🌟 Menyusun bintang-bintang inspirasi dalam diam",
-        "🍩 Menikmati donat lembut sambil merenung di pagi haru",
+        "🍩 Menikmati donat lembut sambil merenung di pagi hari",
         "🎲 Menggulung dadu nasib ide-ide halus dan tak terduga",
         "🔮 Menatap bola kristal, menunggu bisikan masa depan",
         "🎈 Meniup balon harapan dengan lembut di atas awan biru",
@@ -369,7 +369,7 @@ export default (handler) => {
           dots = "";
           baseIndex = (baseIndex + 1) % loadingBases.length;
         }
-      }, 1000);
+      }, 700);
 
       try {
         // Panggil LLM dengan streaming
@@ -429,11 +429,17 @@ export default (handler) => {
                 thinkContent += buffer;
                 buffer = "";
 
+                // Terjemahkan isi pemikiran Ami (thinkContent) ke bahasa Indonesia
+                const translatedThink = await translate(
+                  thinkContent.trim(),
+                  "id"
+                );
+
                 // Update pesan think kepada pengguna
                 const animatedMessage = `${
                   loadingBases[baseIndex]
                 }${dots}\n\n────────────────────────────\n\n*Pemikiran Ami:*\n\n${
-                  thinkContent.trim() ? formatThinkContent(thinkContent) : ""
+                  thinkContent.trim() ? formatThinkContent(translatedThink) : ""
                 }`;
                 await sock.sendMessage(m.from, {
                   text: animatedMessage,
@@ -463,7 +469,7 @@ export default (handler) => {
         finalResponse = parseMemoryTags(finalResponse, userContext);
 
         // Susun pesan akhir dengan format estetis:
-       
+
         const responseMessage = await sock.sendMessage(m.from, {
           text: `*Jawaban Ami:*\n\n${finalResponse.trim()}`,
           //edit: loadingMessage.key,
