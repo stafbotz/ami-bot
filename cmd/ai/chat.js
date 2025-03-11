@@ -382,7 +382,7 @@ async function processFlashModel(
   });
   return {
     messageId: finalMessage.key.id,
-    content: parsedResponse,
+    content: response,
   };
 }
 // Proses model Reasoning
