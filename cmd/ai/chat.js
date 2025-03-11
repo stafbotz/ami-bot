@@ -216,8 +216,7 @@ ${userMemory.length > 0 ? userMemory.join("\n\n") : "Belum ada memori tersimpan.
 # ATURAN UMUM:
 1. Sajikan respons dengan gaya bahasa yang santai tapi sopan.
 2. Gunakan maksimal 2 emoji dalam setiap respons.
-3. Hindari topik politik, SARA, dan saran medis.
-4. Jika ada fitur yang dikenali, jawab dengan format "FITUR:<nama_fitur>".
+3. Hindari topik politik, SARA, dan saran medis.".
 `;
 
   if (modelType === "flash") {
@@ -264,7 +263,6 @@ GAYA BAHASA:
 - Gunakan frasa seperti "Mari kita pertimbangkan...", "Jika kita analisis..."
 
 CARA MENJAWAB:
-1. Mulai dengan <think>...</think> untuk menguraikan proses penalaranmu
 2. Identifikasi asumsi dasar dan implikasinya
 3. Analisis masalah dari beberapa perspektif
 4. Berikan kesimpulan logis berdasarkan analisismu
@@ -613,7 +611,7 @@ export default function (handler) {
     }
     
     if (text === "ami stop") {
-      endSession(userId, sock, m.from);
+      endSession(db, userId, sock, m.from);
       await sock.sendMessage(m.from, {
         text: "✅ Sesi chat dengan Ami telah berakhir. Ketik *ami* untuk memulai sesi baru.",
       });
