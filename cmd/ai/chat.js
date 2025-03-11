@@ -457,10 +457,6 @@ async function processReasoningModel(context, loadingMessage, sock, m, userConte
 
 // Proses model DeepThinking (OpenRouter API)
 async function processDeepThinkingModel(context, loadingMessage, sock, m, userContext, startTime) {
-  const openrouterContext = context.map(msg => ({
-    role: msg.role,
-    content: msg.content
-  }));
   
   let reasoning = "";
   let finalResponse = "";
@@ -472,7 +468,7 @@ async function processDeepThinkingModel(context, loadingMessage, sock, m, userCo
   
   const stream = await openai.chat.completions.create({
     model: 'deepseek/deepseek-r1:free',
-    messages: openrouterContext,
+    messages: context,
     temperature: 0.7,
     stream: true
   });
