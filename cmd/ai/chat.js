@@ -115,20 +115,20 @@ function createSession(userId, db, sock, chatId) {
   return session;
 }
 
-function updateSession(userId, sock, chatId) {
+function updateSession(db, userId, sock, chatId) {
   const session = activeSessions.get(userId);
   if (session) {
     session.lastActivity = Date.now();
     clearTimeout(session.timeout);
     session.timeout = setTimeout(() => {
-      endSession(userId, sock, chatId);
+      endSession(db, userId, sock, chatId);
     }, SESSION_TIMEOUT);
     return true;
   }
   return false;
 }
 
-function endSession(userId, sock, chatId) {
+function endSession(db, userId, sock, chatId) {
   const session = activeSessions.get(userId);
   if (session) {
     clearTimeout(session.timeout);
@@ -255,7 +255,6 @@ KEPRIBADIAN:
 - Kamu analitis, logis, dan metodis dalam pendekatan
 - Kamu menyajikan pemikiran step-by-step
 - Kamu mempertimbangkan berbagai sudut pandang
-- Kamu menjelaskan proses berpikir dengan tag <think>...</think>
 - Kamu mengevaluasi argumen dengan hati-hati
 
 GAYA BAHASA:
@@ -575,7 +574,7 @@ export default function (handler) {
       return;
     }
     
-    updateSession(userId, sock, m.from);
+    updateSession(db, userId, sock, m.from);
     
     if (!session.modelSelected) {
       if (text === "1") {
