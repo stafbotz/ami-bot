@@ -421,7 +421,7 @@ async function processReasoningModel(
     // Hentikan animasi loading
     clearInterval(animationInterval);
 
-    const thinkContent = chatCompletion.choices[0].message.thinking || "";
+    const thinkContent = chatCompletion.choices[0].message.reasoning || "";
     const finalResponse = chatCompletion.choices[0].message.content;
     const responseTime = ((Date.now() - startTime) / 1000).toFixed(1);
 
