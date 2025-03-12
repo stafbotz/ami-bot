@@ -584,7 +584,7 @@ const funFacts = [
 // Fungsi untuk mendapatkan teks loading berdasarkan model dan waktu tersisa/berlalu
 function getLoadingText(modelType, seconds, funFact, isCountingUp) {
   let emoji, actionText;
-  
+
   switch (modelType) {
     case "flash":
       emoji = "⚡";
@@ -602,20 +602,20 @@ function getLoadingText(modelType, seconds, funFact, isCountingUp) {
       emoji = "✨";
       actionText = "berpikir";
   }
-  
+
   // Format waktu menjadi MM:SS
   let timeDisplay;
   if (seconds >= 60) {
     const minutes = Math.floor(seconds / 60);
     const remainingSeconds = seconds % 60;
-    timeDisplay = `${minutes}:${remainingSeconds.toString().padStart(2, '0')}`;
+    timeDisplay = `${minutes}:${remainingSeconds.toString().padStart(2, "0")}`;
   } else {
-    timeDisplay = `0:${seconds.toString().padStart(2, '0')}`;
+    timeDisplay = `0:${seconds.toString().padStart(2, "0")}`;
   }
-  
+
   // Teks berbeda untuk countdown vs countup
   const timePrefix = isCountingUp ? "+" : "";
-  
+
   return `${emoji} Ami sedang ${actionText}... (${timePrefix}${timeDisplay})
 
 ${funFact}`;
@@ -825,7 +825,6 @@ function formatWhatsAppResponse(text) {
   return formattedText;
 }
 
-
 // Apply fixes to model processing functions
 async function processFlashModel(
   context,
@@ -838,109 +837,119 @@ async function processFlashModel(
   const countdownTracker = loadingMessage.tracker;
 
   // Fungsi untuk memberi tahu respons lebih cepat
-async function notifyFasterResponse(tracker, sock, m, responseTime) {
-  // Tandai bahwa respons telah diterima
-  tracker.responseReceived = true;
-  tracker.processingResponse = true;
-  
-  if (tracker.intervalId) {
-    // Hentikan timer
-    tracker.stopTimer();
-    
+  async function notifyFasterResponse(tracker, sock, m, responseTime) {
+    // Tandai bahwa respons telah diterima
+    tracker.responseReceived = true;
+    tracker.processingResponse = true;
+
+    if (tracker.intervalId) {
+      // Hentikan timer
+      tracker.stopTimer();
+
+      try {
+        await sock.sendMessage(m.from, {
+          text: `Wow! Ami bisa menjawab lebih cepat! Hanya butuh ${responseTime} detik.`,
+          edit: tracker.messageKey,
+        });
+
+        // Berikan jeda 2 detik agar pengguna sempat membaca pesan
+        await new Promise((resolve) => setTimeout(resolve, 2000));
+      } catch (error) {
+        console.error("Error sending faster response notification:", error);
+      }
+    }
+  }
+
+  // Fungsi untuk memberi tahu bahwa respons telah diterima setelah countdown habis
+  async function notifyResponseReceived(tracker, sock, m, responseTime) {
+    // Tandai bahwa respons telah diterima
+    tracker.responseReceived = true;
+    tracker.processingResponse = true;
+
+    if (tracker.intervalId) {
+      // Hentikan timer
+      tracker.stopTimer();
+
+      try {
+        await sock.sendMessage(m.from, {
+          text: `✅ Ami telah menyelesaikan pemikiran dalam waktu ${responseTime} detik.`,
+          edit: tracker.messageKey,
+        });
+
+        // Berikan jeda 2 detik agar pengguna sempat membaca pesan
+        await new Promise((resolve) => setTimeout(resolve, 2000));
+      } catch (error) {
+        console.error("Error sending response received notification:", error);
+      }
+    }
+  }
+
+  // Then modify processFlashModel function to remove the nested functions
+  async function processFlashModel(
+    context,
+    loadingMessage,
+    sock,
+    m,
+    userContext,
+    startTime
+  ) {
+    const countdownTracker = loadingMessage.tracker;
+
     try {
-      await sock.sendMessage(m.from, {
-        text: `Wow! Ami bisa menjawab lebih cepat! Hanya butuh ${responseTime} detik.`,
-        edit: tracker.messageKey,
+      // API request
+      const chatCompletion = await groq.chat.completions.create({
+        messages: context,
+        model: "llama-3.3-70b-versatile",
+        temperature: 0.8,
+        max_completion_tokens: 1024,
+        stream: false,
       });
-      
-      // Berikan jeda 2 detik agar pengguna sempat membaca pesan
-      await new Promise(resolve => setTimeout(resolve, 2000));
-    } catch (error) {
-      console.error("Error sending faster response notification:", error);
-    }
-  }
-}
 
-// Fungsi untuk memberi tahu bahwa respons telah diterima setelah countdown habis
-async function notifyResponseReceived(tracker, sock, m, responseTime) {
-  // Tandai bahwa respons telah diterima
-  tracker.responseReceived = true;
-  tracker.processingResponse = true;
-  
-  if (tracker.intervalId) {
-    // Hentikan timer
-    tracker.stopTimer();
-    
-    try {
-      await sock.sendMessage(m.from, {
-        text: `✅ Ami telah menyelesaikan pemikiran dalam waktu ${responseTime} detik.`,
-        edit: tracker.messageKey,
+      // Verify response
+      if (
+        !chatCompletion.choices ||
+        !chatCompletion.choices[0] ||
+        !chatCompletion.choices[0].message ||
+        !chatCompletion.choices[0].message.content ||
+        chatCompletion.choices[0].message.content.trim() === ""
+      ) {
+        throw new Error("Empty response received from Flash model");
+      }
+
+      // Format response for WhatsApp compatibility
+      const response = formatWhatsAppResponse(
+        chatCompletion.choices[0].message.content
+      );
+      const responseTime = ((Date.now() - startTime) / 1000).toFixed(1);
+
+      // Notify based on timing
+      if (countdownTracker && !countdownTracker.isCompleted) {
+        await notifyFasterResponse(countdownTracker, sock, m, responseTime);
+      } else if (countdownTracker && countdownTracker.isCompleted) {
+        await notifyResponseReceived(countdownTracker, sock, m, responseTime);
+      }
+
+      // Send final answer
+      const finalMessage = await sock.sendMessage(m.from, {
+        text: `*Jawaban Ami Flash* (${responseTime}s):\n\n${response.trim()}`,
+        edit: loadingMessage.key,
       });
-      
-      // Berikan jeda 2 detik agar pengguna sempat membaca pesan
-      await new Promise(resolve => setTimeout(resolve, 2000));
+
+      return {
+        messageId: finalMessage.key.id,
+        content: response,
+      };
     } catch (error) {
-      console.error("Error sending response received notification:", error);
+      // Stop timer if running
+      if (countdownTracker && countdownTracker.intervalId) {
+        countdownTracker.stopTimer();
+      }
+
+      console.error("Error in processFlashModel:", error);
+      throw error;
     }
   }
 }
-
-  try {
-    // API request
-    const chatCompletion = await groq.chat.completions.create({
-      messages: context,
-      model: "llama-3.3-70b-versatile",
-      temperature: 0.8,
-      max_completion_tokens: 1024,
-      stream: false,
-    });
-
-    // Verify response
-    if (
-      !chatCompletion.choices ||
-      !chatCompletion.choices[0] ||
-      !chatCompletion.choices[0].message ||
-      !chatCompletion.choices[0].message.content ||
-      chatCompletion.choices[0].message.content.trim() === ""
-    ) {
-      throw new Error("Empty response received from Flash model");
-    }
-
-    // Format response for WhatsApp compatibility
-    const response = formatWhatsAppResponse(
-      chatCompletion.choices[0].message.content
-    );
-    const responseTime = ((Date.now() - startTime) / 1000).toFixed(1);
-
-    // Notify based on timing
-    if (countdownTracker && !countdownTracker.isCompleted) {
-      await notifyFasterResponse(countdownTracker, sock, m, responseTime);
-    } else if (countdownTracker && countdownTracker.isCompleted) {
-      await notifyResponseReceived(countdownTracker, sock, m, responseTime);
-    }
-
-    // Send final answer
-    const finalMessage = await sock.sendMessage(m.from, {
-      text: `*Jawaban Ami Flash* (${responseTime}s):\n\n${response.trim()}`,
-      edit: loadingMessage.key,
-    });
-
-    return {
-      messageId: finalMessage.key.id,
-      content: response,
-    };
-  } catch (error) {
-    // Stop timer if running
-    if (countdownTracker && countdownTracker.intervalId) {
-      countdownTracker.stopTimer();
-    }
-
-    console.error("Error in processFlashModel:", error);
-    throw error;
-  }
-}
-
-// Apply same fixes to Reasoning and DeepThinking models (similar pattern)
 
 // Proses model Reasoning dengan loading enhancement
 async function processReasoningModel(
