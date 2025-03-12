@@ -28,19 +28,28 @@ if (!fs.existsSync(tempDir)) {
 }
 
 // Function to generate math images from LaTeX
+// Improved generateMathImage with better logging
 async function generateMathImage(latex, filename) {
   try {
+    console.log(`Generating math image for LaTeX: ${latex}`);
+    
     // Configure MathJax
     const result = await MathJax.typeset({
       math: latex,
       format: "TeX",
       svg: true,
     });
-
+    
+    if (!result || !result.svg) {
+      console.error("MathJax did not return valid SVG");
+      return null;
+    }
+    
     // Save SVG to a file
     const outputPath = path.join(tempDir, `${filename}.svg`);
     fs.writeFileSync(outputPath, result.svg);
-
+    console.log(`Math image saved to ${outputPath}`);
+    
     return outputPath;
   } catch (error) {
     console.error("Error generating math image:", error);
@@ -48,61 +57,84 @@ async function generateMathImage(latex, filename) {
   }
 }
 
-// Function to create a graph paper image with a solution
+// Improved generateGraphPaperSolution with better logging
 async function generateGraphPaperSolution(
   drawFunction,
   width = 800,
   height = 800
 ) {
-  const canvas = createCanvas(width, height);
-  const ctx = canvas.getContext("2d");
-
-  // Draw graph paper background
-  ctx.fillStyle = "white";
-  ctx.fillRect(0, 0, width, height);
-
-  // Draw grid lines
-  ctx.strokeStyle = "#e0e0e0";
-  ctx.lineWidth = 1;
-
-  // Draw grid lines
-  const gridSize = 20;
-  for (let i = 0; i <= width; i += gridSize) {
+  try {
+    console.log("Creating canvas for graph paper solution");
+    const canvas = createCanvas(width, height);
+    const ctx = canvas.getContext("2d");
+    
+    // Draw graph paper background
+    console.log("Drawing graph paper background");
+    ctx.fillStyle = "white";
+    ctx.fillRect(0, 0, width, height);
+    
+    // Draw grid lines
+    console.log("Drawing grid lines");
+    ctx.strokeStyle = "#e0e0e0";
+    ctx.lineWidth = 1;
+    
+    const gridSize = 20;
+    for (let i = 0; i <= width; i += gridSize) {
+      ctx.beginPath();
+      ctx.moveTo(i, 0);
+      ctx.lineTo(i, height);
+      ctx.stroke();
+    }
+    
+    for (let i = 0; i <= height; i += gridSize) {
+      ctx.beginPath();
+      ctx.moveTo(0, i);
+      ctx.lineTo(width, i);
+      ctx.stroke();
+    }
+    
+    // Draw axes
+    console.log("Drawing axes");
+    ctx.strokeStyle = "#a0a0a0";
+    ctx.lineWidth = 2;
     ctx.beginPath();
-    ctx.moveTo(i, 0);
-    ctx.lineTo(i, height);
+    ctx.moveTo(width / 2, 0);
+    ctx.lineTo(width / 2, height);
+    ctx.moveTo(0, height / 2);
+    ctx.lineTo(width, height / 2);
     ctx.stroke();
+    
+    // Execute the provided draw function
+    console.log("Executing custom drawing function");
+    if (typeof drawFunction === "function") {
+      try {
+        drawFunction(ctx, width, height, gridSize);
+        console.log("Custom drawing function executed successfully");
+      } catch (drawError) {
+        console.error("Error in custom drawing function:", drawError);
+      }
+    } else {
+      console.error("Invalid drawing function provided");
+    }
+    
+    // Save canvas to file
+    console.log("Saving canvas to image file");
+    const filename = `graph_${Date.now()}.png`;
+    const outputPath = path.join(tempDir, filename);
+    
+    try {
+      const buffer = canvas.toBuffer("image/png");
+      fs.writeFileSync(outputPath, buffer);
+      console.log(`Graph image saved to ${outputPath}`);
+      return outputPath;
+    } catch (saveError) {
+      console.error("Error saving canvas to file:", saveError);
+      return null;
+    }
+  } catch (error) {
+    console.error("Error generating graph paper solution:", error);
+    return null;
   }
-
-  for (let i = 0; i <= height; i += gridSize) {
-    ctx.beginPath();
-    ctx.moveTo(0, i);
-    ctx.lineTo(width, i);
-    ctx.stroke();
-  }
-
-  // Draw axes
-  ctx.strokeStyle = "#a0a0a0";
-  ctx.lineWidth = 2;
-  ctx.beginPath();
-  ctx.moveTo(width / 2, 0);
-  ctx.lineTo(width / 2, height);
-  ctx.moveTo(0, height / 2);
-  ctx.lineTo(width, height / 2);
-  ctx.stroke();
-
-  // Execute the provided draw function to render the solution
-  if (typeof drawFunction === "function") {
-    drawFunction(ctx, width, height, gridSize);
-  }
-
-  // Save canvas to file
-  const filename = `graph_${Date.now()}.png`;
-  const outputPath = path.join(tempDir, filename);
-  const buffer = canvas.toBuffer("image/png");
-  fs.writeFileSync(outputPath, buffer);
-
-  return outputPath;
 }
 
 // Simpan sesi aktif AI
@@ -1190,7 +1222,7 @@ async function processReasoningModel(
     throw error;
   }
 }
-// Improved processDeepThinkingModel function
+// Improved processDeepThinkingModel function with better logging
 async function processDeepThinkingModel(
   context,
   loadingMessage,
@@ -1212,10 +1244,56 @@ async function processDeepThinkingModel(
     });
     console.log("DeepThinking API response received");
 
-    // Validation checks...
+    // Proper validation with detailed logging
+    if (
+      !chatCompletion ||
+      !chatCompletion.choices ||
+      chatCompletion.choices.length === 0
+    ) {
+      console.error(
+        "Invalid API response structure:",
+        JSON.stringify(chatCompletion)
+      );
+      throw new Error("Empty or invalid response from DeepThinking model");
+    }
+
+    if (
+      !chatCompletion.choices[0].message ||
+      !chatCompletion.choices[0].message.content
+    ) {
+      console.error(
+        "Invalid message structure in response:",
+        JSON.stringify(chatCompletion.choices[0])
+      );
+      throw new Error(
+        "Empty or missing message content from DeepThinking model"
+      );
+    }
 
     let finalResponse = chatCompletion.choices[0].message.content;
+    console.log(
+      "Raw response content received:",
+      finalResponse.substring(0, 100) + "..."
+    );
+
     const responseTime = ((Date.now() - startTime) / 1000).toFixed(1);
+
+    // First, send a notification that we're preparing the answer
+    if (countdownTracker) {
+      countdownTracker.responseReceived = true;
+      countdownTracker.processingResponse = true;
+
+      if (countdownTracker.intervalId) {
+        countdownTracker.stopTimer();
+      }
+
+      await sock.sendMessage(m.from, {
+        text: `✅ Ami telah mendapatkan jawaban dalam ${responseTime} detik. Sedang menyiapkan visualisasi...`,
+        edit: loadingMessage.key,
+      });
+
+      await new Promise((resolve) => setTimeout(resolve, 2000));
+    }
 
     // Process any image generation requests in the response
     const imageTags = {
@@ -1225,63 +1303,112 @@ async function processDeepThinkingModel(
     };
 
     const images = [];
+    console.log("Looking for special tags in response...");
+
+    // Check if response contains any special tags
+    const hasMathTag = finalResponse.includes("[MATH_IMAGE:");
+    const hasGraphTag = finalResponse.includes("[GRAPH:");
+    const hasSolutionTag = finalResponse.includes("[SOLUTION_GRAPH:");
+
+    console.log(
+      `Contains tags? Math: ${hasMathTag}, Graph: ${hasGraphTag}, Solution: ${hasSolutionTag}`
+    );
 
     // Extract and process [MATH_IMAGE] tags
     let mathMatch;
     while ((mathMatch = imageTags.math.exec(finalResponse)) !== null) {
+      console.log("Found MATH_IMAGE tag:", mathMatch[0]);
       const latex = mathMatch[1];
-      const imageFile = await generateMathImage(latex, `math_${images.length}`);
-      if (imageFile) {
-        images.push({
-          type: "math",
-          file: imageFile,
-          placeholder: mathMatch[0],
-        });
+      console.log("Generating math image for LaTeX:", latex);
+      try {
+        const imageFile = await generateMathImage(
+          latex,
+          `math_${images.length}`
+        );
+        if (imageFile) {
+          console.log("Math image generated successfully:", imageFile);
+          images.push({
+            type: "math",
+            file: imageFile,
+            placeholder: mathMatch[0],
+          });
+        } else {
+          console.error("Failed to generate math image for:", latex);
+        }
+      } catch (mathError) {
+        console.error("Error generating math image:", mathError);
       }
     }
 
     // Extract and process [GRAPH] tags
     let graphMatch;
     while ((graphMatch = imageTags.graph.exec(finalResponse)) !== null) {
+      console.log("Found GRAPH tag:", graphMatch[0]);
       const graphCode = graphMatch[1];
-      // Convert graph code to a drawing function
-      const drawFunction = new Function(
-        "ctx",
-        "width",
-        "height",
-        "gridSize",
-        graphCode
-      );
-      const imageFile = await generateGraphPaperSolution(drawFunction);
-      if (imageFile) {
-        images.push({
-          type: "graph",
-          file: imageFile,
-          placeholder: graphMatch[0],
-        });
+      console.log("Converting graph code to drawing function...");
+      try {
+        const drawFunction = new Function(
+          "ctx",
+          "width",
+          "height",
+          "gridSize",
+          graphCode
+        );
+        console.log("Generating graph image...");
+        const imageFile = await generateGraphPaperSolution(drawFunction);
+        if (imageFile) {
+          console.log("Graph image generated successfully:", imageFile);
+          images.push({
+            type: "graph",
+            file: imageFile,
+            placeholder: graphMatch[0],
+          });
+        } else {
+          console.error("Failed to generate graph image");
+        }
+      } catch (graphError) {
+        console.error("Error creating drawing function for graph:", graphError);
       }
     }
 
     // Extract and process [SOLUTION_GRAPH] tags
     let solutionMatch;
     while ((solutionMatch = imageTags.solution.exec(finalResponse)) !== null) {
+      console.log("Found SOLUTION_GRAPH tag:", solutionMatch[0]);
       const solutionCode = solutionMatch[1];
-      const drawFunction = new Function(
-        "ctx",
-        "width",
-        "height",
-        "gridSize",
-        solutionCode
-      );
-      const imageFile = await generateGraphPaperSolution(drawFunction);
-      if (imageFile) {
-        images.push({
-          type: "solution",
-          file: imageFile,
-          placeholder: solutionMatch[0],
-        });
+      console.log("Converting solution code to drawing function...");
+      try {
+        const drawFunction = new Function(
+          "ctx",
+          "width",
+          "height",
+          "gridSize",
+          solutionCode
+        );
+        console.log("Generating solution graph image...");
+        const imageFile = await generateGraphPaperSolution(drawFunction);
+        if (imageFile) {
+          console.log(
+            "Solution graph image generated successfully:",
+            imageFile
+          );
+          images.push({
+            type: "solution",
+            file: imageFile,
+            placeholder: solutionMatch[0],
+          });
+        } else {
+          console.error("Failed to generate solution graph image");
+        }
+      } catch (solutionError) {
+        console.error(
+          "Error creating drawing function for solution:",
+          solutionError
+        );
       }
     }
+
+    console.log(`Found ${images.length} images to process`);
 
     // Remove image tags from the text response
     for (const image of images) {
@@ -1299,37 +1426,63 @@ async function processDeepThinkingModel(
 
     // Format WhatsApp response
     finalResponse = formatWhatsAppResponse(finalResponse.trim());
+    console.log("Formatted response ready to send");
 
-    // Notify user about response...
-
+    console.log("Sending text response...");
     // Send the text response
     const finalMessage = await sock.sendMessage(m.from, {
       text: `*Jawaban Ami DeepThinking* (${responseTime}s):\n\n${finalResponse}`,
       edit: loadingMessage.key,
     });
+    console.log("Text response sent successfully");
 
     // Send any generated images
+    console.log(`Sending ${images.length} images...`);
     for (const image of images) {
-      await sock.sendMessage(m.from, {
-        image: fs.readFileSync(image.file),
-        caption:
-          image.type === "math"
-            ? "Rumus Matematika"
-            : image.type === "graph"
-            ? "Grafik"
-            : "Solusi pada kertas berpetak",
-      });
+      try {
+        console.log(`Sending image: ${image.file}`);
+        await sock.sendMessage(m.from, {
+          image: fs.readFileSync(image.file),
+          caption:
+            image.type === "math"
+              ? "Rumus Matematika"
+              : image.type === "graph"
+              ? "Grafik"
+              : "Solusi pada kertas berpetak",
+        });
+        console.log(`Image sent successfully: ${image.file}`);
 
-      // Clean up after sending
-      fs.unlinkSync(image.file);
+        // Clean up after sending
+        fs.unlinkSync(image.file);
+        console.log(`Image file deleted: ${image.file}`);
+      } catch (imageError) {
+        console.error(`Error sending image ${image.file}:`, imageError);
+      }
     }
 
+    console.log("All images processed and sent");
     return {
       messageId: finalMessage.key.id,
       content: finalResponse,
     };
   } catch (error) {
     console.error("Error in processDeepThinkingModel:", error);
+
+    // Make sure to stop any timers
+    if (countdownTracker && countdownTracker.intervalId) {
+      countdownTracker.stopTimer();
+    }
+
+    // Send error message to user
+    try {
+      await sock.sendMessage(m.from, {
+        text: "Maaf, terjadi kesalahan saat memproses jawaban. Silakan coba lagi.",
+        edit: loadingMessage.key,
+      });
+    } catch (msgError) {
+      console.error("Error sending error message:", msgError);
+    }
+
     throw error;
   }
 }
