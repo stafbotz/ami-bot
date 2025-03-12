@@ -503,7 +503,7 @@ async function processDeepThinkingModel(
       // Berikan jeda kecil sebelum menampilkan jawaban final
       await new Promise((resolve) => setTimeout(resolve, 1000));
     }
-
+    console.log(JSON.stringify(chatCompletion.choices));
     // Tampilkan jawaban
     const finalMessage = await sock.sendMessage(m.from, {
       text: `*Jawaban Ami DeepThinking:*\n\n${finalResponse.trim()}`,
