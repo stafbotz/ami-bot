@@ -113,7 +113,8 @@ function updateSession(db, userId, sock, chatId) {
   return false;
 }
 
-function endSession(db, userId, sock, chatId) {
+// Fix 3: Improved endSession function
+function endSession(db, userId, sock, chatId, reason = "timeout") {
   const session = activeSessions.get(userId);
   if (session) {
     clearTimeout(session.timeout);
@@ -124,11 +125,21 @@ function endSession(db, userId, sock, chatId) {
       db.users[userId].aiChatActive = false;
     }
 
-    // Notify user if provided
+    // Notify user with appropriate message based on reason
     if (sock && chatId) {
-      sock.sendMessage(chatId, {
-        text: "⏰ Sesi chat dengan Ami telah berakhir karena tidak ada aktivitas selama 3 menit. Ketik *ami* untuk memulai sesi baru dan pilih model.",
-      });
+      let message = "";
+
+      if (reason === "timeout") {
+        message =
+          "⏰ Sesi chat dengan Ami telah berakhir karena tidak ada aktivitas selama 3 menit. Ketik *ami* untuk memulai sesi baru dan pilih model.";
+      } else if (reason === "manual") {
+        message =
+          "✅ Sesi chat dengan Ami telah berakhir. Semoga jawabanku membantu! Ketik *ami* untuk memulai sesi baru kapan saja.";
+      }
+
+      if (message) {
+        sock.sendMessage(chatId, { text: message });
+      }
     }
 
     return true;
@@ -774,39 +785,6 @@ function formatWhatsAppResponse(text) {
   return formattedText;
 }
 
-// Fix 3: Improved endSession function
-function endSession(db, userId, sock, chatId, reason = "timeout") {
-  const session = activeSessions.get(userId);
-  if (session) {
-    clearTimeout(session.timeout);
-    activeSessions.delete(userId);
-
-    // Update database
-    if (db && db.users && db.users[userId]) {
-      db.users[userId].aiChatActive = false;
-    }
-
-    // Notify user with appropriate message based on reason
-    if (sock && chatId) {
-      let message = "";
-
-      if (reason === "timeout") {
-        message =
-          "⏰ Sesi chat dengan Ami telah berakhir karena tidak ada aktivitas selama 3 menit. Ketik *ami* untuk memulai sesi baru dan pilih model.";
-      } else if (reason === "manual") {
-        message =
-          "✅ Sesi chat dengan Ami telah berakhir. Semoga jawabanku membantu! Ketik *ami* untuk memulai sesi baru kapan saja.";
-      }
-
-      if (message) {
-        sock.sendMessage(chatId, { text: message });
-      }
-    }
-
-    return true;
-  }
-  return false;
-}
 
 // Apply fixes to model processing functions
 async function processFlashModel(
