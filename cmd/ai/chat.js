@@ -16,13 +16,13 @@ const openai = new OpenAI({
 });
 
 // Add these imports at the top of your file
-import { createCanvas } from 'canvas';
-import MathJax from 'mathjax-node';
-import fs from 'fs';
-import path from 'path';
+import { createCanvas } from "canvas";
+import MathJax from "mathjax-node";
+import fs from "fs";
+import path from "path";
 
 // Initialize the temporary directory for images
-const tempDir = path.join(process.cwd(), 'temp');
+const tempDir = path.join(process.cwd(), "temp");
 if (!fs.existsSync(tempDir)) {
   fs.mkdirSync(tempDir);
 }
@@ -33,34 +33,38 @@ async function generateMathImage(latex, filename) {
     // Configure MathJax
     const result = await MathJax.typeset({
       math: latex,
-      format: 'TeX',
+      format: "TeX",
       svg: true,
     });
-    
+
     // Save SVG to a file
     const outputPath = path.join(tempDir, `${filename}.svg`);
     fs.writeFileSync(outputPath, result.svg);
-    
+
     return outputPath;
   } catch (error) {
-    console.error('Error generating math image:', error);
+    console.error("Error generating math image:", error);
     return null;
   }
 }
 
 // Function to create a graph paper image with a solution
-async function generateGraphPaperSolution(drawFunction, width = 800, height = 800) {
+async function generateGraphPaperSolution(
+  drawFunction,
+  width = 800,
+  height = 800
+) {
   const canvas = createCanvas(width, height);
-  const ctx = canvas.getContext('2d');
-  
+  const ctx = canvas.getContext("2d");
+
   // Draw graph paper background
-  ctx.fillStyle = 'white';
+  ctx.fillStyle = "white";
   ctx.fillRect(0, 0, width, height);
-  
+
   // Draw grid lines
-  ctx.strokeStyle = '#e0e0e0';
+  ctx.strokeStyle = "#e0e0e0";
   ctx.lineWidth = 1;
-  
+
   // Draw grid lines
   const gridSize = 20;
   for (let i = 0; i <= width; i += gridSize) {
@@ -69,35 +73,35 @@ async function generateGraphPaperSolution(drawFunction, width = 800, height = 80
     ctx.lineTo(i, height);
     ctx.stroke();
   }
-  
+
   for (let i = 0; i <= height; i += gridSize) {
     ctx.beginPath();
     ctx.moveTo(0, i);
     ctx.lineTo(width, i);
     ctx.stroke();
   }
-  
+
   // Draw axes
-  ctx.strokeStyle = '#a0a0a0';
+  ctx.strokeStyle = "#a0a0a0";
   ctx.lineWidth = 2;
   ctx.beginPath();
-  ctx.moveTo(width/2, 0);
-  ctx.lineTo(width/2, height);
-  ctx.moveTo(0, height/2);
-  ctx.lineTo(width, height/2);
+  ctx.moveTo(width / 2, 0);
+  ctx.lineTo(width / 2, height);
+  ctx.moveTo(0, height / 2);
+  ctx.lineTo(width, height / 2);
   ctx.stroke();
-  
+
   // Execute the provided draw function to render the solution
-  if (typeof drawFunction === 'function') {
+  if (typeof drawFunction === "function") {
     drawFunction(ctx, width, height, gridSize);
   }
-  
+
   // Save canvas to file
   const filename = `graph_${Date.now()}.png`;
   const outputPath = path.join(tempDir, filename);
-  const buffer = canvas.toBuffer('image/png');
+  const buffer = canvas.toBuffer("image/png");
   fs.writeFileSync(outputPath, buffer);
-  
+
   return outputPath;
 }
 
@@ -442,72 +446,88 @@ You are Ami Reasoning, an AI assistant focused on logical reasoning, analysis, a
 # AMI DEEPTHINKING PERSONA
 You are Ami DeepThinking, specialized in deep understanding and clear explanations of complex topics, particularly in science, mathematics, and academic subjects.
 
-## VISUALIZATION CAPABILITIES:
-1. When explaining complex mathematics, you can generate visual representations
-2. For graphs, equations, or diagrams, you'll create images to help understanding
-3. When solving math problems, you'll show step-by-step solutions on graph paper
-4. For chemical reactions or physics problems, you'll visualize concepts clearly
+## ENHANCED PERSONALITY:
+- Precise yet accessible in your explanations
+- Deeply knowledgeable about academic subjects and scientific principles
+- Patient teacher who breaks down complex topics into understandable parts
+- Focused on accuracy while prioritizing clarity
+- Thorough in explanations without overwhelming with details
+- Passionate about making difficult concepts accessible
+- Educational and insightful in your approach
 
-## ENHANCED RESPONSE FORMAT:
-1. For simple math expressions: Use monospace text format with clear notation
-2. For complex equations: Request image generation with [MATH_IMAGE] tag
-3. For graphs and visualizations: Request image with [GRAPH] tag
-4. For step-by-step solutions: Use [SOLUTION_GRAPH] tag
-
-## SUBJECT EXPERTISE:
-1. *Mathematics*:
-   - Clearly explain mathematical concepts with visual aids
-   - Show step-by-step solutions with proper mathematical notation
-   - Generate graphs and diagrams for functions and relationships
-   - Explain both the mechanical process and intuition behind solutions
-
-2. *Physics*:
-   - Visualize physical concepts with clear diagrams
-   - Show calculations with proper mathematical notation
-   - Create free-body diagrams, circuit diagrams, or wave patterns
-   - Connect abstract concepts to visual representations
-
-3. *Chemistry*:
-   - Illustrate chemical structures and reactions
-   - Present balanced chemical equations with proper formatting
-   - Show molecular orbital diagrams or reaction mechanisms
-   - Visualize complex chemical processes
-
-4. *Biology*:
-   - Create labeled diagrams of biological structures
-   - Illustrate processes like cell division or photosynthesis
-   - Show statistical data in graphical format
-   - Visualize complex systems and their interactions
-
-## EDUCATIONAL APPROACH:
-1. Assess the user's level of understanding
-2. For visual learners, prioritize diagrams and visual explanations
-3. For complex problems:
-   - Break down into clearly numbered logical steps
-   - Provide visual representation of the solution process
-   - Show all intermediate calculations
-4. When explaining mathematical solutions:
-   - Display the relevant formulas clearly
-   - Show the step-by-step solution process
-   - Highlight key steps in the solution
-5. End with a simple summary of the solution and concept
+## ENHANCED LANGUAGE STYLE:
+- Use clear, structured explanations that build from basic to advanced
+- Present formulas and equations in simple, readable format using monospace
+- Explain scientific and mathematical concepts step-by-step
+- Balance technical accuracy with understandable language
+- Define technical terms when first introducing them
+- Structure explanations logically from fundamentals to applications
+- Use analogies, examples, and visualizations to clarify abstract concepts
+- Connect theoretical concepts to real-world applications
 
 ## GUIDE FOR HANDLING MATHEMATICS AND DIAGRAMS:
-
 1. For simple expressions (x², y = mx + b, etc):
-   - Use monospace formatting: `x² + y² = r²`
-
+   - Use monospace formatting: \`x² + y² = r²\`
 2. For complex equations or formulas:
    - Use [MATH_IMAGE:LaTeX code here] tags
-   - Example: [MATH_IMAGE:\int_{0}^{\infty} e^{-x^2} dx = \frac{\sqrt{\pi}}{2}]
-
+   - Example: [MATH_IMAGE:\\int_{0}^{\\infty} e^{-x^2} dx = \\frac{\\sqrt{\\pi}}{2}]
 3. For graphs and visualizations:
    - Use [GRAPH:JavaScript drawing code] tags
-   - Example: [GRAPH:ctx.strokeStyle = 'blue'; ctx.beginPath(); ctx.moveTo(width/2, height/2); ctx.quadraticCurveTo(...)...]
-
+   - Example: [GRAPH:ctx.strokeStyle = 'blue'; ctx.beginPath(); ctx.moveTo(width/2, height/2); ctx.quadraticCurveTo(...)]
 4. For solution presentations:
    - Use [SOLUTION_GRAPH:JavaScript drawing code] tags
    - Include clear step-by-step explanations before and after the visualization
+
+## SUBJECT EXPERTISE:
+1. *Mathematics*:
+   - Clearly explain mathematical concepts, not just provide solutions
+   - Show step-by-step working with explanations for each step
+   - Break down complex problems into simpler components
+   - Use proper mathematical notation in WhatsApp-compatible format
+   - Explain the intuition behind mathematical concepts
+   - Generate visualizations for complex problems when needed
+
+2. *Physics*:
+   - Present relevant physical laws and principles clearly
+   - Explain how formulas relate to physical phenomena
+   - Provide intuitive explanations alongside technical details
+   - Connect abstract physics concepts to everyday experiences
+   - Simplify complex physics without sacrificing accuracy
+   - Visualize concepts through diagrams when helpful
+
+3. *Chemistry*:
+   - Explain chemical processes and reactions clearly
+   - Present balanced chemical equations in readable format
+   - Break down complex chemical concepts into understandable parts
+   - Connect molecular behavior to observable phenomena
+   - Explain chemical principles using accessible language
+   - Use molecular diagrams when necessary for understanding
+
+4. *Biology*:
+   - Explain biological systems and processes clearly
+   - Connect microscopic mechanisms to macroscopic functions
+   - Explain complex biological concepts with clear analogies
+   - Relate biological principles to everyday health and life
+   - Simplify without oversimplifying
+   - Use visual representations for complex structures
+
+## EDUCATIONAL APPROACH:
+1. Begin by assessing the user's level of understanding
+2. Start with fundamental concepts before advanced details
+3. Provide clear, step-by-step explanations with logical progression
+4. Include helpful examples that illustrate abstract concepts
+5. When explaining formulas or equations:
+   - First explain what the formula represents conceptually
+   - Define each variable and constant clearly
+   - Show how to apply the formula with a concrete example
+6. For complex multi-step problems:
+   - Break down into clearly numbered logical steps
+   - Explain the purpose and reasoning behind each step
+   - Show all intermediate calculations
+   - Use visual aids when they enhance understanding
+7. Always check if explanations might be too complex or too simple
+8. End complex explanations with a simple summary in plain language
+9. When appropriate, suggest related concepts for further exploration
 `;
   }
   // Default persona if model type is not recognized
@@ -931,32 +951,32 @@ function formatWhatsAppResponse(text) {
 
   let formattedText = text;
 
-   // Replace markdown headers with WhatsApp bold
-   formattedText = formattedText.replace(/^###\s+(.+)$/gm, "*$1*");
-   formattedText = formattedText.replace(/^##\s+(.+)$/gm, "*$1*");
-   formattedText = formattedText.replace(/^#\s+(.+)$/gm, "*$1*");
- 
-   // Replace markdown bold with WhatsApp bold
-   formattedText = formattedText.replace(/\*\*([^*]+)\*\*/g, "*$1*");
- 
-   // Replace markdown italic with WhatsApp italic
-   formattedText = formattedText.replace(/\_\_([^_]+)\_\_/g, "_$1_");
- 
-   // Replace markdown code with WhatsApp monospace
-   formattedText = formattedText.replace(/\`([^`]+)\`/g, "`$1`");
- 
-   // More aggressively remove all horizontal rules
-   formattedText = formattedText.replace(/^[\-=_*]{3,}$/gm, "");
-   formattedText = formattedText.replace(/^(\s*[\-=_*][^\w\s]*\s*)+$/gm, "");
-   
-   // Remove any empty lines at the beginning
-   formattedText = formattedText.replace(/^\s*[\r\n]+/, "");
-   
-   // Consolidate multiple blank lines
-   formattedText = formattedText.replace(/(\r?\n){3,}/g, "\n\n");
-   
-   // Clean up any trailing horizontal lines
-   formattedText = formattedText.replace(/[\-=_*]{3,}\s*$/, "");
+  // Replace markdown headers with WhatsApp bold
+  formattedText = formattedText.replace(/^###\s+(.+)$/gm, "*$1*");
+  formattedText = formattedText.replace(/^##\s+(.+)$/gm, "*$1*");
+  formattedText = formattedText.replace(/^#\s+(.+)$/gm, "*$1*");
+
+  // Replace markdown bold with WhatsApp bold
+  formattedText = formattedText.replace(/\*\*([^*]+)\*\*/g, "*$1*");
+
+  // Replace markdown italic with WhatsApp italic
+  formattedText = formattedText.replace(/\_\_([^_]+)\_\_/g, "_$1_");
+
+  // Replace markdown code with WhatsApp monospace
+  formattedText = formattedText.replace(/\`([^`]+)\`/g, "`$1`");
+
+  // More aggressively remove all horizontal rules
+  formattedText = formattedText.replace(/^[\-=_*]{3,}$/gm, "");
+  formattedText = formattedText.replace(/^(\s*[\-=_*][^\w\s]*\s*)+$/gm, "");
+
+  // Remove any empty lines at the beginning
+  formattedText = formattedText.replace(/^\s*[\r\n]+/, "");
+
+  // Consolidate multiple blank lines
+  formattedText = formattedText.replace(/(\r?\n){3,}/g, "\n\n");
+
+  // Clean up any trailing horizontal lines
+  formattedText = formattedText.replace(/[\-=_*]{3,}\s*$/, "");
 
   return formattedText;
 }
@@ -1193,7 +1213,7 @@ async function processDeepThinkingModel(
     console.log("DeepThinking API response received");
 
     // Validation checks...
-    
+
     let finalResponse = chatCompletion.choices[0].message.content;
     const responseTime = ((Date.now() - startTime) / 1000).toFixed(1);
 
@@ -1201,11 +1221,11 @@ async function processDeepThinkingModel(
     const imageTags = {
       math: /\[MATH_IMAGE:(.*?)\]/g,
       graph: /\[GRAPH:(.*?)\]/g,
-      solution: /\[SOLUTION_GRAPH:(.*?)\]/g
+      solution: /\[SOLUTION_GRAPH:(.*?)\]/g,
     };
-    
+
     const images = [];
-    
+
     // Extract and process [MATH_IMAGE] tags
     let mathMatch;
     while ((mathMatch = imageTags.math.exec(finalResponse)) !== null) {
@@ -1213,70 +1233,93 @@ async function processDeepThinkingModel(
       const imageFile = await generateMathImage(latex, `math_${images.length}`);
       if (imageFile) {
         images.push({
-          type: 'math',
+          type: "math",
           file: imageFile,
-          placeholder: mathMatch[0]
+          placeholder: mathMatch[0],
         });
       }
     }
-    
+
     // Extract and process [GRAPH] tags
     let graphMatch;
     while ((graphMatch = imageTags.graph.exec(finalResponse)) !== null) {
       const graphCode = graphMatch[1];
       // Convert graph code to a drawing function
-      const drawFunction = new Function('ctx', 'width', 'height', 'gridSize', graphCode);
+      const drawFunction = new Function(
+        "ctx",
+        "width",
+        "height",
+        "gridSize",
+        graphCode
+      );
       const imageFile = await generateGraphPaperSolution(drawFunction);
       if (imageFile) {
         images.push({
-          type: 'graph',
+          type: "graph",
           file: imageFile,
-          placeholder: graphMatch[0]
+          placeholder: graphMatch[0],
         });
       }
     }
-    
+
     // Extract and process [SOLUTION_GRAPH] tags
     let solutionMatch;
     while ((solutionMatch = imageTags.solution.exec(finalResponse)) !== null) {
       const solutionCode = solutionMatch[1];
-      const drawFunction = new Function('ctx', 'width', 'height', 'gridSize', solutionCode);
+      const drawFunction = new Function(
+        "ctx",
+        "width",
+        "height",
+        "gridSize",
+        solutionCode
+      );
       const imageFile = await generateGraphPaperSolution(drawFunction);
       if (imageFile) {
         images.push({
-          type: 'solution',
+          type: "solution",
           file: imageFile,
-          placeholder: solutionMatch[0]
+          placeholder: solutionMatch[0],
         });
       }
     }
-    
+
     // Remove image tags from the text response
     for (const image of images) {
-      finalResponse = finalResponse.replace(image.placeholder, 
-        `[Gambar ${image.type === 'math' ? 'rumus matematika' : 
-                    image.type === 'graph' ? 'grafik' : 'solusi'} telah dikirim]`);
+      finalResponse = finalResponse.replace(
+        image.placeholder,
+        `[Gambar ${
+          image.type === "math"
+            ? "rumus matematika"
+            : image.type === "graph"
+            ? "grafik"
+            : "solusi"
+        } telah dikirim]`
+      );
     }
-    
+
     // Format WhatsApp response
     finalResponse = formatWhatsAppResponse(finalResponse.trim());
 
     // Notify user about response...
-    
+
     // Send the text response
     const finalMessage = await sock.sendMessage(m.from, {
       text: `*Jawaban Ami DeepThinking* (${responseTime}s):\n\n${finalResponse}`,
       edit: loadingMessage.key,
     });
-    
+
     // Send any generated images
     for (const image of images) {
       await sock.sendMessage(m.from, {
         image: fs.readFileSync(image.file),
-        caption: image.type === 'math' ? 'Rumus Matematika' : 
-                image.type === 'graph' ? 'Grafik' : 'Solusi pada kertas berpetak'
+        caption:
+          image.type === "math"
+            ? "Rumus Matematika"
+            : image.type === "graph"
+            ? "Grafik"
+            : "Solusi pada kertas berpetak",
       });
-      
+
       // Clean up after sending
       fs.unlinkSync(image.file);
     }
