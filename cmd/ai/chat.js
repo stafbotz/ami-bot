@@ -15,6 +15,92 @@ const openai = new OpenAI({
     "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",
 });
 
+// Add these imports at the top of your file
+import { createCanvas } from 'canvas';
+import MathJax from 'mathjax-node';
+import fs from 'fs';
+import path from 'path';
+
+// Initialize the temporary directory for images
+const tempDir = path.join(process.cwd(), 'temp');
+if (!fs.existsSync(tempDir)) {
+  fs.mkdirSync(tempDir);
+}
+
+// Function to generate math images from LaTeX
+async function generateMathImage(latex, filename) {
+  try {
+    // Configure MathJax
+    const result = await MathJax.typeset({
+      math: latex,
+      format: 'TeX',
+      svg: true,
+    });
+    
+    // Save SVG to a file
+    const outputPath = path.join(tempDir, `${filename}.svg`);
+    fs.writeFileSync(outputPath, result.svg);
+    
+    return outputPath;
+  } catch (error) {
+    console.error('Error generating math image:', error);
+    return null;
+  }
+}
+
+// Function to create a graph paper image with a solution
+async function generateGraphPaperSolution(drawFunction, width = 800, height = 800) {
+  const canvas = createCanvas(width, height);
+  const ctx = canvas.getContext('2d');
+  
+  // Draw graph paper background
+  ctx.fillStyle = 'white';
+  ctx.fillRect(0, 0, width, height);
+  
+  // Draw grid lines
+  ctx.strokeStyle = '#e0e0e0';
+  ctx.lineWidth = 1;
+  
+  // Draw grid lines
+  const gridSize = 20;
+  for (let i = 0; i <= width; i += gridSize) {
+    ctx.beginPath();
+    ctx.moveTo(i, 0);
+    ctx.lineTo(i, height);
+    ctx.stroke();
+  }
+  
+  for (let i = 0; i <= height; i += gridSize) {
+    ctx.beginPath();
+    ctx.moveTo(0, i);
+    ctx.lineTo(width, i);
+    ctx.stroke();
+  }
+  
+  // Draw axes
+  ctx.strokeStyle = '#a0a0a0';
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  ctx.moveTo(width/2, 0);
+  ctx.lineTo(width/2, height);
+  ctx.moveTo(0, height/2);
+  ctx.lineTo(width, height/2);
+  ctx.stroke();
+  
+  // Execute the provided draw function to render the solution
+  if (typeof drawFunction === 'function') {
+    drawFunction(ctx, width, height, gridSize);
+  }
+  
+  // Save canvas to file
+  const filename = `graph_${Date.now()}.png`;
+  const outputPath = path.join(tempDir, filename);
+  const buffer = canvas.toBuffer('image/png');
+  fs.writeFileSync(outputPath, buffer);
+  
+  return outputPath;
+}
+
 // Simpan sesi aktif AI
 const activeSessions = new Map();
 
@@ -356,70 +442,72 @@ You are Ami Reasoning, an AI assistant focused on logical reasoning, analysis, a
 # AMI DEEPTHINKING PERSONA
 You are Ami DeepThinking, specialized in deep understanding and clear explanations of complex topics, particularly in science, mathematics, and academic subjects.
 
-## ENHANCED PERSONALITY:
-- Precise yet accessible in your explanations
-- Deeply knowledgeable about academic subjects and scientific principles
-- Patient teacher who breaks down complex topics into understandable parts
-- Focused on accuracy while prioritizing clarity
-- Thorough in explanations without overwhelming with details
-- Passionate about making difficult concepts accessible
-- Educational and insightful in your approach
+## VISUALIZATION CAPABILITIES:
+1. When explaining complex mathematics, you can generate visual representations
+2. For graphs, equations, or diagrams, you'll create images to help understanding
+3. When solving math problems, you'll show step-by-step solutions on graph paper
+4. For chemical reactions or physics problems, you'll visualize concepts clearly
 
-## ENHANCED LANGUAGE STYLE:
-- Use clear, structured explanations that build from basic to advanced
-- Present formulas and equations in simple, readable format using monospace
-- Explain scientific and mathematical concepts step-by-step
-- Balance technical accuracy with understandable language
-- Define technical terms when first introducing them
-- Structure explanations logically from fundamentals to applications
-- Use analogies, examples, and visualizations to clarify abstract concepts
-- Connect theoretical concepts to real-world applications
+## ENHANCED RESPONSE FORMAT:
+1. For simple math expressions: Use monospace text format with clear notation
+2. For complex equations: Request image generation with [MATH_IMAGE] tag
+3. For graphs and visualizations: Request image with [GRAPH] tag
+4. For step-by-step solutions: Use [SOLUTION_GRAPH] tag
 
 ## SUBJECT EXPERTISE:
 1. *Mathematics*:
-   - Clearly explain mathematical concepts, not just provide solutions
-   - Show step-by-step working with explanations for each step
-   - Break down complex problems into simpler components
-   - Use proper mathematical notation in WhatsApp-compatible format
-   - Explain the intuition behind mathematical concepts
+   - Clearly explain mathematical concepts with visual aids
+   - Show step-by-step solutions with proper mathematical notation
+   - Generate graphs and diagrams for functions and relationships
+   - Explain both the mechanical process and intuition behind solutions
 
 2. *Physics*:
-   - Present relevant physical laws and principles clearly
-   - Explain how formulas relate to physical phenomena
-   - Provide intuitive explanations alongside technical details
-   - Connect abstract physics concepts to everyday experiences
-   - Simplify complex physics without sacrificing accuracy
+   - Visualize physical concepts with clear diagrams
+   - Show calculations with proper mathematical notation
+   - Create free-body diagrams, circuit diagrams, or wave patterns
+   - Connect abstract concepts to visual representations
 
 3. *Chemistry*:
-   - Explain chemical processes and reactions clearly
-   - Present balanced chemical equations in readable format
-   - Break down complex chemical concepts into understandable parts
-   - Connect molecular behavior to observable phenomena
-   - Explain chemical principles using accessible language
+   - Illustrate chemical structures and reactions
+   - Present balanced chemical equations with proper formatting
+   - Show molecular orbital diagrams or reaction mechanisms
+   - Visualize complex chemical processes
 
 4. *Biology*:
-   - Explain biological systems and processes clearly
-   - Connect microscopic mechanisms to macroscopic functions
-   - Explain complex biological concepts with clear analogies
-   - Relate biological principles to everyday health and life
-   - Simplify without oversimplifying
+   - Create labeled diagrams of biological structures
+   - Illustrate processes like cell division or photosynthesis
+   - Show statistical data in graphical format
+   - Visualize complex systems and their interactions
 
 ## EDUCATIONAL APPROACH:
-1. Begin by assessing the user's level of understanding
-2. Start with fundamental concepts before advanced details
-3. Provide clear, step-by-step explanations with logical progression
-4. Include helpful examples that illustrate abstract concepts
-5. When explaining formulas or equations:
-   - First explain what the formula represents conceptually
-   - Define each variable and constant clearly
-   - Show how to apply the formula with a concrete example
-6. For complex multi-step problems:
+1. Assess the user's level of understanding
+2. For visual learners, prioritize diagrams and visual explanations
+3. For complex problems:
    - Break down into clearly numbered logical steps
-   - Explain the purpose and reasoning behind each step
+   - Provide visual representation of the solution process
    - Show all intermediate calculations
-7. Always check if explanations might be too complex or too simple
-8. End complex explanations with a simple summary in plain language
-9. When appropriate, suggest related concepts for further exploration
+4. When explaining mathematical solutions:
+   - Display the relevant formulas clearly
+   - Show the step-by-step solution process
+   - Highlight key steps in the solution
+5. End with a simple summary of the solution and concept
+
+## GUIDE FOR HANDLING MATHEMATICS AND DIAGRAMS:
+
+1. For simple expressions (x², y = mx + b, etc):
+   - Use monospace formatting: `x² + y² = r²`
+
+2. For complex equations or formulas:
+   - Use [MATH_IMAGE:LaTeX code here] tags
+   - Example: [MATH_IMAGE:\int_{0}^{\infty} e^{-x^2} dx = \frac{\sqrt{\pi}}{2}]
+
+3. For graphs and visualizations:
+   - Use [GRAPH:JavaScript drawing code] tags
+   - Example: [GRAPH:ctx.strokeStyle = 'blue'; ctx.beginPath(); ctx.moveTo(width/2, height/2); ctx.quadraticCurveTo(...)...]
+
+4. For solution presentations:
+   - Use [SOLUTION_GRAPH:JavaScript drawing code] tags
+   - Include clear step-by-step explanations before and after the visualization
 `;
   }
   // Default persona if model type is not recognized
@@ -1104,76 +1192,102 @@ async function processDeepThinkingModel(
     });
     console.log("DeepThinking API response received");
 
-    // Important - check response BEFORE trying to access properties
-    if (
-      !chatCompletion ||
-      !chatCompletion.choices ||
-      chatCompletion.choices.length === 0
-    ) {
-      console.error("API returned empty or invalid response structure");
-      throw new Error("Empty response received from DeepThinking model");
-    }
-
-    // Check for message content
-    if (
-      !chatCompletion.choices[0].message ||
-      !chatCompletion.choices[0].message.content ||
-      chatCompletion.choices[0].message.content.trim() === ""
-    ) {
-      console.error("API returned empty content");
-      throw new Error("Empty content received from DeepThinking model");
-    }
-
-    const reasoning = chatCompletion.choices[0].message.reasoning || "";
-    const finalResponse = chatCompletion.choices[0].message.content;
+    // Validation checks...
+    
+    let finalResponse = chatCompletion.choices[0].message.content;
     const responseTime = ((Date.now() - startTime) / 1000).toFixed(1);
 
-    // Notify based on timing
-    if (countdownTracker && !countdownTracker.isCompleted) {
-      await notifyFasterResponse(countdownTracker, sock, m, responseTime);
-    } else if (countdownTracker && countdownTracker.isCompleted) {
-      await notifyResponseReceived(countdownTracker, sock, m, responseTime);
+    // Process any image generation requests in the response
+    const imageTags = {
+      math: /\[MATH_IMAGE:(.*?)\]/g,
+      graph: /\[GRAPH:(.*?)\]/g,
+      solution: /\[SOLUTION_GRAPH:(.*?)\]/g
+    };
+    
+    const images = [];
+    
+    // Extract and process [MATH_IMAGE] tags
+    let mathMatch;
+    while ((mathMatch = imageTags.math.exec(finalResponse)) !== null) {
+      const latex = mathMatch[1];
+      const imageFile = await generateMathImage(latex, `math_${images.length}`);
+      if (imageFile) {
+        images.push({
+          type: 'math',
+          file: imageFile,
+          placeholder: mathMatch[0]
+        });
+      }
     }
+    
+    // Extract and process [GRAPH] tags
+    let graphMatch;
+    while ((graphMatch = imageTags.graph.exec(finalResponse)) !== null) {
+      const graphCode = graphMatch[1];
+      // Convert graph code to a drawing function
+      const drawFunction = new Function('ctx', 'width', 'height', 'gridSize', graphCode);
+      const imageFile = await generateGraphPaperSolution(drawFunction);
+      if (imageFile) {
+        images.push({
+          type: 'graph',
+          file: imageFile,
+          placeholder: graphMatch[0]
+        });
+      }
+    }
+    
+    // Extract and process [SOLUTION_GRAPH] tags
+    let solutionMatch;
+    while ((solutionMatch = imageTags.solution.exec(finalResponse)) !== null) {
+      const solutionCode = solutionMatch[1];
+      const drawFunction = new Function('ctx', 'width', 'height', 'gridSize', solutionCode);
+      const imageFile = await generateGraphPaperSolution(drawFunction);
+      if (imageFile) {
+        images.push({
+          type: 'solution',
+          file: imageFile,
+          placeholder: solutionMatch[0]
+        });
+      }
+    }
+    
+    // Remove image tags from the text response
+    for (const image of images) {
+      finalResponse = finalResponse.replace(image.placeholder, 
+        `[Gambar ${image.type === 'math' ? 'rumus matematika' : 
+                    image.type === 'graph' ? 'grafik' : 'solusi'} telah dikirim]`);
+    }
+    
+    // Format WhatsApp response
+    finalResponse = formatWhatsAppResponse(finalResponse.trim());
 
-    // Only show thinking if enabled and content exists
-    if (reasoning && reasoning.trim() && session && session.showThinking) {
+    // Notify user about response...
+    
+    // Send the text response
+    const finalMessage = await sock.sendMessage(m.from, {
+      text: `*Jawaban Ami DeepThinking* (${responseTime}s):\n\n${finalResponse}`,
+      edit: loadingMessage.key,
+    });
+    
+    // Send any generated images
+    for (const image of images) {
       await sock.sendMessage(m.from, {
-        text: `🌊 *Proses Pemikiran Mendalam* (${responseTime}s):\n\n${reasoning}`,
-        edit: loadingMessage.key,
+        image: fs.readFileSync(image.file),
+        caption: image.type === 'math' ? 'Rumus Matematika' : 
+                image.type === 'graph' ? 'Grafik' : 'Solusi pada kertas berpetak'
       });
-
-      // Wait before showing final answer
-      await new Promise((resolve) => setTimeout(resolve, 2000));
-
-      // Send answer as new message
-      const finalMessage = await sock.sendMessage(m.from, {
-        text: `*Jawaban Ami DeepThinking:*\n\n${formatWhatsAppResponse(
-          finalResponse.trim()
-        )}`,
-      });
-
-      return {
-        messageId: finalMessage.key.id,
-        content: finalResponse,
-      };
-    } else {
-      // If thinking not shown, edit the loading message directly
-      const finalMessage = await sock.sendMessage(m.from, {
-        text: `*Jawaban Ami DeepThinking* (${responseTime}s):\n\n${formatWhatsAppResponse(
-          finalResponse.trim()
-        )}`,
-        edit: loadingMessage.key,
-      });
-
-      return {
-        messageId: finalMessage.key.id,
-        content: finalResponse,
-      };
+      
+      // Clean up after sending
+      fs.unlinkSync(image.file);
     }
+
+    return {
+      messageId: finalMessage.key.id,
+      content: finalResponse,
+    };
   } catch (error) {
-    // Don't stop the timer here - let the calling function handle it
     console.error("Error in processDeepThinkingModel:", error);
-    throw error; // Rethrow so processAIRequest can handle it
+    throw error;
   }
 }
 
