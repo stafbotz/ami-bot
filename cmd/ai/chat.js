@@ -404,7 +404,6 @@ You are Ami, a versatile AI assistant helping with various questions and tasks.
 `;
   }
 }
-
 // Fungsi untuk memproses permintaan AI dengan verifikasi
 async function processAIRequest(session, context, m, sock, userContext) {
   // Tampilkan pesan loading dengan countdown
@@ -421,6 +420,12 @@ async function processAIRequest(session, context, m, sock, userContext) {
       attempts++;
       
       try {
+        // Pastikan tracker tidak menunjukkan bahwa respons sudah diterima
+        if (loadingMessage.tracker) {
+          loadingMessage.tracker.responseReceived = false;
+          loadingMessage.tracker.processingResponse = false;
+        }
+        
         switch (session.modelType) {
           case "flash":
             response = await processFlashModel(context, loadingMessage, sock, m, userContext, startTime);
@@ -440,19 +445,48 @@ async function processAIRequest(session, context, m, sock, userContext) {
           console.log(`Attempt ${attempts}: Empty response received, retrying...`);
           response = null; // Reset respons untuk mencoba lagi
           
+          // Jika tracker masih berjalan, hentikan
+          if (loadingMessage.tracker && loadingMessage.tracker.intervalId) {
+            loadingMessage.tracker.stopTimer();
+          }
+          
+          // Buat tracker baru untuk percobaan berikutnya
+          loadingMessage.tracker = {
+            isCompleted: false,
+            isCountingUp: false,
+            initialTime: loadingMessage.tracker.initialTime,
+            remainingSeconds: loadingMessage.tracker.initialTime,
+            elapsedSeconds: 0,
+            messageKey: loadingMessage.key,
+            intervalId: null,
+            factIndex: loadingMessage.tracker.factIndex,
+            responseReceived: false,
+            processingResponse: false
+          };
+          
           // Beri tahu pengguna bahwa kita mencoba lagi
           if (attempts < maxAttempts) {
             await sock.sendMessage(m.from, {
               text: `🤔 Hmm, Ami sepertinya butuh berpikir lebih dalam. Mencoba lagi (percobaan ${attempts+1}/${maxAttempts})...`,
               edit: loadingMessage.key,
             });
+            
+            // Tunggu sebentar, lalu mulai countdown baru
+            await new Promise(resolve => setTimeout(resolve, 2000));
+            
+            // Mulai interval baru untuk countdown
+            const shuffledFacts = [...funFacts].sort(() => 0.5 - Math.random());
+            startCountdownInterval(loadingMessage.tracker, session, sock, m, shuffledFacts, 1000);
           }
-          
-          // Tunggu sebentar sebelum mencoba lagi
-          await new Promise(resolve => setTimeout(resolve, 2000));
         }
       } catch (error) {
         console.error(`Error on attempt ${attempts}:`, error);
+        
+        // Jika tracker masih berjalan, hentikan
+        if (loadingMessage.tracker && loadingMessage.tracker.intervalId) {
+          loadingMessage.tracker.stopTimer();
+        }
+        
         if (attempts >= maxAttempts) throw error; // Lempar error jika sudah mencapai batas
       }
     }
@@ -466,6 +500,12 @@ async function processAIRequest(session, context, m, sock, userContext) {
     
   } catch (error) {
     console.error("Error in processAIRequest:", error);
+    
+    // Pastikan timer dihentikan jika masih berjalan
+    if (loadingMessage.tracker && loadingMessage.tracker.intervalId) {
+      loadingMessage.tracker.stopTimer();
+    }
+    
     await sock.sendMessage(m.from, {
       text: "Waduh, ada kendala saat memproses pesanmu. Coba lagi nanti ya!",
       edit: loadingMessage.key,
@@ -512,17 +552,25 @@ async function displayCountdownLoading(session, sock, m) {
   const shuffledFacts = [...funFacts].sort(() => 0.5 - Math.random());
   
   // Kirim pesan loading awal
-  const initialLoadingText = getLoadingText(session.modelType, countdownSeconds, shuffledFacts[0]);
+  const initialLoadingText = getLoadingText(session.modelType, countdownSeconds, shuffledFacts[0], false);
   const loadingMessage = await sock.sendMessage(m.from, { text: initialLoadingText });
   
   // Buat objek untuk melacak proses countdown
   const countdownTracker = {
     isCompleted: false,
+    isCountingUp: false,
+    initialTime: countdownSeconds,
     remainingSeconds: countdownSeconds,
+    elapsedSeconds: 0,
     messageKey: loadingMessage.key,
     intervalId: null,
     factIndex: 1, // Mulai dari fakta kedua karena yang pertama sudah digunakan
+    responseReceived: false,
+    processingResponse: false
   };
+  
+  // Pasang tracker ke loadingMessage agar bisa diakses oleh fungsi lain
+  loadingMessage.tracker = countdownTracker;
   
   // Mulai interval untuk update countdown
   startCountdownInterval(countdownTracker, session, sock, m, shuffledFacts, updateInterval);
@@ -530,17 +578,31 @@ async function displayCountdownLoading(session, sock, m) {
   return loadingMessage;
 }
 
-// Fungsi untuk memulai interval countdown
+// Fungsi untuk memulai interval countdown/countup
 function startCountdownInterval(tracker, session, sock, m, facts, updateInterval) {
   tracker.intervalId = setInterval(async () => {
-    // Kurangi waktu tersisa
-    tracker.remainingSeconds--;
+    // Jika sudah menerima respons dan sedang memproses, jangan update lagi
+    if (tracker.responseReceived && tracker.processingResponse) {
+      return;
+    }
+    
+    // Update waktu tersisa/berlalu
+    if (tracker.isCountingUp) {
+      tracker.elapsedSeconds++;
+    } else {
+      tracker.remainingSeconds--;
+    }
     
     // Ganti fakta setiap 5 detik
     const factToShow = facts[Math.floor((tracker.factIndex++ / 5) % facts.length)];
     
     // Update pesan loading
-    const updatedText = getLoadingText(session.modelType, tracker.remainingSeconds, factToShow);
+    const updatedText = getLoadingText(
+      session.modelType, 
+      tracker.isCountingUp ? tracker.elapsedSeconds : tracker.remainingSeconds, 
+      factToShow,
+      tracker.isCountingUp
+    );
     
     try {
       await sock.sendMessage(m.from, {
@@ -551,27 +613,30 @@ function startCountdownInterval(tracker, session, sock, m, facts, updateInterval
       console.error("Error updating countdown message:", error);
     }
     
-    // Hentikan interval jika countdown selesai
-    if (tracker.remainingSeconds <= 0) {
-      clearInterval(tracker.intervalId);
+    // Jika countdown selesai dan belum counting up, mulai counting up
+    if (!tracker.isCountingUp && tracker.remainingSeconds <= 0) {
+      tracker.isCountingUp = true;
       tracker.isCompleted = true;
       
-      // Kirim pesan bahwa waktu habis tapi masih berpikir
+      // Kirim pesan transisi ke counting up
       try {
         await sock.sendMessage(m.from, {
-          text: `⏳ Ami masih memikirkan jawabannya dengan serius. Sedikit lebih lama lagi ya! Pertanyaanmu cukup menantang~ 
+          text: `⏳ Ami masih memikirkan jawabannya dengan serius. Pertanyaanmu cukup menantang~ 
 
 ${facts[tracker.factIndex % facts.length]}`,
           edit: tracker.messageKey,
         });
+        
+        // Tunggu 2 detik sebelum mulai counting up
+        await new Promise(resolve => setTimeout(resolve, 2000));
       } catch (error) {
-        console.error("Error sending timeout message:", error);
+        console.error("Error sending transition message:", error);
       }
     }
   }, updateInterval);
   
-  // Tetapkan fungsi untuk menghentikan countdown
-  tracker.stopCountdown = () => {
+  // Tetapkan fungsi untuk menghentikan timer
+  tracker.stopTimer = () => {
     if (tracker.intervalId) {
       clearInterval(tracker.intervalId);
       tracker.intervalId = null;
@@ -581,8 +646,8 @@ ${facts[tracker.factIndex % facts.length]}`,
   return tracker;
 }
 
-// Fungsi untuk mendapatkan teks loading berdasarkan model dan waktu tersisa
-function getLoadingText(modelType, secondsRemaining, funFact) {
+// Fungsi untuk mendapatkan teks loading berdasarkan model dan waktu tersisa/berlalu
+function getLoadingText(modelType, seconds, funFact, isCountingUp) {
   let emoji, actionText;
   
   switch (modelType) {
@@ -603,25 +668,33 @@ function getLoadingText(modelType, secondsRemaining, funFact) {
       actionText = "berpikir";
   }
   
-  // Format waktu menjadi MM:SS jika lebih dari 60 detik
+  // Format waktu menjadi MM:SS
   let timeDisplay;
-  if (secondsRemaining >= 60) {
-    const minutes = Math.floor(secondsRemaining / 60);
-    const seconds = secondsRemaining % 60;
-    timeDisplay = `${minutes}:${seconds.toString().padStart(2, '0')}`;
+  if (seconds >= 60) {
+    const minutes = Math.floor(seconds / 60);
+    const remainingSeconds = seconds % 60;
+    timeDisplay = `${minutes}:${remainingSeconds.toString().padStart(2, '0')}`;
   } else {
-    timeDisplay = `${secondsRemaining}`;
+    timeDisplay = `0:${seconds.toString().padStart(2, '0')}`;
   }
   
-  return `${emoji} Ami sedang ${actionText}... (${timeDisplay}s)
+  // Teks berbeda untuk countdown vs countup
+  const timePrefix = isCountingUp ? "+" : "";
+  
+  return `${emoji} Ami sedang ${actionText}... (${timePrefix}${timeDisplay})
 
 ${funFact}`;
 }
 
 // Fungsi untuk memberi tahu respons lebih cepat
 async function notifyFasterResponse(tracker, sock, m, responseTime) {
+  // Tandai bahwa respons telah diterima
+  tracker.responseReceived = true;
+  tracker.processingResponse = true;
+  
   if (tracker.intervalId) {
-    tracker.stopCountdown();
+    // Hentikan timer
+    tracker.stopTimer();
     
     try {
       await sock.sendMessage(m.from, {
@@ -629,17 +702,41 @@ async function notifyFasterResponse(tracker, sock, m, responseTime) {
         edit: tracker.messageKey,
       });
       
-      // Berikan jeda kecil agar pengguna sempat membaca pesan
-      await new Promise(resolve => setTimeout(resolve, 1500));
+      // Berikan jeda 2 detik agar pengguna sempat membaca pesan
+      await new Promise(resolve => setTimeout(resolve, 2000));
     } catch (error) {
       console.error("Error sending faster response notification:", error);
     }
   }
 }
 
+// Fungsi untuk memberi tahu bahwa respons telah diterima setelah countdown habis
+async function notifyResponseReceived(tracker, sock, m, responseTime) {
+  // Tandai bahwa respons telah diterima
+  tracker.responseReceived = true;
+  tracker.processingResponse = true;
+  
+  if (tracker.intervalId) {
+    // Hentikan timer
+    tracker.stopTimer();
+    
+    try {
+      await sock.sendMessage(m.from, {
+        text: `✅ Ami telah menyelesaikan pemikiran dalam waktu ${responseTime} detik.`,
+        edit: tracker.messageKey,
+      });
+      
+      // Berikan jeda 2 detik agar pengguna sempat membaca pesan
+      await new Promise(resolve => setTimeout(resolve, 2000));
+    } catch (error) {
+      console.error("Error sending response received notification:", error);
+    }
+  }
+}
+
 // Proses model Flash dengan loading enhancement
 async function processFlashModel(context, loadingMessage, sock, m, userContext, startTime) {
-  // Buat tracker untuk loading message
+  // Ambil tracker untuk loading message
   const countdownTracker = loadingMessage.tracker;
   
   try {
@@ -664,12 +761,16 @@ async function processFlashModel(context, loadingMessage, sock, m, userContext, 
     const response = chatCompletion.choices[0].message.content;
     const responseTime = ((Date.now() - startTime) / 1000).toFixed(1);
     
-    // Jika masih ada countdown berjalan dan respons lebih cepat, beri tahu pengguna
+    // Jika masih dalam countdown dan respons lebih cepat, beri tahu pengguna
     if (countdownTracker && !countdownTracker.isCompleted) {
       await notifyFasterResponse(countdownTracker, sock, m, responseTime);
+    } 
+    // Jika countdown sudah habis (sudah counting up), beri tahu bahwa respons telah diterima
+    else if (countdownTracker && countdownTracker.isCompleted) {
+      await notifyResponseReceived(countdownTracker, sock, m, responseTime);
     }
     
-    // Kirim jawaban final
+    // Kirim jawaban final setelah menunggu 2 detik
     const finalMessage = await sock.sendMessage(m.from, {
       text: `*Jawaban Ami Flash* (${responseTime}s):\n\n${response.trim()}`,
       edit: loadingMessage.key,
@@ -680,9 +781,9 @@ async function processFlashModel(context, loadingMessage, sock, m, userContext, 
       content: response,
     };
   } catch (error) {
-    // Hentikan countdown jika masih berjalan
+    // Hentikan timer jika masih berjalan
     if (countdownTracker && countdownTracker.intervalId) {
-      countdownTracker.stopCountdown();
+      countdownTracker.stopTimer();
     }
     
     console.error("Error in processFlashModel:", error);
@@ -692,7 +793,7 @@ async function processFlashModel(context, loadingMessage, sock, m, userContext, 
 
 // Proses model Reasoning dengan loading enhancement
 async function processReasoningModel(context, loadingMessage, sock, m, userContext, startTime) {
-  // Buat tracker untuk loading message
+  // Ambil tracker untuk loading message
   const countdownTracker = loadingMessage.tracker;
   
   try {
@@ -714,31 +815,30 @@ async function processReasoningModel(context, loadingMessage, sock, m, userConte
       throw new Error("Empty response received from Reasoning model");
     }
     
-    // Hentikan countdown jika masih berjalan
-    if (countdownTracker && countdownTracker.intervalId) {
-      countdownTracker.stopCountdown();
-    }
-    
     const thinkContent = chatCompletion.choices[0].message.reasoning || "";
     const finalResponse = chatCompletion.choices[0].message.content;
     const responseTime = ((Date.now() - startTime) / 1000).toFixed(1);
     
-    // Jika masih ada countdown berjalan dan respons lebih cepat, beri tahu pengguna
+    // Jika masih dalam countdown dan respons lebih cepat, beri tahu pengguna
     if (countdownTracker && !countdownTracker.isCompleted) {
       await notifyFasterResponse(countdownTracker, sock, m, responseTime);
+    } 
+    // Jika countdown sudah habis (sudah counting up), beri tahu bahwa respons telah diterima
+    else if (countdownTracker && countdownTracker.isCompleted) {
+      await notifyResponseReceived(countdownTracker, sock, m, responseTime);
     }
     
     // Tampilkan pemikiran jika ada
     if (thinkContent && thinkContent.trim()) {
       await sock.sendMessage(m.from, {
-        text: `🧠 Selesai berpikir (${responseTime}s)\n\n*Pemikiran Ami:*\n\n${formatThinkContent(
+        text: `🧠 *Pemikiran Ami* (${responseTime}s):\n\n${formatThinkContent(
           thinkContent
         )}`,
         edit: loadingMessage.key,
       });
       
-      // Berikan jeda kecil sebelum menampilkan jawaban final
-      await new Promise((resolve) => setTimeout(resolve, 1000));
+      // Berikan jeda 2 detik sebelum menampilkan jawaban final
+      await new Promise((resolve) => setTimeout(resolve, 2000));
     }
     
     // Tampilkan jawaban
@@ -751,9 +851,9 @@ async function processReasoningModel(context, loadingMessage, sock, m, userConte
       content: finalResponse,
     };
   } catch (error) {
-    // Hentikan countdown jika masih berjalan
+    // Hentikan timer jika masih berjalan
     if (countdownTracker && countdownTracker.intervalId) {
-      countdownTracker.stopCountdown();
+      countdownTracker.stopTimer();
     }
     
     console.error("Error in processReasoningModel:", error);
@@ -763,7 +863,7 @@ async function processReasoningModel(context, loadingMessage, sock, m, userConte
 
 // Proses model DeepThinking dengan loading enhancement
 async function processDeepThinkingModel(context, loadingMessage, sock, m, userContext, startTime) {
-  // Buat tracker untuk loading message
+  // Ambil tracker untuk loading message
   const countdownTracker = loadingMessage.tracker;
   
   try {
@@ -783,28 +883,30 @@ async function processDeepThinkingModel(context, loadingMessage, sock, m, userCo
       throw new Error("Empty response received from DeepThinking model");
     }
     
-    // Hentikan countdown jika masih berjalan
-    if (countdownTracker && countdownTracker.intervalId) {
-      countdownTracker.stopCountdown();
-    }
-    
     const reasoning = chatCompletion.choices[0].message.reasoning || "";
     const finalResponse = chatCompletion.choices[0].message.content;
     const responseTime = ((Date.now() - startTime) / 1000).toFixed(1);
     
-    // Jika masih ada countdown berjalan dan respons lebih cepat, beri tahu pengguna
+    // Jika masih dalam countdown dan respons lebih cepat, beri tahu pengguna
     if (countdownTracker && !countdownTracker.isCompleted) {
       await notifyFasterResponse(countdownTracker, sock, m, responseTime);
+    } 
+    // Jika countdown sudah habis (sudah counting up), beri tahu bahwa respons telah diterima
+    else if (countdownTracker && countdownTracker.isCompleted) {
+      await notifyResponseReceived(countdownTracker, sock, m, responseTime);
     }
     
     // Tampilkan proses pemikiran jika ada
     if (reasoning && reasoning.trim()) {
       await sock.sendMessage(m.from, {
-        text: `🌊 Proses Pemikiran Mendalam (${responseTime}s):\n\n${formatThinkContent(
+        text: `🌊 *Proses Pemikiran Mendalam* (${responseTime}s):\n\n${formatThinkContent(
           reasoning
         )}`,
         edit: loadingMessage.key,
       });
+      
+      // Berikan jeda 2 detik sebelum menampilkan jawaban final
+      await new Promise((resolve) => setTimeout(resolve, 2000));
     }
     
     // Tampilkan jawaban
@@ -817,9 +919,9 @@ async function processDeepThinkingModel(context, loadingMessage, sock, m, userCo
       content: finalResponse,
     };
   } catch (error) {
-    // Hentikan countdown jika masih berjalan
+    // Hentikan timer jika masih berjalan
     if (countdownTracker && countdownTracker.intervalId) {
-      countdownTracker.stopCountdown();
+      countdownTracker.stopTimer();
     }
     
     console.error("Error in processDeepThinkingModel:", error);
