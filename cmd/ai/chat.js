@@ -80,18 +80,19 @@ function createSession(userId, db, sock, chatId) {
     lastActivity: Date.now(),
     modelSelected: false,
     modelType: null,
+    showThinking: false, // Default: tidak menampilkan thinking
     timeout: null,
   };
 
-  // Atur timeout untuk mengakhiri sesi setelah tidak aktif
+  // Set timeout
   session.timeout = setTimeout(() => {
     endSession(userId, sock, chatId);
   }, SESSION_TIMEOUT);
 
-  // Simpan sesi
+  // Save session
   activeSessions.set(userId, session);
 
-  // Catat di database
+  // Record in database
   if (db && db.users && db.users[userId]) {
     db.users[userId].aiChatActive = true;
   }
@@ -404,7 +405,8 @@ You are Ami, a versatile AI assistant helping with various questions and tasks.
 `;
   }
 }
-// Fungsi untuk memproses permintaan AI dengan verifikasi
+
+// Fungsi untuk memproses permintaan AI dengan verifikasi dan retry
 async function processAIRequest(session, context, m, sock, userContext) {
   // Tampilkan pesan loading dengan countdown
   const loadingMessage = await displayCountdownLoading(session, sock, m);
@@ -420,7 +422,7 @@ async function processAIRequest(session, context, m, sock, userContext) {
       attempts++;
       
       try {
-        // Pastikan tracker tidak menunjukkan bahwa respons sudah diterima
+        // Reset tracker state untuk setiap percobaan
         if (loadingMessage.tracker) {
           loadingMessage.tracker.responseReceived = false;
           loadingMessage.tracker.processingResponse = false;
@@ -445,12 +447,12 @@ async function processAIRequest(session, context, m, sock, userContext) {
           console.log(`Attempt ${attempts}: Empty response received, retrying...`);
           response = null; // Reset respons untuk mencoba lagi
           
-          // Jika tracker masih berjalan, hentikan
+          // Hentikan timer jika masih berjalan
           if (loadingMessage.tracker && loadingMessage.tracker.intervalId) {
             loadingMessage.tracker.stopTimer();
           }
           
-          // Buat tracker baru untuk percobaan berikutnya
+          // Buat tracker baru dengan waktu yang sama
           loadingMessage.tracker = {
             isCompleted: false,
             isCountingUp: false,
@@ -471,7 +473,7 @@ async function processAIRequest(session, context, m, sock, userContext) {
               edit: loadingMessage.key,
             });
             
-            // Tunggu sebentar, lalu mulai countdown baru
+            // Tunggu sebentar sebelum mulai countdown baru
             await new Promise(resolve => setTimeout(resolve, 2000));
             
             // Mulai interval baru untuk countdown
@@ -482,12 +484,12 @@ async function processAIRequest(session, context, m, sock, userContext) {
       } catch (error) {
         console.error(`Error on attempt ${attempts}:`, error);
         
-        // Jika tracker masih berjalan, hentikan
+        // Hentikan timer jika masih berjalan
         if (loadingMessage.tracker && loadingMessage.tracker.intervalId) {
           loadingMessage.tracker.stopTimer();
         }
         
-        if (attempts >= maxAttempts) throw error; // Lempar error jika sudah mencapai batas
+        if (attempts >= maxAttempts) throw error; // Lempar error jika sudah batas maksimal
       }
     }
     
@@ -501,19 +503,18 @@ async function processAIRequest(session, context, m, sock, userContext) {
   } catch (error) {
     console.error("Error in processAIRequest:", error);
     
-    // Pastikan timer dihentikan jika masih berjalan
+    // Pastikan timer dihentikan
     if (loadingMessage.tracker && loadingMessage.tracker.intervalId) {
       loadingMessage.tracker.stopTimer();
     }
     
     await sock.sendMessage(m.from, {
-      text: "Waduh, ada kendala saat memproses pesanmu. Coba lagi nanti ya!",
+      text: "Waduh, ada kendala saat memproses pesanmu. Coba ajukan pertanyaanmu lagi ya!",
       edit: loadingMessage.key,
     });
     return null;
   }
 }
-
 // Array fakta-fakta menarik gaya Gen Z
 const funFacts = [
   "💫 Fun Fact: Emoji 😂 adalah emoji yang paling banyak digunakan di dunia!",
@@ -661,7 +662,7 @@ function getLoadingText(modelType, seconds, funFact, isCountingUp) {
       break;
     case "deepthinking":
       emoji = "🌊";
-      actionText = "mendalami pemikiran";
+      actionText = "berpikir mendalam";
       break;
     default:
       emoji = "✨";
@@ -793,8 +794,8 @@ async function processFlashModel(context, loadingMessage, sock, m, userContext, 
 
 // Proses model Reasoning dengan loading enhancement
 async function processReasoningModel(context, loadingMessage, sock, m, userContext, startTime) {
-  // Ambil tracker untuk loading message
   const countdownTracker = loadingMessage.tracker;
+  const session = getSession(m.sender);
   
   try {
     const chatCompletion = await groq.chat.completions.create({
@@ -806,7 +807,7 @@ async function processReasoningModel(context, loadingMessage, sock, m, userConte
       reasoning_format: "parsed",
     });
     
-    // Verifikasi respons
+    // Verify response
     if (!chatCompletion.choices || 
         !chatCompletion.choices[0] || 
         !chatCompletion.choices[0].message || 
@@ -819,17 +820,15 @@ async function processReasoningModel(context, loadingMessage, sock, m, userConte
     const finalResponse = chatCompletion.choices[0].message.content;
     const responseTime = ((Date.now() - startTime) / 1000).toFixed(1);
     
-    // Jika masih dalam countdown dan respons lebih cepat, beri tahu pengguna
+    // Notify based on whether countdown finished
     if (countdownTracker && !countdownTracker.isCompleted) {
       await notifyFasterResponse(countdownTracker, sock, m, responseTime);
-    } 
-    // Jika countdown sudah habis (sudah counting up), beri tahu bahwa respons telah diterima
-    else if (countdownTracker && countdownTracker.isCompleted) {
+    } else if (countdownTracker && countdownTracker.isCompleted) {
       await notifyResponseReceived(countdownTracker, sock, m, responseTime);
     }
     
-    // Tampilkan pemikiran jika ada
-    if (thinkContent && thinkContent.trim()) {
+    // Only show thinking process if enabled and content exists
+    if (thinkContent && thinkContent.trim() && session && session.showThinking) {
       await sock.sendMessage(m.from, {
         text: `🧠 *Pemikiran Ami* (${responseTime}s):\n\n${formatThinkContent(
           thinkContent
@@ -837,21 +836,31 @@ async function processReasoningModel(context, loadingMessage, sock, m, userConte
         edit: loadingMessage.key,
       });
       
-      // Berikan jeda 2 detik sebelum menampilkan jawaban final
+      // Wait 2 seconds before showing final answer
       await new Promise((resolve) => setTimeout(resolve, 2000));
+      
+      // Send answer as new message
+      const finalMessage = await sock.sendMessage(m.from, {
+        text: `*Jawaban Ami Reasoning:*\n\n${finalResponse.trim()}`,
+      });
+      
+      return {
+        messageId: finalMessage.key.id,
+        content: finalResponse,
+      };
+    } else {
+      // If thinking not shown, edit the loading message directly
+      const finalMessage = await sock.sendMessage(m.from, {
+        text: `*Jawaban Ami Reasoning:*\n\n${finalResponse.trim()}`,
+        edit: loadingMessage.key,
+      });
+      
+      return {
+        messageId: finalMessage.key.id,
+        content: finalResponse,
+      };
     }
-    
-    // Tampilkan jawaban
-    const finalMessage = await sock.sendMessage(m.from, {
-      text: `*Jawaban Ami Reasoning:*\n\n${finalResponse.trim()}`,
-    });
-    
-    return {
-      messageId: finalMessage.key.id,
-      content: finalResponse,
-    };
   } catch (error) {
-    // Hentikan timer jika masih berjalan
     if (countdownTracker && countdownTracker.intervalId) {
       countdownTracker.stopTimer();
     }
@@ -863,8 +872,8 @@ async function processReasoningModel(context, loadingMessage, sock, m, userConte
 
 // Proses model DeepThinking dengan loading enhancement
 async function processDeepThinkingModel(context, loadingMessage, sock, m, userContext, startTime) {
-  // Ambil tracker untuk loading message
   const countdownTracker = loadingMessage.tracker;
+  const session = getSession(m.sender);
   
   try {
     const chatCompletion = await openai.chat.completions.create({
@@ -874,7 +883,7 @@ async function processDeepThinkingModel(context, loadingMessage, sock, m, userCo
       stream: false,
     });
     
-    // Verifikasi respons
+    // Verify response
     if (!chatCompletion.choices || 
         !chatCompletion.choices[0] || 
         !chatCompletion.choices[0].message || 
@@ -887,17 +896,15 @@ async function processDeepThinkingModel(context, loadingMessage, sock, m, userCo
     const finalResponse = chatCompletion.choices[0].message.content;
     const responseTime = ((Date.now() - startTime) / 1000).toFixed(1);
     
-    // Jika masih dalam countdown dan respons lebih cepat, beri tahu pengguna
+    // Notify based on timing
     if (countdownTracker && !countdownTracker.isCompleted) {
       await notifyFasterResponse(countdownTracker, sock, m, responseTime);
-    } 
-    // Jika countdown sudah habis (sudah counting up), beri tahu bahwa respons telah diterima
-    else if (countdownTracker && countdownTracker.isCompleted) {
+    } else if (countdownTracker && countdownTracker.isCompleted) {
       await notifyResponseReceived(countdownTracker, sock, m, responseTime);
     }
     
-    // Tampilkan proses pemikiran jika ada
-    if (reasoning && reasoning.trim()) {
+    // Only show thinking if enabled and content exists
+    if (reasoning && reasoning.trim() && session && session.showThinking) {
       await sock.sendMessage(m.from, {
         text: `🌊 *Proses Pemikiran Mendalam* (${responseTime}s):\n\n${formatThinkContent(
           reasoning
@@ -905,21 +912,31 @@ async function processDeepThinkingModel(context, loadingMessage, sock, m, userCo
         edit: loadingMessage.key,
       });
       
-      // Berikan jeda 2 detik sebelum menampilkan jawaban final
+      // Wait 2 seconds before showing final answer
       await new Promise((resolve) => setTimeout(resolve, 2000));
+      
+      // Send answer as new message
+      const finalMessage = await sock.sendMessage(m.from, {
+        text: `*Jawaban Ami DeepThinking:*\n\n${finalResponse.trim()}`,
+      });
+      
+      return {
+        messageId: finalMessage.key.id,
+        content: finalResponse,
+      };
+    } else {
+      // If thinking not shown, edit the loading message directly
+      const finalMessage = await sock.sendMessage(m.from, {
+        text: `*Jawaban Ami DeepThinking:*\n\n${finalResponse.trim()}`,
+        edit: loadingMessage.key,
+      });
+      
+      return {
+        messageId: finalMessage.key.id,
+        content: finalResponse,
+      };
     }
-    
-    // Tampilkan jawaban
-    const finalMessage = await sock.sendMessage(m.from, {
-      text: `*Jawaban Ami DeepThinking:*\n\n${finalResponse.trim()}`,
-    });
-    
-    return {
-      messageId: finalMessage.key.id,
-      content: finalResponse,
-    };
   } catch (error) {
-    // Hentikan timer jika masih berjalan
     if (countdownTracker && countdownTracker.intervalId) {
       countdownTracker.stopTimer();
     }
@@ -970,7 +987,7 @@ export default function (handler) {
         await sock.sendMessage(m.from, {
           text:
             "✅ Kamu telah memilih *Ami Flash* untuk jawaban instan dan praktis.\n\n" +
-            "💡 *Tips:* Model ini cocok untuk pertanyaan umum sehari-hari atau info faktual.\n\n" +
+            "💡 *Tips:* Model ini cocok untuk pertanyaan umum sehari-hari.\n\n" +
             "✨ Silakan tanyakan apapun padaku! Ketik *ami stop* untuk mengakhiri sesi.",
         });
         return;
@@ -990,7 +1007,7 @@ export default function (handler) {
         await sock.sendMessage(m.from, {
           text:
             "✅ Kamu telah memilih *Ami DeepThinking* untuk pemikiran yang mendalam dan komprehensif.\n\n" +
-            "💡 *Tips:* Model ini ideal untuk eksplorasi ide kompleks, filosofi, atau topik mendalam.\n\n" +
+            "💡 *Tips:* Model ini ideal untuk eksplorasi ide kompleks, topik mendalam, atau pertanyaan sains seperti fisika dan matematika.\n\n" +
             "🌊 Silakan tanyakan apapun padaku! Ketik *ami stop* untuk mengakhiri sesi.",
         });
         return;
@@ -1008,6 +1025,24 @@ export default function (handler) {
       await sock.sendMessage(m.from, {
         text: "✅ Sesi chat dengan Ami telah berakhir. Semoga jawabanku membantu! Ketik *ami* untuk memulai sesi baru kapan saja.",
       });
+      return;
+    } else // Handle "ami showthink" command
+    if (text === "ami showthink") {
+      if (session) {
+        session.showThinking = !session.showThinking;
+        const status = session.showThinking ? "aktif" : "nonaktif";
+        await sock.sendMessage(m.from, {
+          text: `✅ Mode tampilkan proses berpikir: *${status}*\n\n${
+            session.showThinking 
+              ? "Sekarang Ami akan menampilkan proses berpikir saat memberikan jawaban." 
+              : "Sekarang Ami tidak akan menampilkan proses berpikir saat memberikan jawaban."
+          }`,
+        });
+      } else {
+        await sock.sendMessage(m.from, {
+          text: "⚠️ Kamu belum memulai sesi chat dengan Ami. Ketik *ami* untuk memulai.",
+        });
+      }
       return;
     }
     
