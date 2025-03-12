@@ -407,8 +407,9 @@ You are Ami, a versatile AI assistant helping with various questions and tasks.
 }
 
 // Fungsi untuk memproses permintaan AI dengan verifikasi dan retry
+// Improved processAIRequest function
 async function processAIRequest(session, context, m, sock, userContext) {
-  // Tampilkan pesan loading dengan countdown
+  // Display loading message with countdown
   const loadingMessage = await displayCountdownLoading(session, sock, m);
   const startTime = Date.now();
 
@@ -417,17 +418,19 @@ async function processAIRequest(session, context, m, sock, userContext) {
     let attempts = 0;
     const maxAttempts = 3;
     
-    // Loop sampai mendapatkan respons yang valid atau mencapai batas percobaan
+    // Loop until we get a valid response or reach max attempts
     while (!response && attempts < maxAttempts) {
       attempts++;
+      console.log(`Starting attempt ${attempts}/${maxAttempts}...`);
       
       try {
-        // Reset tracker state untuk setiap percobaan
+        // Reset tracker state for each attempt
         if (loadingMessage.tracker) {
           loadingMessage.tracker.responseReceived = false;
           loadingMessage.tracker.processingResponse = false;
         }
         
+        // Process request based on model type
         switch (session.modelType) {
           case "flash":
             response = await processFlashModel(context, loadingMessage, sock, m, userContext, startTime);
@@ -442,58 +445,56 @@ async function processAIRequest(session, context, m, sock, userContext) {
             throw new Error("Model tidak dikenal");
         }
         
-        // Verifikasi bahwa respons tidak kosong
+        // This is CRITICAL - validate response here to handle both explicit empty responses
+        // and any other unexpected response format
         if (!response || !response.content || response.content.trim() === '') {
           console.log(`Attempt ${attempts}: Empty response received, retrying...`);
-          response = null; // Reset respons untuk mencoba lagi
-          
-          // Hentikan timer jika masih berjalan
-          if (loadingMessage.tracker && loadingMessage.tracker.intervalId) {
-            loadingMessage.tracker.stopTimer();
-          }
-          
-          // Buat tracker baru dengan waktu yang sama
-          loadingMessage.tracker = {
-            isCompleted: false,
-            isCountingUp: false,
-            initialTime: loadingMessage.tracker.initialTime,
-            remainingSeconds: loadingMessage.tracker.initialTime,
-            elapsedSeconds: 0,
-            messageKey: loadingMessage.key,
-            intervalId: null,
-            factIndex: loadingMessage.tracker.factIndex,
-            responseReceived: false,
-            processingResponse: false
-          };
-          
-          // Beri tahu pengguna bahwa kita mencoba lagi
-          if (attempts < maxAttempts) {
-            await sock.sendMessage(m.from, {
-              text: `🤔 Hmm, Ami sepertinya butuh berpikir lebih dalam. Mencoba lagi (percobaan ${attempts+1}/${maxAttempts})...`,
-              edit: loadingMessage.key,
-            });
-            
-            // Tunggu sebentar sebelum mulai countdown baru
-            await new Promise(resolve => setTimeout(resolve, 2000));
-            
-            // Mulai interval baru untuk countdown
-            const shuffledFacts = [...funFacts].sort(() => 0.5 - Math.random());
-            startCountdownInterval(loadingMessage.tracker, session, sock, m, shuffledFacts, 1000);
-          }
+          response = null; // Reset response to retry
         }
       } catch (error) {
+        // This is the key fix! Handle the error by setting response to null
+        // to trigger retry, rather than just logging and potentially rethrowing
         console.error(`Error on attempt ${attempts}:`, error);
-        
-        // Hentikan timer jika masih berjalan
+        response = null; // Reset response to force retry
+      }
+      
+      // If response is still null and we haven't reached max attempts, retry
+      if (!response && attempts < maxAttempts) {
+        // Stop timer if still running
         if (loadingMessage.tracker && loadingMessage.tracker.intervalId) {
           loadingMessage.tracker.stopTimer();
         }
         
-        if (attempts >= maxAttempts) throw error; // Lempar error jika sudah batas maksimal
+        // Create new tracker with the same time
+        loadingMessage.tracker = {
+          isCompleted: false,
+          isCountingUp: false,
+          initialTime: loadingMessage.tracker.initialTime,
+          remainingSeconds: loadingMessage.tracker.initialTime,
+          elapsedSeconds: 0,
+          messageKey: loadingMessage.key,
+          intervalId: null,
+          factIndex: loadingMessage.tracker.factIndex || 0,
+          responseReceived: false,
+          processingResponse: false
+        };
+        
+        // Tell the user we're trying again - BEFORE starting the timer
+        await sock.sendMessage(m.from, {
+          text: `🤔 Hmm, Ami sepertinya butuh berpikir lebih dalam. Mencoba lagi (percobaan ${attempts+1}/${maxAttempts})...`,
+          edit: loadingMessage.key,
+        });
+        
+        // Wait before starting a new countdown
+        await new Promise(resolve => setTimeout(resolve, 2000));
+        
+        // Start a new interval for countdown
+        const shuffledFacts = [...funFacts].sort(() => 0.5 - Math.random());
+        startCountdownInterval(loadingMessage.tracker, session, sock, m, shuffledFacts, 1000);
       }
     }
     
-    // Jika setelah semua percobaan masih tidak ada respons
+    // If after all attempts there's still no response
     if (!response) {
       throw new Error("Gagal mendapatkan respons yang valid setelah beberapa percobaan");
     }
@@ -503,7 +504,7 @@ async function processAIRequest(session, context, m, sock, userContext) {
   } catch (error) {
     console.error("Error in processAIRequest:", error);
     
-    // Pastikan timer dihentikan
+    // Make sure timer is stopped
     if (loadingMessage.tracker && loadingMessage.tracker.intervalId) {
       loadingMessage.tracker.stopTimer();
     }
@@ -515,6 +516,7 @@ async function processAIRequest(session, context, m, sock, userContext) {
     return null;
   }
 }
+
 // Array fakta-fakta menarik gaya Gen Z
 const funFacts = [
   "Fun Fact: Emoji 😂 adalah emoji yang paling banyak digunakan di dunia!",
@@ -580,24 +582,33 @@ async function displayCountdownLoading(session, sock, m) {
 }
 
 // Fungsi untuk memulai interval countdown/countup
+// Improved countdown interval function
 function startCountdownInterval(tracker, session, sock, m, facts, updateInterval) {
+  // Clear any existing interval first to avoid duplicate timers
+  if (tracker.intervalId) {
+    clearInterval(tracker.intervalId);
+    tracker.intervalId = null;
+  }
+  
+  // Set the new interval
   tracker.intervalId = setInterval(async () => {
-    // Jika sudah menerima respons dan sedang memproses, jangan update lagi
+    // Skip updates if currently processing response
     if (tracker.responseReceived && tracker.processingResponse) {
       return;
     }
     
-    // Update waktu tersisa/berlalu
+    // Update time
     if (tracker.isCountingUp) {
       tracker.elapsedSeconds++;
     } else {
       tracker.remainingSeconds--;
     }
     
-    // Ganti fakta setiap 5 detik
-    const factToShow = facts[Math.floor((tracker.factIndex++ / 5) % facts.length)];
+    // Change fact every 5 seconds
+    const factIndex = Math.floor((tracker.factIndex++ / 5) % facts.length);
+    const factToShow = facts[factIndex] || facts[0]; // Fallback to first fact if index issue
     
-    // Update pesan loading
+    // Update loading message
     const updatedText = getLoadingText(
       session.modelType, 
       tracker.isCountingUp ? tracker.elapsedSeconds : tracker.remainingSeconds, 
@@ -614,21 +625,21 @@ function startCountdownInterval(tracker, session, sock, m, facts, updateInterval
       console.error("Error updating countdown message:", error);
     }
     
-    // Jika countdown selesai dan belum counting up, mulai counting up
+    // If countdown finished and not counting up yet, start counting up
     if (!tracker.isCountingUp && tracker.remainingSeconds <= 0) {
       tracker.isCountingUp = true;
       tracker.isCompleted = true;
       
-      // Kirim pesan transisi ke counting up
+      // Send transition message
       try {
         await sock.sendMessage(m.from, {
-          text: `Ami masih memikirkan jawabannya dengan serius. Pertanyaanmu cukup menantang~ 
+          text: `⏳ Ami masih memikirkan jawabannya dengan serius. Pertanyaanmu cukup menantang~ 
 
-${facts[tracker.factIndex % facts.length]}`,
+${facts[factIndex % facts.length]}`,
           edit: tracker.messageKey,
         });
         
-        // Tunggu 2 detik sebelum mulai counting up
+        // Wait before starting countup
         await new Promise(resolve => setTimeout(resolve, 3000));
       } catch (error) {
         console.error("Error sending transition message:", error);
@@ -636,11 +647,12 @@ ${facts[tracker.factIndex % facts.length]}`,
     }
   }, updateInterval);
   
-  // Tetapkan fungsi untuk menghentikan timer
+  // Add stopTimer function
   tracker.stopTimer = () => {
     if (tracker.intervalId) {
       clearInterval(tracker.intervalId);
       tracker.intervalId = null;
+      console.log("Timer stopped successfully");
     }
   };
   
@@ -851,7 +863,7 @@ async function processReasoningModel(context, loadingMessage, sock, m, userConte
     } else {
       // If thinking not shown, edit the loading message directly
       const finalMessage = await sock.sendMessage(m.from, {
-        text: `*Jawaban Ami Reasoning:*\n\n${finalResponse.trim()}`,
+        text: `*Jawaban Ami Reasoning* (${responseTime}s):\n\n${finalResponse.trim()}`,
         edit: loadingMessage.key,
       });
       
@@ -869,27 +881,33 @@ async function processReasoningModel(context, loadingMessage, sock, m, userConte
     throw error;
   }
 }
-
-// Proses model DeepThinking dengan loading enhancement
+// Improved processDeepThinkingModel function
 async function processDeepThinkingModel(context, loadingMessage, sock, m, userContext, startTime) {
   const countdownTracker = loadingMessage.tracker;
   const session = getSession(m.sender);
   
   try {
+    console.log("Starting DeepThinking API request...");
     const chatCompletion = await openai.chat.completions.create({
       model: "deepseek/deepseek-r1:free",
       messages: context,
       temperature: 0.7,
       stream: false,
     });
+    console.log("DeepThinking API response received");
     
-    // Verify response
-    if (!chatCompletion.choices || 
-        !chatCompletion.choices[0] || 
-        !chatCompletion.choices[0].message || 
+    // Important - check response BEFORE trying to access properties
+    if (!chatCompletion || !chatCompletion.choices || chatCompletion.choices.length === 0) {
+      console.error("API returned empty or invalid response structure");
+      throw new Error("Empty response received from DeepThinking model");
+    }
+    
+    // Check for message content
+    if (!chatCompletion.choices[0].message || 
         !chatCompletion.choices[0].message.content ||
         chatCompletion.choices[0].message.content.trim() === '') {
-      throw new Error("Empty response received from DeepThinking model");
+      console.error("API returned empty content");
+      throw new Error("Empty content received from DeepThinking model");
     }
     
     const reasoning = chatCompletion.choices[0].message.reasoning || "";
@@ -912,7 +930,7 @@ async function processDeepThinkingModel(context, loadingMessage, sock, m, userCo
         edit: loadingMessage.key,
       });
       
-      // Wait 2 seconds before showing final answer
+      // Wait before showing final answer
       await new Promise((resolve) => setTimeout(resolve, 2000));
       
       // Send answer as new message
@@ -927,7 +945,7 @@ async function processDeepThinkingModel(context, loadingMessage, sock, m, userCo
     } else {
       // If thinking not shown, edit the loading message directly
       const finalMessage = await sock.sendMessage(m.from, {
-        text: `*Jawaban Ami DeepThinking:*\n\n${finalResponse.trim()}`,
+        text: `*Jawaban Ami DeepThinking* (${responseTime}s):\n\n${finalResponse.trim()}`,
         edit: loadingMessage.key,
       });
       
@@ -937,12 +955,9 @@ async function processDeepThinkingModel(context, loadingMessage, sock, m, userCo
       };
     }
   } catch (error) {
-    if (countdownTracker && countdownTracker.intervalId) {
-      countdownTracker.stopTimer();
-    }
-    
+    // Don't stop the timer here - let the calling function handle it
     console.error("Error in processDeepThinkingModel:", error);
-    throw error;
+    throw error; // Rethrow so processAIRequest can handle it
   }
 }
 
