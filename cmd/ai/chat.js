@@ -1038,7 +1038,7 @@ async function processDeepThinkingModel(
   }
 }
 
-e; // Fix 4: Improved model selection message
+// Fix 4: Improved model selection message
 export default function (handler) {
   handler.addFunction(async (m, { cmds, sock, db }) => {
     const userId = m.sender;
