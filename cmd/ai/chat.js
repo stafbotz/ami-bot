@@ -581,6 +581,46 @@ const funFacts = [
   "Slay fact: Kecepatan mengetik rata-rata Gen Z adalah 60 WPM, lebih cepat dari generasi sebelumnya!",
 ];
 
+// Fungsi untuk mendapatkan teks loading berdasarkan model dan waktu tersisa/berlalu
+function getLoadingText(modelType, seconds, funFact, isCountingUp) {
+  let emoji, actionText;
+  
+  switch (modelType) {
+    case "flash":
+      emoji = "⚡";
+      actionText = "berpikir cepat";
+      break;
+    case "reasoning":
+      emoji = "🧠";
+      actionText = "menganalisa";
+      break;
+    case "deepthinking":
+      emoji = "🌊";
+      actionText = "berpikir mendalam";
+      break;
+    default:
+      emoji = "✨";
+      actionText = "berpikir";
+  }
+  
+  // Format waktu menjadi MM:SS
+  let timeDisplay;
+  if (seconds >= 60) {
+    const minutes = Math.floor(seconds / 60);
+    const remainingSeconds = seconds % 60;
+    timeDisplay = `${minutes}:${remainingSeconds.toString().padStart(2, '0')}`;
+  } else {
+    timeDisplay = `0:${seconds.toString().padStart(2, '0')}`;
+  }
+  
+  // Teks berbeda untuk countdown vs countup
+  const timePrefix = isCountingUp ? "+" : "";
+  
+  return `${emoji} Ami sedang ${actionText}... (${timePrefix}${timeDisplay})
+
+${funFact}`;
+}
+
 // Fungsi untuk menampilkan loading dengan countdown dan fun facts
 async function displayCountdownLoading(session, sock, m) {
   // Tentukan durasi countdown berdasarkan model
@@ -702,7 +742,7 @@ function startCountdownInterval(
       // Send transition message
       try {
         await sock.sendMessage(m.from, {
-          text: `⏳ Ami masih memikirkan jawabannya dengan serius. Pertanyaanmu cukup menantang~ 
+          text: `Ami masih memikirkan jawabannya dengan serius. Pertanyaanmu cukup menantang~ 
 
 ${facts[factIndex % facts.length]}`,
           edit: tracker.messageKey,
@@ -796,6 +836,54 @@ async function processFlashModel(
   startTime
 ) {
   const countdownTracker = loadingMessage.tracker;
+
+  // Fungsi untuk memberi tahu respons lebih cepat
+async function notifyFasterResponse(tracker, sock, m, responseTime) {
+  // Tandai bahwa respons telah diterima
+  tracker.responseReceived = true;
+  tracker.processingResponse = true;
+  
+  if (tracker.intervalId) {
+    // Hentikan timer
+    tracker.stopTimer();
+    
+    try {
+      await sock.sendMessage(m.from, {
+        text: `Wow! Ami bisa menjawab lebih cepat! Hanya butuh ${responseTime} detik.`,
+        edit: tracker.messageKey,
+      });
+      
+      // Berikan jeda 2 detik agar pengguna sempat membaca pesan
+      await new Promise(resolve => setTimeout(resolve, 2000));
+    } catch (error) {
+      console.error("Error sending faster response notification:", error);
+    }
+  }
+}
+
+// Fungsi untuk memberi tahu bahwa respons telah diterima setelah countdown habis
+async function notifyResponseReceived(tracker, sock, m, responseTime) {
+  // Tandai bahwa respons telah diterima
+  tracker.responseReceived = true;
+  tracker.processingResponse = true;
+  
+  if (tracker.intervalId) {
+    // Hentikan timer
+    tracker.stopTimer();
+    
+    try {
+      await sock.sendMessage(m.from, {
+        text: `✅ Ami telah menyelesaikan pemikiran dalam waktu ${responseTime} detik.`,
+        edit: tracker.messageKey,
+      });
+      
+      // Berikan jeda 2 detik agar pengguna sempat membaca pesan
+      await new Promise(resolve => setTimeout(resolve, 2000));
+    } catch (error) {
+      console.error("Error sending response received notification:", error);
+    }
+  }
+}
 
   try {
     // API request
