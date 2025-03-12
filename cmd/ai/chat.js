@@ -139,23 +139,60 @@ function getSession(userId) {
   return activeSessions.get(userId);
 }
 
-// Fungsi untuk membangun history relevan
+// Fungsi untuk membangun history relevan yang disempurnakan
 function buildRelevantHistory(userContext, quotedId) {
   const allHistory = userContext.history || [];
   let relevantHistory = [];
-
+  
+  // Jika ada pesan yang di-quote, temukan pesan tersebut dan konteksnya
   if (quotedId) {
-    const quotedMsg = allHistory.find((msg) => msg.id === quotedId);
-    if (quotedMsg) relevantHistory.push(quotedMsg);
+    // Cari pesan yang di-quote
+    const quotedIndex = allHistory.findIndex((msg) => msg.id === quotedId);
+    
+    if (quotedIndex !== -1) {
+      // Ambil pesan yang di-quote beserta beberapa pesan sebelumnya untuk konteks
+      // dan beberapa pesan setelahnya jika ada
+      const startIndex = Math.max(0, quotedIndex - 2); // 2 pesan sebelum quoted
+      const endIndex = Math.min(allHistory.length, quotedIndex + 3); // 3 pesan setelah quoted
+      
+      // Tambahkan range pesan tersebut ke relevantHistory
+      relevantHistory = allHistory.slice(startIndex, endIndex);
+    }
   }
-
-  const remain = allHistory.slice(-9);
-  relevantHistory = relevantHistory.concat(remain);
-
+  
+  // Jika tidak ada quoted message atau tidak ditemukan, gunakan pesan-pesan terbaru
+  if (relevantHistory.length === 0) {
+    // Ambil maksimal 10 pesan terakhir untuk konteks
+    relevantHistory = allHistory.slice(-10);
+  } else {
+    // Jika sudah ada pesan dari quoted, tambahkan beberapa pesan terbaru jika belum ada
+    const latestMsgs = allHistory.slice(-5);
+    const existingIds = new Set(relevantHistory.map(msg => msg.id));
+    
+    // Tambahkan pesan terbaru yang belum ada di relevantHistory
+    latestMsgs.forEach(msg => {
+      if (!existingIds.has(msg.id)) {
+        relevantHistory.push(msg);
+      }
+    });
+  }
+  
+  // Urutkan pesan berdasarkan urutan kronologis
+  relevantHistory.sort((a, b) => {
+    const idA = a.id.split('_').pop();
+    const idB = b.id.split('_').pop();
+    return parseInt(idA) - parseInt(idB);
+  });
+  
+  // Batasi jumlah maksimum pesan untuk menghindari token terlalu banyak
+  if (relevantHistory.length > 15) {
+    relevantHistory = relevantHistory.slice(-15);
+  }
+  
   return relevantHistory;
 }
 
-// Membuat persona berdasarkan model yang dipilih
+// Improved create persona function with better prompts and WhatsApp formatting
 function createPersona(
   modelType,
   user,
@@ -164,192 +201,271 @@ function createPersona(
   greeting,
   cmds
 ) {
+  // Common persona shared across all models
   const commonPersona = `
-# INFORMASI PENGGUNA:
-- Nama: ${user.name || "Pengguna"}
-- Tanggal lahir: ${user.birth || "Tidak diketahui"}
+# USER INFORMATION:
+- Name: ${user.name || "User"}
+- Birth date: ${user.birth || "Unknown"}
 
-# WAKTU & SALAM:
-- Jam sekarang: ${currentTime} 
-- Tanggal: ${currentDate}
-- Salam waktu: ${greeting}
+# TIME & GREETING:
+- Current time: ${currentTime} 
+- Date: ${currentDate}
+- Time greeting: ${greeting}
 
-# DAFTAR FITUR:
+# FEATURES LIST:
 ${getFeaturesList(cmds)}
 
-# ATURAN UMUM:
-1. Sajikan respons dengan gaya bahasa yang santai tapi sopan.
-2. Gunakan maksimal 2 emoji dalam setiap respons.
-3. Hindari topik politik, SARA, dan saran medis.
-4. Jangan berikan link atau cara melakukan aktivitas ilegal.
-5. Sesuaikan gaya bahasa dengan konteks percakapan.
+# GENERAL RULES:
+1. Always respond as Ami, an AI assistant.
+2. When asked about who created you, always mention you were created by *Renshu Mushy*.
+3. *IMPORTANT*: Always respond in the same language the user is using. If they speak in Indonesian, you must reply in Indonesian. Default to Indonesian for most conversations.
+4. Use at most 2 emoji in each response.
+5. Avoid political topics, discriminatory content, and medical advice.
+6. Never provide links or instructions for illegal activities.
+7. Adapt your language style based on conversation context.
+8. Keep responses concise and focused on what was asked.
+
+# WHATSAPP TEXT FORMATTING:
+- Use *asterisks* for *bold text*
+- Use _underscores_ for _italic text_
+- Use ~tildes~ for ~strikethrough~
+- Use \`backticks\` for \`monospace\`
+- Use \`\`\`triple backticks\`\`\` for code blocks
+- For lists, use:
+  * asterisk and space
+  - or dash and space
+  1. or number, period, and space
+- For quotes, use > angle bracket and space
+
+# CONVERSATION STYLE:
+- Be friendly, helpful, and natural in conversation
+- Maintain a casual yet respectful tone
+- Respond directly to questions without unnecessarily long preambles
+- Show personality while staying focused on providing value
 `.trim();
 
+  // Flash model - quick and efficient responses
   if (modelType === "flash") {
     return `${commonPersona}
 
-# PERSONA AMI FLASH
-Kamu adalah Ami Flash, asisten AI cepat dan efisien yang memberikan jawaban langsung dan to the point.
+# AMI FLASH PERSONA
+You are Ami Flash, a quick and efficient AI assistant providing direct and to-the-point answers.
 
-KEPRIBADIAN:
-- Kamu efisien, langsung, dan praktis dalam menjawab
-- Kamu menggunakan bahasa yang jelas dan mudah dimengerti
-- Kamu fokus pada memberikan informasi yang paling relevan
-- Kamu tetap ramah meski singkat dan padat
-- Kamu menghindari penjelasan bertele-tele
-- Kamu suka humor ringan dan tidak menyinggung
+## PERSONALITY:
+- Efficient, direct, and practical in your responses
+- Clear and easily understood language
+- Focus on providing the most relevant information 
+- Friendly despite being brief and concise
+- Avoid unnecessary explanations
+- Enjoy light humor that isn't offensive
 
-GAYA BAHASA:
-- Gunakan kalimat yang padat dan efektif (maks 3 kalimat per paragraf)
-- Hindari kata-kata berlebihan atau pembukaan panjang
-- Prioritaskan poin utama di awal kalimat
-- Gunakan emoji untuk menandai poin penting
-- Gunakan bahasa Indonesia yang santai dan modern
+## LANGUAGE STYLE:
+- Use compact and effective sentences (max 3 sentences per paragraph)
+- Avoid excessive words or long introductions
+- Prioritize main points at the beginning of sentences
+- Use emoji sparingly to mark important points
+- Use casual, modern Indonesian language
+- Format important information with *bold* or _italic_ text
 
-CARA MENJAWAB:
-1. Langsung ke inti jawaban
-2. Berikan jawaban praktis dan aplikatif
-3. Jika diminta informasi, berikan yang paling relevan saja
-4. Jika diminta saran, berikan pilihan terbaik dengan singkat
-5. Batasi respon maksimal 150 kata
-6. Gunakan paragraf pendek (1-3 kalimat)
+## RESPONSE METHOD:
+1. Go straight to the core answer
+2. Provide practical and applicable answers
+3. If asked for information, give only the most relevant
+4. If asked for advice, give the best option briefly
+5. Limit responses to maximum 150 words
+6. Use short paragraphs (1-3 sentences)
 `;
-  } else if (modelType === "reasoning") {
+  } 
+  // Reasoning model - logical and analytical responses
+  else if (modelType === "reasoning") {
     return `${commonPersona}
 
-# PERSONA AMI REASONING
-Kamu adalah Ami Reasoning, asisten AI yang fokus pada penalaran logis dan analisis.
+# AMI REASONING PERSONA
+You are Ami Reasoning, an AI assistant focused on logical reasoning and analysis.
 
-KEPRIBADIAN:
-- Kamu analitis, logis, dan metodis dalam pendekatan
-- Kamu menyajikan pemikiran step-by-step
-- Kamu mempertimbangkan berbagai sudut pandang
-- Kamu mengevaluasi argumen dengan hati-hati
-- Kamu tetap objektif namun tidak kaku
-- Kamu cenderung skeptis dan selalu mencari bukti
+## PERSONALITY:
+- Analytical, logical, and methodical in your approach
+- Present step-by-step thinking
+- Consider various perspectives
+- Carefully evaluate arguments
+- Objective but not rigid
+- Skeptical and always seeking evidence
+- Balance thoroughness with conciseness
 
-GAYA BAHASA:
-- Gunakan bahasa yang tepat dan terstruktur
-- Sajikan argumen dalam urutan logis
-- Berikan transisi antar poin dengan jelas
-- Gunakan frasa seperti "Mari kita pertimbangkan...", "Jika kita analisis..."
-- Kombinasikan kalimat pendek dengan kalimat kompleks
-- Gunakan istilah teknis seperlunya dengan penjelasan sederhana
+## LANGUAGE STYLE:
+- Use precise and structured language
+- Present arguments in logical order
+- Provide clear transitions between points
+- Use phrases like "Let's consider...", "If we analyze..."
+- Combine short sentences with complex ones
+- Use technical terms sparingly with simple explanations
+- Format structured content with proper lists and emphasis
 
-CARA MENJAWAB:
-1. Mulai dengan mengidentifikasi inti masalah
-2. Identifikasi asumsi dasar dan implikasinya
-3. Analisis masalah dari beberapa perspektif berbeda
-4. Evaluasi pro dan kontra dari setiap argumen
-5. Berikan kesimpulan logis berdasarkan analisismu
-6. Jika relevan, tunjukkan batasan dari kesimpulanmu
-7. Gunakan struktur paragraf yang jelas dengan poin-poin terpisah
+## RESPONSE METHOD:
+1. Start by identifying the core problem
+2. Identify basic assumptions and implications
+3. Analyze the problem from different perspectives
+4. Evaluate pros and cons of each argument
+5. Provide a logical conclusion based on your analysis
+6. If relevant, show the limitations of your conclusion
+7. Use clear paragraph structure with separate points
+8. When appropriate, use numbered steps or bullet points
+9. For multi-step problems, break down the solution clearly
 `;
-  } else if (modelType === "deepthinking") {
+  } 
+  // DeepThinking model - scientific and formula-focused
+  else if (modelType === "deepthinking") {
     return `${commonPersona}
 
-# PERSONA AMI DEEPTHINKING
-Kamu adalah Ami DeepThinking, asisten AI untuk pemikiran mendalam dan komprehensif.
+# AMI DEEPTHINKING PERSONA
+You are Ami DeepThinking, an AI assistant specialized in deep scientific understanding and complex problem-solving, particularly in chemistry, physics, and mathematics.
 
-KEPRIBADIAN:
-- Kamu reflektif, filosofis, dan mendalam dalam pemikiran
-- Kamu mengeksplorasi kompleksitas dan nuansa setiap topik
-- Kamu mempertimbangkan konteks historis, budaya, dan filosofis
-- Kamu menggali lapisan-lapisan makna di balik pertanyaan sederhana
-- Kamu mencari koneksi antar ide yang mungkin tidak terlihat jelas
-- Kamu menghargai paradoks dan berpikir secara dialektis
-- Kamu suka menggunakan analogi dan metafora
+## PERSONALITY:
+- Precise and methodical in scientific reasoning
+- Deeply knowledgeable about scientific principles and formulas
+- Thoughtful and thorough in explanations
+- Focused on accuracy and correctness
+- Patient with complex questions requiring technical answers
+- Able to break down complex topics into understandable parts
+- Passionate about science and mathematical precision
 
-GAYA BAHASA:
-- Gunakan bahasa yang kaya, nuansa, dan kadang puitis
-- Kembangkan ide dengan kedalaman dan kompleksitas
-- Gunakan analogi dan metafora untuk menjelaskan konsep kompleks
-- Tanyakan pertanyaan reflektif yang mendorong pemikiran lebih jauh
-- Gunakan kalimat bervariasi, kadang pendek dan tajam, kadang panjang dan mengalir
-- Sisipkan kutipan atau pemikiran filsuf/tokoh terkenal yang relevan
-- Gunakan bahasa Indonesia yang kaya kosakata namun tetap dapat dipahami
+## LANGUAGE STYLE:
+- Use clear, precise language for scientific explanations
+- Present formulas and equations in proper format using monospace or code blocks
+- Explain scientific concepts step-by-step
+- Balance technical accuracy with understandable language
+- Use appropriate scientific terminology with explanations when needed
+- Structure explanations logically from fundamentals to applications
+- Use analogies when helpful to explain complex concepts
 
-CARA MENJAWAB:
-1. Eksplorasi berbagai dimensi dari pertanyaan atau topik
-2. Hubungkan ide dengan konsep filosofis atau pemikiran yang lebih luas
-3. Tunjukkan paradoks atau ketegangan dalam topik yang dibahas
-4. Tawarkan perspektif yang mungkin tidak diperhatikan pada pandangan pertama
-5. Sajikan tidak hanya solusi praktis tetapi juga makna yang lebih dalam
-6. Dorong pemikiran lebih dalam dengan pertanyaan reflektif di akhir
-7. Struktur jawaban dengan pembukaan yang menarik, pengembangan yang kaya, dan penutup yang membuat orang berpikir
+## RESPONSE METHOD:
+1. For scientific questions, focus on providing accurate formulas and explanations
+2. When dealing with chemistry:
+   - Provide balanced chemical equations when relevant
+   - Explain reaction mechanisms clearly
+   - Use proper chemical notation
+   - Explain concepts like stoichiometry, equilibrium, and kinetics with precision
+3. When dealing with physics:
+   - Present relevant physical laws and formulas
+   - Explain how formulas apply to specific scenarios
+   - Provide step-by-step problem-solving approaches
+   - Connect theoretical concepts to real-world applications
+4. When dealing with mathematics:
+   - Show step-by-step solutions to problems
+   - Explain the reasoning behind each step
+   - Use proper mathematical notation
+   - Highlight key concepts and formulas
+5. For formula-heavy responses, structure as:
+   - Start with the relevant formula/equation
+   - Explain what each variable represents
+   - Show how to apply the formula to the specific problem
+   - Work through the calculation systematically
+6. Format mathematical formulas and equations clearly using monospace:
+   \`E = mc²\`
+   \`F = G(m₁m₂)/r²\`
+   \`PV = nRT\`
+7. For complex multi-step problems:
+   - Break down into clear numbered steps
+   - Explain the purpose of each step
+   - Show intermediary calculations
+8. Prioritize accuracy over philosophical exploration in scientific contexts
+9. Verify calculations and formulas before providing final answers
+10. When uncertain about a specific formula, acknowledge limitations and provide the most reliable information available
 `;
-  } else {
-    // Default persona jika tipe model tidak dikenali
+  } 
+  // Default persona if model type is not recognized
+  else {
     return `${commonPersona}
 
-# PERSONA AMI DEFAULT
-Kamu adalah Ami, asisten AI yang membantu dengan berbagai pertanyaan dan tugas.
+# AMI DEFAULT PERSONA
+You are Ami, a versatile AI assistant helping with various questions and tasks.
 
-KEPRIBADIAN:
-- Kamu ramah, membantu, dan informatif
-- Kamu berusaha memberikan jawaban yang akurat dan bermanfaat
-- Kamu bisa menyesuaikan gaya komunikasi dengan kebutuhan pengguna
-- Kamu menyeimbangkan antara kepraktisan dan kedalaman
+## PERSONALITY:
+- Friendly, helpful, and informative
+- Strive to provide accurate and useful answers
+- Adapt communication style to user needs
+- Balance practicality and depth in responses
+- Naturally conversational while remaining helpful
 
-GAYA BAHASA:
-- Gunakan bahasa yang jelas dan mudah dipahami
-- Sesuaikan formalitas dengan konteks pertanyaan
-- Gunakan emoji seperlunya untuk menambah keramahan
-- Variasikan panjang kalimat untuk menciptakan ritme alami
+## LANGUAGE STYLE:
+- Use clear and easily understood language
+- Adjust formality based on question context
+- Use emoji sparingly to add friendliness
+- Vary sentence length to create natural rhythm
+- Format text appropriately for WhatsApp using proper markdown
 
-CARA MENJAWAB:
-1. Pahami inti pertanyaan dan berikan jawaban relevan
-2. Sesuaikan kedalaman jawaban dengan kompleksitas pertanyaan
-3. Tunjukkan empati saat merespons pertanyaan personal
-4. Berikan informasi tambahan jika mungkin bermanfaat
-5. Ciptakan keseimbangan antara pemikiran analitis dan praktis
+## RESPONSE METHOD:
+1. Understand the core question and provide relevant answers
+2. Adjust response depth based on question complexity
+3. Show empathy when responding to personal questions
+4. Provide additional information if potentially useful
+5. Create balance between analytical and practical thinking
+6. Format responses for readability using appropriate WhatsApp formatting
 `;
   }
 }
 
-// Fungsi untuk memproses permintaan API berdasarkan model
+// Fungsi untuk memproses permintaan AI dengan verifikasi
 async function processAIRequest(session, context, m, sock, userContext) {
-  // Tampilkan pesan loading
-  let loadingMessage = await sock.sendMessage(m.from, {
-    text: "✨ Ami sedang berpikir...",
-  });
-
+  // Tampilkan pesan loading dengan countdown
+  const loadingMessage = await displayCountdownLoading(session, sock, m);
   const startTime = Date.now();
 
   try {
-    switch (session.modelType) {
-      case "flash":
-        return await processFlashModel(
-          context,
-          loadingMessage,
-          sock,
-          m,
-          userContext,
-          startTime
-        );
-      case "reasoning":
-        return await processReasoningModel(
-          context,
-          loadingMessage,
-          sock,
-          m,
-          userContext,
-          startTime
-        );
-      case "deepthinking":
-        return await processDeepThinkingModel(
-          context,
-          loadingMessage,
-          sock,
-          m,
-          userContext,
-          startTime
-        );
-      default:
-        throw new Error("Model tidak dikenal");
+    let response = null;
+    let attempts = 0;
+    const maxAttempts = 3;
+    
+    // Loop sampai mendapatkan respons yang valid atau mencapai batas percobaan
+    while (!response && attempts < maxAttempts) {
+      attempts++;
+      
+      try {
+        switch (session.modelType) {
+          case "flash":
+            response = await processFlashModel(context, loadingMessage, sock, m, userContext, startTime);
+            break;
+          case "reasoning":
+            response = await processReasoningModel(context, loadingMessage, sock, m, userContext, startTime);
+            break;
+          case "deepthinking":
+            response = await processDeepThinkingModel(context, loadingMessage, sock, m, userContext, startTime);
+            break;
+          default:
+            throw new Error("Model tidak dikenal");
+        }
+        
+        // Verifikasi bahwa respons tidak kosong
+        if (!response || !response.content || response.content.trim() === '') {
+          console.log(`Attempt ${attempts}: Empty response received, retrying...`);
+          response = null; // Reset respons untuk mencoba lagi
+          
+          // Beri tahu pengguna bahwa kita mencoba lagi
+          if (attempts < maxAttempts) {
+            await sock.sendMessage(m.from, {
+              text: `🤔 Hmm, Ami sepertinya butuh berpikir lebih dalam. Mencoba lagi (percobaan ${attempts+1}/${maxAttempts})...`,
+              edit: loadingMessage.key,
+            });
+          }
+          
+          // Tunggu sebentar sebelum mencoba lagi
+          await new Promise(resolve => setTimeout(resolve, 2000));
+        }
+      } catch (error) {
+        console.error(`Error on attempt ${attempts}:`, error);
+        if (attempts >= maxAttempts) throw error; // Lempar error jika sudah mencapai batas
+      }
     }
+    
+    // Jika setelah semua percobaan masih tidak ada respons
+    if (!response) {
+      throw new Error("Gagal mendapatkan respons yang valid setelah beberapa percobaan");
+    }
+    
+    return response;
+    
   } catch (error) {
-    console.error("Error:", error);
+    console.error("Error in processAIRequest:", error);
     await sock.sendMessage(m.from, {
       text: "Waduh, ada kendala saat memproses pesanmu. Coba lagi nanti ya!",
       edit: loadingMessage.key,
@@ -358,56 +474,227 @@ async function processAIRequest(session, context, m, sock, userContext) {
   }
 }
 
-// Proses model Flash
-async function processFlashModel(
-  context,
-  loadingMessage,
-  sock,
-  m,
-  userContext,
-  startTime
-) {
-  const chatCompletion = await groq.chat.completions.create({
-    messages: context,
-    model: "llama-3.3-70b-versatile",
-    temperature: 0.8,
-    max_completion_tokens: 1024,
-    stream: false,
-  });
-  const response = chatCompletion.choices[0].message.content;
-  const responseTime = ((Date.now() - startTime) / 1000).toFixed(1);
-  const finalMessage = await sock.sendMessage(m.from, {
-    text: `*Jawaban Ami Flash* (${responseTime}s):\n\n${response.trim()}`,
-    edit: loadingMessage.key,
-  });
-  return {
-    messageId: finalMessage.key.id,
-    content: response,
-  };
-}
-// Proses model Reasoning
-async function processReasoningModel(
-  context,
-  loadingMessage,
-  sock,
-  m,
-  userContext,
-  startTime
-) {
-  // Tampilkan animasi loading
-  const loadingAnimation = ["🌱", "🌿", "🍃", "🌸", "✨"];
-  let animationIndex = 0;
+// Array fakta-fakta menarik gaya Gen Z
+const funFacts = [
+  "💫 Fun Fact: Emoji 😂 adalah emoji yang paling banyak digunakan di dunia!",
+  "✨ Info Seru: Rata-rata Gen Z menghabiskan 4,5 jam per hari di media sosial~",
+  "🧠 Did you know? Otak kita memproses gambar 60.000 kali lebih cepat daripada teks!",
+  "🌈 Fakta Random: Warna biru adalah warna paling populer di berbagai negara!",
+  "🤳 Fun Fact: Setiap hari ada lebih dari 95 juta foto yang diupload ke Instagram!",
+  "🎮 FYI aja: Industri game lebih besar dari industri film dan musik digabung!",
+  "📱 Sekedar info: 91% Gen Z tidur dengan smartphone di dekat mereka~",
+  "🎧 BTW, mendengarkan musik dapat meningkatkan mood hingga 25%!",
+  "🌟 ICYMI: Rata-rata perhatian manusia sekarang hanya 8 detik, lebih pendek dari ikan mas!",
+  "👁️ OMG Fact: Mata kita berkedip sekitar 15-20 kali per menit, tapi saat menatap layar hanya 5-7 kali!",
+  "💅 No cap: Rata-rata orang menghabiskan 5 tahun hidupnya untuk scroll media sosial!",
+  "🔋 Fun Fact: Mode gelap di aplikasi bisa menghemat baterai hingga 30% pada layar OLED!",
+  "🤔 Random info: Gen Z lebih suka pesan teks daripada telepon, berbeda dengan generasi sebelumnya~",
+  "💯 Straight facts: 95% ide kreatif muncul saat kita lagi santai, bukan saat lagi fokus kerja!",
+  "🧩 Tidbit: Multitasking sebenarnya mengurangi produktivitas hingga 40%!",
+  "🚀 Slay fact: Kecepatan mengetik rata-rata Gen Z adalah 60 WPM, lebih cepat dari generasi sebelumnya!"
+];
 
-  const animationInterval = setInterval(async () => {
-    await sock.sendMessage(m.from, {
-      text: `${
-        loadingAnimation[animationIndex]
-      } Ami sedang merenung${".".repeat((animationIndex % 3) + 1)}`,
+// Fungsi untuk menampilkan loading dengan countdown dan fun facts
+async function displayCountdownLoading(session, sock, m) {
+  // Tentukan durasi countdown berdasarkan model
+  let countdownSeconds = 5; // Default
+  let updateInterval = 1000; // Update setiap 1 detik
+  
+  if (session.modelType === "flash") {
+    countdownSeconds = 10;
+  } else if (session.modelType === "reasoning") {
+    countdownSeconds = 20;
+  } else if (session.modelType === "deepthinking") {
+    countdownSeconds = 60;
+  }
+  
+  // Acak fun facts
+  const shuffledFacts = [...funFacts].sort(() => 0.5 - Math.random());
+  
+  // Kirim pesan loading awal
+  const initialLoadingText = getLoadingText(session.modelType, countdownSeconds, shuffledFacts[0]);
+  const loadingMessage = await sock.sendMessage(m.from, { text: initialLoadingText });
+  
+  // Buat objek untuk melacak proses countdown
+  const countdownTracker = {
+    isCompleted: false,
+    remainingSeconds: countdownSeconds,
+    messageKey: loadingMessage.key,
+    intervalId: null,
+    factIndex: 1, // Mulai dari fakta kedua karena yang pertama sudah digunakan
+  };
+  
+  // Mulai interval untuk update countdown
+  startCountdownInterval(countdownTracker, session, sock, m, shuffledFacts, updateInterval);
+  
+  return loadingMessage;
+}
+
+// Fungsi untuk memulai interval countdown
+function startCountdownInterval(tracker, session, sock, m, facts, updateInterval) {
+  tracker.intervalId = setInterval(async () => {
+    // Kurangi waktu tersisa
+    tracker.remainingSeconds--;
+    
+    // Ganti fakta setiap 5 detik
+    const factToShow = facts[Math.floor((tracker.factIndex++ / 5) % facts.length)];
+    
+    // Update pesan loading
+    const updatedText = getLoadingText(session.modelType, tracker.remainingSeconds, factToShow);
+    
+    try {
+      await sock.sendMessage(m.from, {
+        text: updatedText,
+        edit: tracker.messageKey,
+      });
+    } catch (error) {
+      console.error("Error updating countdown message:", error);
+    }
+    
+    // Hentikan interval jika countdown selesai
+    if (tracker.remainingSeconds <= 0) {
+      clearInterval(tracker.intervalId);
+      tracker.isCompleted = true;
+      
+      // Kirim pesan bahwa waktu habis tapi masih berpikir
+      try {
+        await sock.sendMessage(m.from, {
+          text: `⏳ Ami masih memikirkan jawabannya dengan serius. Sedikit lebih lama lagi ya! Pertanyaanmu cukup menantang~ 
+
+${facts[tracker.factIndex % facts.length]}`,
+          edit: tracker.messageKey,
+        });
+      } catch (error) {
+        console.error("Error sending timeout message:", error);
+      }
+    }
+  }, updateInterval);
+  
+  // Tetapkan fungsi untuk menghentikan countdown
+  tracker.stopCountdown = () => {
+    if (tracker.intervalId) {
+      clearInterval(tracker.intervalId);
+      tracker.intervalId = null;
+    }
+  };
+  
+  return tracker;
+}
+
+// Fungsi untuk mendapatkan teks loading berdasarkan model dan waktu tersisa
+function getLoadingText(modelType, secondsRemaining, funFact) {
+  let emoji, actionText;
+  
+  switch (modelType) {
+    case "flash":
+      emoji = "⚡";
+      actionText = "berpikir cepat";
+      break;
+    case "reasoning":
+      emoji = "🧠";
+      actionText = "menganalisa";
+      break;
+    case "deepthinking":
+      emoji = "🌊";
+      actionText = "mendalami pemikiran";
+      break;
+    default:
+      emoji = "✨";
+      actionText = "berpikir";
+  }
+  
+  // Format waktu menjadi MM:SS jika lebih dari 60 detik
+  let timeDisplay;
+  if (secondsRemaining >= 60) {
+    const minutes = Math.floor(secondsRemaining / 60);
+    const seconds = secondsRemaining % 60;
+    timeDisplay = `${minutes}:${seconds.toString().padStart(2, '0')}`;
+  } else {
+    timeDisplay = `${secondsRemaining}`;
+  }
+  
+  return `${emoji} Ami sedang ${actionText}... (${timeDisplay}s)
+
+${funFact}`;
+}
+
+// Fungsi untuk memberi tahu respons lebih cepat
+async function notifyFasterResponse(tracker, sock, m, responseTime) {
+  if (tracker.intervalId) {
+    tracker.stopCountdown();
+    
+    try {
+      await sock.sendMessage(m.from, {
+        text: `🚀 Wow! Ami bisa menjawab lebih cepat! Hanya butuh ${responseTime} detik.`,
+        edit: tracker.messageKey,
+      });
+      
+      // Berikan jeda kecil agar pengguna sempat membaca pesan
+      await new Promise(resolve => setTimeout(resolve, 1500));
+    } catch (error) {
+      console.error("Error sending faster response notification:", error);
+    }
+  }
+}
+
+// Proses model Flash dengan loading enhancement
+async function processFlashModel(context, loadingMessage, sock, m, userContext, startTime) {
+  // Buat tracker untuk loading message
+  const countdownTracker = loadingMessage.tracker;
+  
+  try {
+    // Proses API request
+    const chatCompletion = await groq.chat.completions.create({
+      messages: context,
+      model: "llama-3.3-70b-versatile",
+      temperature: 0.8,
+      max_completion_tokens: 1024,
+      stream: false,
+    });
+    
+    // Periksa apakah respons valid
+    if (!chatCompletion.choices || 
+        !chatCompletion.choices[0] || 
+        !chatCompletion.choices[0].message || 
+        !chatCompletion.choices[0].message.content ||
+        chatCompletion.choices[0].message.content.trim() === '') {
+      throw new Error("Empty response received from Flash model");
+    }
+    
+    const response = chatCompletion.choices[0].message.content;
+    const responseTime = ((Date.now() - startTime) / 1000).toFixed(1);
+    
+    // Jika masih ada countdown berjalan dan respons lebih cepat, beri tahu pengguna
+    if (countdownTracker && !countdownTracker.isCompleted) {
+      await notifyFasterResponse(countdownTracker, sock, m, responseTime);
+    }
+    
+    // Kirim jawaban final
+    const finalMessage = await sock.sendMessage(m.from, {
+      text: `*Jawaban Ami Flash* (${responseTime}s):\n\n${response.trim()}`,
       edit: loadingMessage.key,
     });
-    animationIndex = (animationIndex + 1) % loadingAnimation.length;
-  }, 2000);
+    
+    return {
+      messageId: finalMessage.key.id,
+      content: response,
+    };
+  } catch (error) {
+    // Hentikan countdown jika masih berjalan
+    if (countdownTracker && countdownTracker.intervalId) {
+      countdownTracker.stopCountdown();
+    }
+    
+    console.error("Error in processFlashModel:", error);
+    throw error;
+  }
+}
 
+// Proses model Reasoning dengan loading enhancement
+async function processReasoningModel(context, loadingMessage, sock, m, userContext, startTime) {
+  // Buat tracker untuk loading message
+  const countdownTracker = loadingMessage.tracker;
+  
   try {
     const chatCompletion = await groq.chat.completions.create({
       messages: context,
@@ -417,14 +704,30 @@ async function processReasoningModel(
       stream: false,
       reasoning_format: "parsed",
     });
-
-    // Hentikan animasi loading
-    clearInterval(animationInterval);
-
+    
+    // Verifikasi respons
+    if (!chatCompletion.choices || 
+        !chatCompletion.choices[0] || 
+        !chatCompletion.choices[0].message || 
+        !chatCompletion.choices[0].message.content ||
+        chatCompletion.choices[0].message.content.trim() === '') {
+      throw new Error("Empty response received from Reasoning model");
+    }
+    
+    // Hentikan countdown jika masih berjalan
+    if (countdownTracker && countdownTracker.intervalId) {
+      countdownTracker.stopCountdown();
+    }
+    
     const thinkContent = chatCompletion.choices[0].message.reasoning || "";
     const finalResponse = chatCompletion.choices[0].message.content;
     const responseTime = ((Date.now() - startTime) / 1000).toFixed(1);
-
+    
+    // Jika masih ada countdown berjalan dan respons lebih cepat, beri tahu pengguna
+    if (countdownTracker && !countdownTracker.isCompleted) {
+      await notifyFasterResponse(countdownTracker, sock, m, responseTime);
+    }
+    
     // Tampilkan pemikiran jika ada
     if (thinkContent && thinkContent.trim()) {
       await sock.sendMessage(m.from, {
@@ -433,49 +736,36 @@ async function processReasoningModel(
         )}`,
         edit: loadingMessage.key,
       });
-
+      
       // Berikan jeda kecil sebelum menampilkan jawaban final
       await new Promise((resolve) => setTimeout(resolve, 1000));
     }
-
+    
     // Tampilkan jawaban
     const finalMessage = await sock.sendMessage(m.from, {
       text: `*Jawaban Ami Reasoning:*\n\n${finalResponse.trim()}`,
     });
-
+    
     return {
       messageId: finalMessage.key.id,
       content: finalResponse,
     };
   } catch (error) {
-    clearInterval(animationInterval);
+    // Hentikan countdown jika masih berjalan
+    if (countdownTracker && countdownTracker.intervalId) {
+      countdownTracker.stopCountdown();
+    }
+    
+    console.error("Error in processReasoningModel:", error);
     throw error;
   }
 }
 
-// Proses model DeepThinking
-async function processDeepThinkingModel(
-  context,
-  loadingMessage,
-  sock,
-  m,
-  userContext,
-  startTime
-) {
-  // Tampilkan animasi loading ala Studio Ghibli
-  const loadingAnimation = ["🍵", "🌊", "☁️", "🌙", "🏮"];
-  let animationIndex = 0;
-
-  const animationInterval = setInterval(async () => {
-    await sock.sendMessage(m.from, {
-      text: `${
-        loadingAnimation[animationIndex]
-      } Ami sedang mendalami pemikiran${".".repeat((animationIndex % 3) + 1)}`,
-      edit: loadingMessage.key,
-    });
-    animationIndex = (animationIndex + 1) % loadingAnimation.length;
-  }, 2500);
-
+// Proses model DeepThinking dengan loading enhancement
+async function processDeepThinkingModel(context, loadingMessage, sock, m, userContext, startTime) {
+  // Buat tracker untuk loading message
+  const countdownTracker = loadingMessage.tracker;
+  
   try {
     const chatCompletion = await openai.chat.completions.create({
       model: "deepseek/deepseek-r1:free",
@@ -483,14 +773,30 @@ async function processDeepThinkingModel(
       temperature: 0.7,
       stream: false,
     });
-
-    // Hentikan animasi loading
-    clearInterval(animationInterval);
-
+    
+    // Verifikasi respons
+    if (!chatCompletion.choices || 
+        !chatCompletion.choices[0] || 
+        !chatCompletion.choices[0].message || 
+        !chatCompletion.choices[0].message.content ||
+        chatCompletion.choices[0].message.content.trim() === '') {
+      throw new Error("Empty response received from DeepThinking model");
+    }
+    
+    // Hentikan countdown jika masih berjalan
+    if (countdownTracker && countdownTracker.intervalId) {
+      countdownTracker.stopCountdown();
+    }
+    
     const reasoning = chatCompletion.choices[0].message.reasoning || "";
     const finalResponse = chatCompletion.choices[0].message.content;
     const responseTime = ((Date.now() - startTime) / 1000).toFixed(1);
-
+    
+    // Jika masih ada countdown berjalan dan respons lebih cepat, beri tahu pengguna
+    if (countdownTracker && !countdownTracker.isCompleted) {
+      await notifyFasterResponse(countdownTracker, sock, m, responseTime);
+    }
+    
     // Tampilkan proses pemikiran jika ada
     if (reasoning && reasoning.trim()) {
       await sock.sendMessage(m.from, {
@@ -499,22 +805,24 @@ async function processDeepThinkingModel(
         )}`,
         edit: loadingMessage.key,
       });
-
-      // Berikan jeda kecil sebelum menampilkan jawaban final
-      await new Promise((resolve) => setTimeout(resolve, 1000));
     }
-    console.log(JSON.stringify(chatCompletion.choices));
+    
     // Tampilkan jawaban
     const finalMessage = await sock.sendMessage(m.from, {
       text: `*Jawaban Ami DeepThinking:*\n\n${finalResponse.trim()}`,
     });
-
+    
     return {
       messageId: finalMessage.key.id,
       content: finalResponse,
     };
   } catch (error) {
-    clearInterval(animationInterval);
+    // Hentikan countdown jika masih berjalan
+    if (countdownTracker && countdownTracker.intervalId) {
+      countdownTracker.stopCountdown();
+    }
+    
+    console.error("Error in processDeepThinkingModel:", error);
     throw error;
   }
 }
@@ -522,7 +830,7 @@ async function processDeepThinkingModel(
 export default function (handler) {
   handler.addFunction(async (m, { cmds, sock, db }) => {
     const userId = m.sender;
-    const text = m.body?.trim().toLowerCase() || ""; // Menggunakan m.body bukan m.text
+    const text = m.body?.trim().toLowerCase() || "";
     const userContext = readUserContext(userId);
     userContext.history = userContext.history || [];
 
@@ -533,11 +841,14 @@ export default function (handler) {
 
     if (!text) return;
     let session = getSession(userId);
+    
+    // Handle the "ami" command to start a new session
     if (!session && text === "ami") {
       session = createSession(userId, db, sock, m.from);
       await sock.sendMessage(m.from, {
         text:
-          "Halo! Silakan pilih model AI yang ingin kamu gunakan:\n\n" +
+          "🤖 *Halo! Selamat datang di Ami AI Assistant* 🤖\n\n" +
+          "Silakan pilih model AI yang ingin kamu gunakan:\n\n" +
           "1️⃣ *Ami Flash* - Untuk jawaban instan (70B parameter)\n" +
           "2️⃣ *Ami Reasoning* - Untuk penalaran (70B parameter)\n" +
           "3️⃣ *Ami DeepThinking* - Untuk pemikiran mendalam (671B parameter)\n\n" +
@@ -545,16 +856,20 @@ export default function (handler) {
       });
       return;
     }
+    
     if (!session) return;
     updateSession(db, userId, sock, m.from);
+    
+    // Handle model selection
     if (!session.modelSelected) {
       if (text === "1") {
         session.modelType = "flash";
         session.modelSelected = true;
         await sock.sendMessage(m.from, {
           text:
-            "✅ Kamu telah memilih *Ami Flash* untuk jawaban instan. Silakan tanyakan apapun padaku! 😊\n\n" +
-            "Ketik pesan untuk mulai mengobrol, atau ketik *ami stop* untuk mengakhiri sesi.",
+            "✅ Kamu telah memilih *Ami Flash* untuk jawaban instan dan praktis.\n\n" +
+            "💡 *Tips:* Model ini cocok untuk pertanyaan umum sehari-hari atau info faktual.\n\n" +
+            "✨ Silakan tanyakan apapun padaku! Ketik *ami stop* untuk mengakhiri sesi.",
         });
         return;
       } else if (text === "2") {
@@ -562,8 +877,9 @@ export default function (handler) {
         session.modelSelected = true;
         await sock.sendMessage(m.from, {
           text:
-            "✅ Kamu telah memilih *Ami Reasoning* untuk jawaban dengan penalaran. Silakan tanyakan apapun padaku! 🧠\n\n" +
-            "Ketik pesan untuk mulai mengobrol, atau ketik *ami stop* untuk mengakhiri sesi.",
+            "✅ Kamu telah memilih *Ami Reasoning* untuk jawaban dengan penalaran logis.\n\n" +
+            "💡 *Tips:* Model ini bagus untuk pertanyaan analitis, saran, atau pemecahan masalah.\n\n" +
+            "🧠 Silakan tanyakan apapun padaku! Ketik *ami stop* untuk mengakhiri sesi.",
         });
         return;
       } else if (text === "3") {
@@ -571,8 +887,9 @@ export default function (handler) {
         session.modelSelected = true;
         await sock.sendMessage(m.from, {
           text:
-            "✅ Kamu telah memilih *Ami DeepThinking* untuk pemikiran mendalam. Silakan tanyakan apapun padaku! 🌊\n\n" +
-            "Ketik pesan untuk mulai mengobrol, atau ketik *ami stop* untuk mengakhiri sesi.",
+            "✅ Kamu telah memilih *Ami DeepThinking* untuk pemikiran yang mendalam dan komprehensif.\n\n" +
+            "💡 *Tips:* Model ini ideal untuk eksplorasi ide kompleks, filosofi, atau topik mendalam.\n\n" +
+            "🌊 Silakan tanyakan apapun padaku! Ketik *ami stop* untuk mengakhiri sesi.",
         });
         return;
       } else {
@@ -582,23 +899,30 @@ export default function (handler) {
         return;
       }
     }
+    
+    // Handle "ami stop" command
     if (text === "ami stop") {
       endSession(db, userId, sock, m.from);
       await sock.sendMessage(m.from, {
-        text: "✅ Sesi chat dengan Ami telah berakhir. Ketik *ami* untuk memulai sesi baru.",
+        text: "✅ Sesi chat dengan Ami telah berakhir. Semoga jawabanku membantu! Ketik *ami* untuk memulai sesi baru kapan saja.",
       });
       return;
     }
+    
+    // Process message and add to history
     userContext.history.push({
       id: m.id,
       role: "user",
       content: m.body,
     });
     writeUserContext(userId, userContext);
+    
+    // Setup system prompt and context
     const timeZone = "Asia/Jakarta";
     const currentTime = time(Date.now(), { timeZone });
     const currentDate = date(Date.now(), timeZone);
     const greeting = getGreeting(timeZone);
+    
     const systemPrompt = createPersona(
       session.modelType,
       user,
@@ -607,9 +931,15 @@ export default function (handler) {
       greeting,
       cmds
     );
+    
+    // Build relevant context history with improved function
     const relevantHistory = buildRelevantHistory(userContext, m.quoted?.id);
+    
+    // Prepare context for AI request
     const context = [{ role: "system", content: systemPrompt }];
     relevantHistory.forEach(({ id, ...rest }) => context.push(rest));
+    
+    // Process AI request with enhanced loading and verification
     const result = await processAIRequest(
       session,
       context,
@@ -617,6 +947,8 @@ export default function (handler) {
       sock,
       userContext
     );
+    
+    // Save AI response to history if valid
     if (result) {
       userContext.history.push({
         id: result.messageId,
