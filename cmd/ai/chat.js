@@ -517,22 +517,22 @@ async function processAIRequest(session, context, m, sock, userContext) {
 }
 // Array fakta-fakta menarik gaya Gen Z
 const funFacts = [
-  "💫 Fun Fact: Emoji 😂 adalah emoji yang paling banyak digunakan di dunia!",
-  "✨ Info Seru: Rata-rata Gen Z menghabiskan 4,5 jam per hari di media sosial~",
-  "🧠 Did you know? Otak kita memproses gambar 60.000 kali lebih cepat daripada teks!",
-  "🌈 Fakta Random: Warna biru adalah warna paling populer di berbagai negara!",
-  "🤳 Fun Fact: Setiap hari ada lebih dari 95 juta foto yang diupload ke Instagram!",
-  "🎮 FYI aja: Industri game lebih besar dari industri film dan musik digabung!",
-  "📱 Sekedar info: 91% Gen Z tidur dengan smartphone di dekat mereka~",
-  "🎧 BTW, mendengarkan musik dapat meningkatkan mood hingga 25%!",
-  "🌟 ICYMI: Rata-rata perhatian manusia sekarang hanya 8 detik, lebih pendek dari ikan mas!",
-  "👁️ OMG Fact: Mata kita berkedip sekitar 15-20 kali per menit, tapi saat menatap layar hanya 5-7 kali!",
-  "💅 No cap: Rata-rata orang menghabiskan 5 tahun hidupnya untuk scroll media sosial!",
-  "🔋 Fun Fact: Mode gelap di aplikasi bisa menghemat baterai hingga 30% pada layar OLED!",
-  "🤔 Random info: Gen Z lebih suka pesan teks daripada telepon, berbeda dengan generasi sebelumnya~",
-  "💯 Straight facts: 95% ide kreatif muncul saat kita lagi santai, bukan saat lagi fokus kerja!",
-  "🧩 Tidbit: Multitasking sebenarnya mengurangi produktivitas hingga 40%!",
-  "🚀 Slay fact: Kecepatan mengetik rata-rata Gen Z adalah 60 WPM, lebih cepat dari generasi sebelumnya!"
+  "Fun Fact: Emoji 😂 adalah emoji yang paling banyak digunakan di dunia!",
+  "Info Seru: Rata-rata Gen Z menghabiskan 4,5 jam per hari di media sosial~",
+  "Did you know? Otak kita memproses gambar 60.000 kali lebih cepat daripada teks!",
+  "Fakta Random: Warna biru adalah warna paling populer di berbagai negara!",
+  "Fun Fact: Setiap hari ada lebih dari 95 juta foto yang diupload ke Instagram!",
+  "FYI aja: Industri game lebih besar dari industri film dan musik digabung!",
+  "Sekedar info: 91% Gen Z tidur dengan smartphone di dekat mereka~",
+  "BTW, mendengarkan musik dapat meningkatkan mood hingga 25%!",
+  "ICYMI: Rata-rata perhatian manusia sekarang hanya 8 detik, lebih pendek dari ikan mas!",
+  "OMG Fact: Mata kita berkedip sekitar 15-20 kali per menit, tapi saat menatap layar hanya 5-7 kali!",
+  "No cap: Rata-rata orang menghabiskan 5 tahun hidupnya untuk scroll media sosial!",
+  "Fun Fact: Mode gelap di aplikasi bisa menghemat baterai hingga 30% pada layar OLED!",
+  "Random info: Gen Z lebih suka pesan teks daripada telepon, berbeda dengan generasi sebelumnya~",
+  "Straight facts: 95% ide kreatif muncul saat kita lagi santai, bukan saat lagi fokus kerja!",
+  "Tidbit: Multitasking sebenarnya mengurangi produktivitas hingga 40%!",
+  "Slay fact: Kecepatan mengetik rata-rata Gen Z adalah 60 WPM, lebih cepat dari generasi sebelumnya!"
 ];
 
 // Fungsi untuk menampilkan loading dengan countdown dan fun facts
@@ -622,14 +622,14 @@ function startCountdownInterval(tracker, session, sock, m, facts, updateInterval
       // Kirim pesan transisi ke counting up
       try {
         await sock.sendMessage(m.from, {
-          text: `⏳ Ami masih memikirkan jawabannya dengan serius. Pertanyaanmu cukup menantang~ 
+          text: `Ami masih memikirkan jawabannya dengan serius. Pertanyaanmu cukup menantang~ 
 
 ${facts[tracker.factIndex % facts.length]}`,
           edit: tracker.messageKey,
         });
         
         // Tunggu 2 detik sebelum mulai counting up
-        await new Promise(resolve => setTimeout(resolve, 2000));
+        await new Promise(resolve => setTimeout(resolve, 3000));
       } catch (error) {
         console.error("Error sending transition message:", error);
       }
@@ -699,7 +699,7 @@ async function notifyFasterResponse(tracker, sock, m, responseTime) {
     
     try {
       await sock.sendMessage(m.from, {
-        text: `🚀 Wow! Ami bisa menjawab lebih cepat! Hanya butuh ${responseTime} detik.`,
+        text: `Wow! Ami bisa menjawab lebih cepat! Hanya butuh ${responseTime} detik.`,
         edit: tracker.messageKey,
       });
       
