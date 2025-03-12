@@ -1002,7 +1002,9 @@ async function processReasoningModel(
 
       // Send answer as new message
       const finalMessage = await sock.sendMessage(m.from, {
-        text: `*Jawaban Ami Reasoning:*\n\n${finalResponse.trim()}`,
+        text: `*Jawaban Ami Reasoning:*\n\n${formatWhatsAppResponse(
+          finalResponse.trim()
+        )}`,
       });
 
       return {
@@ -1012,7 +1014,9 @@ async function processReasoningModel(
     } else {
       // If thinking not shown, edit the loading message directly
       const finalMessage = await sock.sendMessage(m.from, {
-        text: `*Jawaban Ami Reasoning* (${responseTime}s):\n\n${finalResponse.trim()}`,
+        text: `*Jawaban Ami Reasoning* (${responseTime}s):\n\n${formatWhatsAppResponse(
+          finalResponse.trim()
+        )}`,
         edit: loadingMessage.key,
       });
 
@@ -1086,9 +1090,7 @@ async function processDeepThinkingModel(
     // Only show thinking if enabled and content exists
     if (reasoning && reasoning.trim() && session && session.showThinking) {
       await sock.sendMessage(m.from, {
-        text: `🌊 *Proses Pemikiran Mendalam* (${responseTime}s):\n\n${formatThinkContent(
-          reasoning
-        )}`,
+        text: `🌊 *Proses Pemikiran Mendalam* (${responseTime}s):\n\n${reasoning}`,
         edit: loadingMessage.key,
       });
 
@@ -1097,7 +1099,9 @@ async function processDeepThinkingModel(
 
       // Send answer as new message
       const finalMessage = await sock.sendMessage(m.from, {
-        text: `*Jawaban Ami DeepThinking:*\n\n${finalResponse.trim()}`,
+        text: `*Jawaban Ami DeepThinking:*\n\n${formatWhatsAppResponse(
+          finalResponse.trim()
+        )}`,
       });
 
       return {
@@ -1107,7 +1111,9 @@ async function processDeepThinkingModel(
     } else {
       // If thinking not shown, edit the loading message directly
       const finalMessage = await sock.sendMessage(m.from, {
-        text: `*Jawaban Ami DeepThinking* (${responseTime}s):\n\n${finalResponse.trim()}`,
+        text: `*Jawaban Ami DeepThinking* (${responseTime}s):\n\n${formatWhatsAppResponse(
+          finalResponse.trim()
+        )}`,
         edit: loadingMessage.key,
       });
 
