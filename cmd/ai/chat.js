@@ -1222,7 +1222,9 @@ async function processReasoningModel(
     throw error;
   }
 }
+
 // Improved processDeepThinkingModel function with better logging
+// Improved processDeepThinkingModel function with additional error handling
 async function processDeepThinkingModel(
   context,
   loadingMessage,
@@ -1244,235 +1246,76 @@ async function processDeepThinkingModel(
     });
     console.log("DeepThinking API response received");
 
+    // Debug: Log the full response structure to identify any issues
+    console.log("Full response structure:", JSON.stringify(chatCompletion, null, 2));
+
     // Proper validation with detailed logging
-    if (
-      !chatCompletion ||
-      !chatCompletion.choices ||
-      chatCompletion.choices.length === 0
-    ) {
-      console.error(
-        "Invalid API response structure:",
-        JSON.stringify(chatCompletion)
-      );
+    if (!chatCompletion || !chatCompletion.choices || chatCompletion.choices.length === 0) {
+      console.error("Invalid API response structure:", JSON.stringify(chatCompletion));
       throw new Error("Empty or invalid response from DeepThinking model");
     }
 
-    if (
-      !chatCompletion.choices[0].message ||
-      !chatCompletion.choices[0].message.content
-    ) {
-      console.error(
-        "Invalid message structure in response:",
-        JSON.stringify(chatCompletion.choices[0])
-      );
-      throw new Error(
-        "Empty or missing message content from DeepThinking model"
-      );
+    if (!chatCompletion.choices[0].message || !chatCompletion.choices[0].message.content) {
+      console.error("Invalid message structure in response:", JSON.stringify(chatCompletion.choices[0]));
+      throw new Error("Empty or missing message content from DeepThinking model");
     }
 
     let finalResponse = chatCompletion.choices[0].message.content;
-    console.log(
-      "Raw response content received:",
-      finalResponse.substring(0, 100) + "..."
-    );
-
+    console.log("Raw response content received:", finalResponse.substring(0, 100) + "...");
+    
     const responseTime = ((Date.now() - startTime) / 1000).toFixed(1);
 
-    // First, send a notification that we're preparing the answer
+    // First, notify user that response has been received and that we're preparing visualizations
     if (countdownTracker) {
       countdownTracker.responseReceived = true;
       countdownTracker.processingResponse = true;
-
+      
       if (countdownTracker.intervalId) {
         countdownTracker.stopTimer();
       }
-
-      await sock.sendMessage(m.from, {
-        text: `✅ Ami telah mendapatkan jawaban dalam ${responseTime} detik. Sedang menyiapkan visualisasi...`,
-        edit: loadingMessage.key,
-      });
-
-      await new Promise((resolve) => setTimeout(resolve, 2000));
-    }
-
-    // Process any image generation requests in the response
-    const imageTags = {
-      math: /\[MATH_IMAGE:(.*?)\]/g,
-      graph: /\[GRAPH:(.*?)\]/g,
-      solution: /\[SOLUTION_GRAPH:(.*?)\]/g,
-    };
-
-    const images = [];
-    console.log("Looking for special tags in response...");
-
-    // Check if response contains any special tags
-    const hasMathTag = finalResponse.includes("[MATH_IMAGE:");
-    const hasGraphTag = finalResponse.includes("[GRAPH:");
-    const hasSolutionTag = finalResponse.includes("[SOLUTION_GRAPH:");
-
-    console.log(
-      `Contains tags? Math: ${hasMathTag}, Graph: ${hasGraphTag}, Solution: ${hasSolutionTag}`
-    );
-
-    // Extract and process [MATH_IMAGE] tags
-    let mathMatch;
-    while ((mathMatch = imageTags.math.exec(finalResponse)) !== null) {
-      console.log("Found MATH_IMAGE tag:", mathMatch[0]);
-      const latex = mathMatch[1];
-      console.log("Generating math image for LaTeX:", latex);
+      
+      // First, send the simple text response - guaranteed to work even if image processing fails
       try {
-        const imageFile = await generateMathImage(
-          latex,
-          `math_${images.length}`
-        );
-        if (imageFile) {
-          console.log("Math image generated successfully:", imageFile);
-          images.push({
-            type: "math",
-            file: imageFile,
-            placeholder: mathMatch[0],
-          });
-        } else {
-          console.error("Failed to generate math image for:", latex);
-        }
-      } catch (mathError) {
-        console.error("Error generating math image:", mathError);
-      }
-    }
-
-    // Extract and process [GRAPH] tags
-    let graphMatch;
-    while ((graphMatch = imageTags.graph.exec(finalResponse)) !== null) {
-      console.log("Found GRAPH tag:", graphMatch[0]);
-      const graphCode = graphMatch[1];
-      console.log("Converting graph code to drawing function...");
-      try {
-        const drawFunction = new Function(
-          "ctx",
-          "width",
-          "height",
-          "gridSize",
-          graphCode
-        );
-        console.log("Generating graph image...");
-        const imageFile = await generateGraphPaperSolution(drawFunction);
-        if (imageFile) {
-          console.log("Graph image generated successfully:", imageFile);
-          images.push({
-            type: "graph",
-            file: imageFile,
-            placeholder: graphMatch[0],
-          });
-        } else {
-          console.error("Failed to generate graph image");
-        }
-      } catch (graphError) {
-        console.error("Error creating drawing function for graph:", graphError);
-      }
-    }
-
-    // Extract and process [SOLUTION_GRAPH] tags
-    let solutionMatch;
-    while ((solutionMatch = imageTags.solution.exec(finalResponse)) !== null) {
-      console.log("Found SOLUTION_GRAPH tag:", solutionMatch[0]);
-      const solutionCode = solutionMatch[1];
-      console.log("Converting solution code to drawing function...");
-      try {
-        const drawFunction = new Function(
-          "ctx",
-          "width",
-          "height",
-          "gridSize",
-          solutionCode
-        );
-        console.log("Generating solution graph image...");
-        const imageFile = await generateGraphPaperSolution(drawFunction);
-        if (imageFile) {
-          console.log(
-            "Solution graph image generated successfully:",
-            imageFile
-          );
-          images.push({
-            type: "solution",
-            file: imageFile,
-            placeholder: solutionMatch[0],
-          });
-        } else {
-          console.error("Failed to generate solution graph image");
-        }
-      } catch (solutionError) {
-        console.error(
-          "Error creating drawing function for solution:",
-          solutionError
-        );
-      }
-    }
-
-    console.log(`Found ${images.length} images to process`);
-
-    // Remove image tags from the text response
-    for (const image of images) {
-      finalResponse = finalResponse.replace(
-        image.placeholder,
-        `[Gambar ${
-          image.type === "math"
-            ? "rumus matematika"
-            : image.type === "graph"
-            ? "grafik"
-            : "solusi"
-        } telah dikirim]`
-      );
-    }
-
-    // Format WhatsApp response
-    finalResponse = formatWhatsAppResponse(finalResponse.trim());
-    console.log("Formatted response ready to send");
-
-    console.log("Sending text response...");
-    // Send the text response
-    const finalMessage = await sock.sendMessage(m.from, {
-      text: `*Jawaban Ami DeepThinking* (${responseTime}s):\n\n${finalResponse}`,
-      edit: loadingMessage.key,
-    });
-    console.log("Text response sent successfully");
-
-    // Send any generated images
-    console.log(`Sending ${images.length} images...`);
-    for (const image of images) {
-      try {
-        console.log(`Sending image: ${image.file}`);
-        await sock.sendMessage(m.from, {
-          image: fs.readFileSync(image.file),
-          caption:
-            image.type === "math"
-              ? "Rumus Matematika"
-              : image.type === "graph"
-              ? "Grafik"
-              : "Solusi pada kertas berpetak",
+        // Format WhatsApp response first
+        finalResponse = formatWhatsAppResponse(finalResponse.trim());
+        
+        // Send the text response immediately
+        const finalMessage = await sock.sendMessage(m.from, {
+          text: `*Jawaban Ami DeepThinking* (${responseTime}s):\n\n${finalResponse}`,
+          edit: loadingMessage.key,
         });
-        console.log(`Image sent successfully: ${image.file}`);
-
-        // Clean up after sending
-        fs.unlinkSync(image.file);
-        console.log(`Image file deleted: ${image.file}`);
-      } catch (imageError) {
-        console.error(`Error sending image ${image.file}:`, imageError);
+        console.log("Text response sent successfully");
+        
+        // Store message ID for history
+        const messageId = finalMessage.key.id;
+        
+        // Now look for special tags
+        try {
+          // Process any image generation requests in the response
+          await processSpecialTags(finalResponse, sock, m);
+          console.log("Special tags processing completed");
+        } catch (tagsError) {
+          console.error("Error processing special tags:", tagsError);
+          // Don't fail the whole function - we already sent text response
+        }
+        
+        return {
+          messageId: messageId,
+          content: finalResponse,
+        };
+      } catch (responseError) {
+        console.error("Error sending text response:", responseError);
+        throw responseError; // Re-throw to handle in the main try-catch
       }
     }
-
-    console.log("All images processed and sent");
-    return {
-      messageId: finalMessage.key.id,
-      content: finalResponse,
-    };
   } catch (error) {
     console.error("Error in processDeepThinkingModel:", error);
-
+    
     // Make sure to stop any timers
     if (countdownTracker && countdownTracker.intervalId) {
       countdownTracker.stopTimer();
     }
-
+    
     // Send error message to user
     try {
       await sock.sendMessage(m.from, {
@@ -1482,8 +1325,97 @@ async function processDeepThinkingModel(
     } catch (msgError) {
       console.error("Error sending error message:", msgError);
     }
-
+    
     throw error;
+  }
+}
+
+// Separate function to process special tags - can fail without affecting main response
+async function processSpecialTags(responseText, sock, m) {
+  console.log("Starting special tags processing");
+  
+  // More flexible regex patterns to match tags (allowing for whitespace variations)
+  const imageTags = {
+    math: /\[MATH_IMAGE:?\s*(.*?)\s*\]/g,
+    graph: /\[GRAPH:?\s*(.*?)\s*\]/g,
+    solution: /\[SOLUTION_GRAPH:?\s*(.*?)\s*\]/g,
+  };
+
+  // Check if response contains any special tags
+  const hasMathTag = responseText.includes("[MATH_IMAGE");
+  const hasGraphTag = responseText.includes("[GRAPH");
+  const hasSolutionTag = responseText.includes("[SOLUTION_GRAPH");
+  
+  console.log(`Contains tags? Math: ${hasMathTag}, Graph: ${hasGraphTag}, Solution: ${hasSolutionTag}`);
+  
+  if (!hasMathTag && !hasGraphTag && !hasSolutionTag) {
+    console.log("No special tags found, skipping image processing");
+    return;
+  }
+  
+  // Let the user know we're working on images
+  await sock.sendMessage(m.from, {
+    text: "Ami sedang menyiapkan visualisasi tambahan...",
+  });
+
+  // Extract and process the tags one by one
+  try {
+    // Process math images first
+    if (hasMathTag) {
+      console.log("Processing math tags");
+      await processMathTags(responseText, imageTags.math, sock, m);
+    }
+    
+    // Process graph images
+    if (hasGraphTag) {
+      console.log("Processing graph tags");
+      await processGraphTags(responseText, imageTags.graph, sock, m);
+    }
+    
+    // Process solution graphs
+    if (hasSolutionTag) {
+      console.log("Processing solution tags");
+      await processSolutionTags(responseText, imageTags.solution, sock, m);
+    }
+  } catch (err) {
+    console.error("Error in tag processing:", err);
+    await sock.sendMessage(m.from, {
+      text: "Ami tidak bisa membuat beberapa visualisasi karena kendala teknis.",
+    });
+  }
+}
+
+// Helper functions to process each tag type
+async function processMathTags(text, regex, sock, m) {
+  let match;
+  let count = 0;
+  
+  while ((match = regex.exec(text)) !== null) {
+    try {
+      console.log(`Processing math tag ${count + 1}`);
+      const latex = match[1];
+      console.log("LaTeX content:", latex);
+      
+      const filename = `math_${Date.now()}_${count}`;
+      const imageFile = await generateMathImage(latex, filename);
+      
+      if (imageFile) {
+        console.log(`Sending math image: ${imageFile}`);
+        await sock.sendMessage(m.from, {
+          image: fs.readFileSync(imageFile),
+          caption: "Rumus Matematika"
+        });
+        
+        // Clean up
+        fs.unlinkSync(imageFile);
+        console.log(`Deleted file: ${imageFile}`);
+      } else {
+        console.error("Failed to generate math image");
+      }
+    } catch (err) {
+      console.error(`Error processing math tag ${count + 1}:`, err);
+    }
+    count++;
   }
 }
 
