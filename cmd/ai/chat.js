@@ -32,24 +32,24 @@ if (!fs.existsSync(tempDir)) {
 async function generateMathImage(latex, filename) {
   try {
     console.log(`Generating math image for LaTeX: ${latex}`);
-    
+
     // Configure MathJax
     const result = await MathJax.typeset({
       math: latex,
       format: "TeX",
       svg: true,
     });
-    
+
     if (!result || !result.svg) {
       console.error("MathJax did not return valid SVG");
       return null;
     }
-    
+
     // Save SVG to a file
     const outputPath = path.join(tempDir, `${filename}.svg`);
     fs.writeFileSync(outputPath, result.svg);
     console.log(`Math image saved to ${outputPath}`);
-    
+
     return outputPath;
   } catch (error) {
     console.error("Error generating math image:", error);
@@ -67,17 +67,17 @@ async function generateGraphPaperSolution(
     console.log("Creating canvas for graph paper solution");
     const canvas = createCanvas(width, height);
     const ctx = canvas.getContext("2d");
-    
+
     // Draw graph paper background
     console.log("Drawing graph paper background");
     ctx.fillStyle = "white";
     ctx.fillRect(0, 0, width, height);
-    
+
     // Draw grid lines
     console.log("Drawing grid lines");
     ctx.strokeStyle = "#e0e0e0";
     ctx.lineWidth = 1;
-    
+
     const gridSize = 20;
     for (let i = 0; i <= width; i += gridSize) {
       ctx.beginPath();
@@ -85,14 +85,14 @@ async function generateGraphPaperSolution(
       ctx.lineTo(i, height);
       ctx.stroke();
     }
-    
+
     for (let i = 0; i <= height; i += gridSize) {
       ctx.beginPath();
       ctx.moveTo(0, i);
       ctx.lineTo(width, i);
       ctx.stroke();
     }
-    
+
     // Draw axes
     console.log("Drawing axes");
     ctx.strokeStyle = "#a0a0a0";
@@ -103,7 +103,7 @@ async function generateGraphPaperSolution(
     ctx.moveTo(0, height / 2);
     ctx.lineTo(width, height / 2);
     ctx.stroke();
-    
+
     // Execute the provided draw function
     console.log("Executing custom drawing function");
     if (typeof drawFunction === "function") {
@@ -116,12 +116,12 @@ async function generateGraphPaperSolution(
     } else {
       console.error("Invalid drawing function provided");
     }
-    
+
     // Save canvas to file
     console.log("Saving canvas to image file");
     const filename = `graph_${Date.now()}.png`;
     const outputPath = path.join(tempDir, filename);
-    
+
     try {
       const buffer = canvas.toBuffer("image/png");
       fs.writeFileSync(outputPath, buffer);
@@ -497,19 +497,22 @@ You are Ami DeepThinking, specialized in deep understanding and clear explanatio
 - Use analogies, examples, and visualizations to clarify abstract concepts
 - Connect theoretical concepts to real-world applications
 
-## GUIDE FOR HANDLING MATHEMATICS AND DIAGRAMS:
+## CRITICAL INSTRUCTIONS FOR MATHEMATICAL CONTENT:
+When answering questions with mathematical expressions, you MUST follow these exact formatting rules:
+
 1. For simple expressions (x², y = mx + b, etc):
    - Use monospace formatting: \`x² + y² = r²\`
-2. For complex equations or formulas:
-   - Use [MATH_IMAGE:LaTeX code here] tags
-   - Example: [MATH_IMAGE:\\int_{0}^{\\infty} e^{-x^2} dx = \\frac{\\sqrt{\\pi}}{2}]
-3. For graphs and visualizations:
-   - Use [GRAPH:JavaScript drawing code] tags
-   - Example: [GRAPH:ctx.strokeStyle = 'blue'; ctx.beginPath(); ctx.moveTo(width/2, height/2); ctx.quadraticCurveTo(...)]
-4. For solution presentations:
-   - Use [SOLUTION_GRAPH:JavaScript drawing code] tags
-   - Include clear step-by-step explanations before and after the visualization
 
+2. For complex equations or formulas:
+   - EXACTLY use this format: [MATH_IMAGE:LaTeX code here]
+   - Example: [MATH_IMAGE:\\int_{0}^{\\infty} e^{-x^2} dx = \\frac{\\sqrt{\\pi}}{2}]
+   - NEVER use standard LaTeX notation like \\(...\\) or \\[...\\]
+
+3. For graphs and visualizations:
+   - EXACTLY use this format: [GRAPH:JavaScript drawing code]
+   
+4. For solution presentations:
+   - EXACTLY use this format: [SOLUTION_GRAPH:JavaScript drawing code]
 ## SUBJECT EXPERTISE:
 1. *Mathematics*:
    - Clearly explain mathematical concepts, not just provide solutions
@@ -922,7 +925,7 @@ function startCountdownInterval(
       // Send transition message
       try {
         await sock.sendMessage(m.from, {
-          text: `Ami masih memikirkan jawabannya dengan serius. Pertanyaanmu cukup menantang~ 
+          text: `🤔 Ami masih memikirkan jawabannya dengan serius. Pertanyaanmu cukup menantang~ 
 
 ${facts[factIndex % facts.length]}`,
           edit: tracker.messageKey,
@@ -1247,48 +1250,69 @@ async function processDeepThinkingModel(
     console.log("DeepThinking API response received");
 
     // Debug: Log the full response structure to identify any issues
-    console.log("Full response structure:", JSON.stringify(chatCompletion, null, 2));
+    console.log(
+      "Full response structure:",
+      JSON.stringify(chatCompletion, null, 2)
+    );
 
     // Proper validation with detailed logging
-    if (!chatCompletion || !chatCompletion.choices || chatCompletion.choices.length === 0) {
-      console.error("Invalid API response structure:", JSON.stringify(chatCompletion));
+    if (
+      !chatCompletion ||
+      !chatCompletion.choices ||
+      chatCompletion.choices.length === 0
+    ) {
+      console.error(
+        "Invalid API response structure:",
+        JSON.stringify(chatCompletion)
+      );
       throw new Error("Empty or invalid response from DeepThinking model");
     }
 
-    if (!chatCompletion.choices[0].message || !chatCompletion.choices[0].message.content) {
-      console.error("Invalid message structure in response:", JSON.stringify(chatCompletion.choices[0]));
-      throw new Error("Empty or missing message content from DeepThinking model");
+    if (
+      !chatCompletion.choices[0].message ||
+      !chatCompletion.choices[0].message.content
+    ) {
+      console.error(
+        "Invalid message structure in response:",
+        JSON.stringify(chatCompletion.choices[0])
+      );
+      throw new Error(
+        "Empty or missing message content from DeepThinking model"
+      );
     }
 
     let finalResponse = chatCompletion.choices[0].message.content;
-    console.log("Raw response content received:", finalResponse.substring(0, 100) + "...");
-    
+    console.log(
+      "Raw response content received:",
+      finalResponse.substring(0, 100) + "..."
+    );
+
     const responseTime = ((Date.now() - startTime) / 1000).toFixed(1);
 
     // First, notify user that response has been received and that we're preparing visualizations
     if (countdownTracker) {
       countdownTracker.responseReceived = true;
       countdownTracker.processingResponse = true;
-      
+
       if (countdownTracker.intervalId) {
         countdownTracker.stopTimer();
       }
-      
+
       // First, send the simple text response - guaranteed to work even if image processing fails
       try {
         // Format WhatsApp response first
         finalResponse = formatWhatsAppResponse(finalResponse.trim());
-        
+
         // Send the text response immediately
         const finalMessage = await sock.sendMessage(m.from, {
           text: `*Jawaban Ami DeepThinking* (${responseTime}s):\n\n${finalResponse}`,
           edit: loadingMessage.key,
         });
         console.log("Text response sent successfully");
-        
+
         // Store message ID for history
         const messageId = finalMessage.key.id;
-        
+
         // Now look for special tags
         try {
           // Process any image generation requests in the response
@@ -1298,7 +1322,7 @@ async function processDeepThinkingModel(
           console.error("Error processing special tags:", tagsError);
           // Don't fail the whole function - we already sent text response
         }
-        
+
         return {
           messageId: messageId,
           content: finalResponse,
@@ -1310,12 +1334,12 @@ async function processDeepThinkingModel(
     }
   } catch (error) {
     console.error("Error in processDeepThinkingModel:", error);
-    
+
     // Make sure to stop any timers
     if (countdownTracker && countdownTracker.intervalId) {
       countdownTracker.stopTimer();
     }
-    
+
     // Send error message to user
     try {
       await sock.sendMessage(m.from, {
@@ -1325,57 +1349,84 @@ async function processDeepThinkingModel(
     } catch (msgError) {
       console.error("Error sending error message:", msgError);
     }
-    
+
     throw error;
   }
 }
 
-// Separate function to process special tags - can fail without affecting main response
+// 1. Tambahkan fungsi untuk mendeteksi dan memproses format LaTeX
 async function processSpecialTags(responseText, sock, m) {
   console.log("Starting special tags processing");
-  
-  // More flexible regex patterns to match tags (allowing for whitespace variations)
+
+  // Original tag detection
   const imageTags = {
     math: /\[MATH_IMAGE:?\s*(.*?)\s*\]/g,
     graph: /\[GRAPH:?\s*(.*?)\s*\]/g,
     solution: /\[SOLUTION_GRAPH:?\s*(.*?)\s*\]/g,
   };
 
-  // Check if response contains any special tags
+  // Deteksi format LaTeX standar yang digunakan Ami
+  const latexPatterns = {
+    inline: /\\\((.*?)\\\)/g, // Mendeteksi \(...\)
+    display: /\\\[(.*?)\\\]/g, // Mendeteksi \[...\]
+    dollars: /\$(.*?)\$/g, // Mendeteksi $...$
+  };
+
+  // Periksa tag khusus
   const hasMathTag = responseText.includes("[MATH_IMAGE");
   const hasGraphTag = responseText.includes("[GRAPH");
   const hasSolutionTag = responseText.includes("[SOLUTION_GRAPH");
-  
-  console.log(`Contains tags? Math: ${hasMathTag}, Graph: ${hasGraphTag}, Solution: ${hasSolutionTag}`);
-  
-  if (!hasMathTag && !hasGraphTag && !hasSolutionTag) {
-    console.log("No special tags found, skipping image processing");
+
+  // Periksa format LaTeX
+  const hasInlineLatex = responseText.includes("\\(");
+  const hasDisplayLatex = responseText.includes("\\[");
+  const hasDollarLatex = responseText.includes("$");
+
+  console.log(
+    `Contains tags? Math: ${hasMathTag}, Graph: ${hasGraphTag}, Solution: ${hasSolutionTag}`
+  );
+  console.log(
+    `Contains LaTeX? Inline: ${hasInlineLatex}, Display: ${hasDisplayLatex}, Dollar: ${hasDollarLatex}`
+  );
+
+  // Jika tidak ada tag khusus ataupun LaTeX, lewati pemrosesan gambar
+  if (
+    !hasMathTag &&
+    !hasGraphTag &&
+    !hasSolutionTag &&
+    !hasInlineLatex &&
+    !hasDisplayLatex &&
+    !hasDollarLatex
+  ) {
+    console.log("No special tags or LaTeX found, skipping image processing");
     return;
   }
-  
-  // Let the user know we're working on images
+
+  // Beritahu pengguna bahwa kita sedang memproses gambar
   await sock.sendMessage(m.from, {
-    text: "Ami sedang menyiapkan visualisasi tambahan...",
+    text: "Ami sedang menyiapkan visualisasi rumus matematika...",
   });
 
-  // Extract and process the tags one by one
+  // Proses tag original
   try {
-    // Process math images first
+    // Proses tag MATH_IMAGE jika ada
     if (hasMathTag) {
-      console.log("Processing math tags");
       await processMathTags(responseText, imageTags.math, sock, m);
     }
-    
-    // Process graph images
+
+    // Proses tag GRAPH jika ada
     if (hasGraphTag) {
-      console.log("Processing graph tags");
       await processGraphTags(responseText, imageTags.graph, sock, m);
     }
-    
-    // Process solution graphs
+
+    // Proses tag SOLUTION_GRAPH jika ada
     if (hasSolutionTag) {
-      console.log("Processing solution tags");
       await processSolutionTags(responseText, imageTags.solution, sock, m);
+    }
+
+    // Proses format LaTeX standar jika ada
+    if (hasInlineLatex || hasDisplayLatex || hasDollarLatex) {
+      await processLatexNotation(responseText, latexPatterns, sock, m);
     }
   } catch (err) {
     console.error("Error in tag processing:", err);
@@ -1385,27 +1436,80 @@ async function processSpecialTags(responseText, sock, m) {
   }
 }
 
+// 2. Tambahkan fungsi untuk memproses notasi LaTeX
+async function processLatexNotation(text, patterns, sock, m) {
+  let latexExpressions = [];
+  let match;
+
+  // Kumpulkan semua ekspresi LaTeX inline
+  while ((match = patterns.inline.exec(text)) !== null) {
+    console.log("Found inline LaTeX:", match[1]);
+    latexExpressions.push(match[1]);
+  }
+
+  // Kumpulkan semua ekspresi LaTeX display
+  while ((match = patterns.display.exec(text)) !== null) {
+    console.log("Found display LaTeX:", match[1]);
+    latexExpressions.push(match[1]);
+  }
+
+  // Kumpulkan semua ekspresi LaTeX dengan format dollar
+  while ((match = patterns.dollars.exec(text)) !== null) {
+    console.log("Found dollar LaTeX:", match[1]);
+    latexExpressions.push(match[1]);
+  }
+
+  console.log(`Found ${latexExpressions.length} LaTeX expressions`);
+
+  // Proses setiap ekspresi
+  for (let i = 0; i < latexExpressions.length; i++) {
+    try {
+      const latex = latexExpressions[i];
+      console.log(`Processing LaTeX expression ${i + 1}: ${latex}`);
+
+      const filename = `latex_${Date.now()}_${i}`;
+      const imageFile = await generateMathImage(latex, filename);
+
+      if (imageFile) {
+        console.log(`Sending LaTeX image: ${imageFile}`);
+        await sock.sendMessage(m.from, {
+          image: fs.readFileSync(imageFile),
+          caption: `Rumus Matematika (${i + 1}/${latexExpressions.length})`,
+        });
+
+        // Bersihkan file
+        fs.unlinkSync(imageFile);
+        console.log(`Deleted file: ${imageFile}`);
+      } else {
+        console.error(`Failed to generate image for LaTeX: ${latex}`);
+      }
+    } catch (err) {
+      console.error(`Error processing LaTeX expression ${i + 1}:`, err);
+    }
+  }
+}
+
 // Helper functions to process each tag type
 async function processMathTags(text, regex, sock, m) {
   let match;
   let count = 0;
-  
+
   while ((match = regex.exec(text)) !== null) {
     try {
       console.log(`Processing math tag ${count + 1}`);
       const latex = match[1];
       console.log("LaTeX content:", latex);
-      
+
       const filename = `math_${Date.now()}_${count}`;
       const imageFile = await generateMathImage(latex, filename);
-      
+
       if (imageFile) {
         console.log(`Sending math image: ${imageFile}`);
         await sock.sendMessage(m.from, {
           image: fs.readFileSync(imageFile),
-          caption: "Rumus Matematika"
+          caption: "Rumus Matematika",
         });
-        
+
         // Clean up
         fs.unlinkSync(imageFile);
         console.log(`Deleted file: ${imageFile}`);
