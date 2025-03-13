@@ -16,7 +16,7 @@ const openai = new OpenAI({
 });
 
 // Add these imports at the top of your file
-import { createCanvas } from "canvas";
+import { createCanvas, Image } from "canvas";
 import MathJax from "mathjax-node";
 import fs from "fs";
 import path from "path";
@@ -25,6 +25,744 @@ import path from "path";
 const tempDir = path.join(process.cwd(), "temp");
 if (!fs.existsSync(tempDir)) {
   fs.mkdirSync(tempDir);
+}
+
+// Function to convert SVG string to PNG/JPG buffer
+async function convertSvgToImage(svgString, width, height, format = 'png') {
+  try {
+    console.log(`Converting SVG to ${format} image (${width}x${height})`);
+    
+    // Create a canvas with the specified dimensions
+    const canvas = createCanvas(width, height);
+    const ctx = canvas.getContext('2d');
+    
+    // For a clean background
+    ctx.fillStyle = 'white';
+    ctx.fillRect(0, 0, width, height);
+    
+    // Load the SVG data using a data URL
+    const img = new Image();
+    
+    // Create a promise to handle the async image loading
+    return new Promise((resolve, reject) => {
+      // Set up image load handler
+      img.onload = () => {
+        try {
+          // Draw the image onto the canvas
+          ctx.drawImage(img, 0, 0, width, height);
+          
+          // Convert to buffer
+          const buffer = format.toLowerCase() === 'jpg' || format.toLowerCase() === 'jpeg'
+            ? canvas.toBuffer('image/jpeg')
+            : canvas.toBuffer('image/png');
+          
+          console.log(`SVG successfully converted to ${format}`);
+          resolve(buffer);
+        } catch (err) {
+          console.error('Error drawing SVG to canvas:', err);
+          reject(err);
+        }
+      };
+      
+      // Set up error handler
+      img.onerror = (err) => {
+        console.error('Error loading SVG image:', err);
+        reject(new Error('Failed to load SVG image'));
+      };
+      
+      // Create a data URL from the SVG string
+      const svgBase64 = Buffer.from(svgString).toString('base64');
+      img.src = `data:image/svg+xml;base64,${svgBase64}`;
+    });
+  } catch (error) {
+    console.error('Error in SVG to image conversion:', error);
+    throw error;
+  }
+}
+
+// Enhanced function to convert MathJax SVG output to PNG/JPG
+async function convertMathJaxToImage(latex, width = 800, height = 200, format = 'png') {
+  try {
+    console.log(`Converting LaTeX to ${format} image: ${latex}`);
+    
+    // Generate SVG from LaTeX using MathJax
+    const result = await MathJax.typeset({
+      math: latex,
+      format: 'TeX',
+      svg: true,
+    });
+    
+    if (!result || !result.svg) {
+      throw new Error('MathJax did not return valid SVG');
+    }
+    
+    // Get SVG dimensions from the viewBox
+    const viewBoxMatch = result.svg.match(/viewBox=["']([^"']*)["']/);
+    let svgWidth, svgHeight;
+    
+    if (viewBoxMatch && viewBoxMatch[1]) {
+      const [, , w, h] = viewBoxMatch[1].split(' ').map(Number);
+      svgWidth = w;
+      svgHeight = h;
+      
+      // Adjust canvas dimensions to maintain aspect ratio
+      if (svgWidth && svgHeight) {
+        const aspectRatio = svgWidth / svgHeight;
+        height = width / aspectRatio;
+      }
+    }
+    
+    // Convert SVG to image
+    const imageBuffer = await convertSvgToImage(result.svg, width, height, format);
+    
+    // Save to temporary file
+    const tempFilename = `math_${Date.now()}.${format.toLowerCase()}`;
+    const outputPath = path.join(tempDir, tempFilename);
+    fs.writeFileSync(outputPath, imageBuffer);
+    
+    console.log(`Math image saved to ${outputPath}`);
+    return outputPath;
+  } catch (error) {
+    console.error('Error generating math image:', error);
+    return null;
+  }
+}
+
+// Enhanced function to detect mathematical content
+function detectMathContent(text) {
+  // Regular expressions to identify LaTeX expressions and mathematical notation
+  const patterns = [
+    // LaTeX delimiters
+    /\\\((.*?)\\\)/s,  // \(...\)
+    /\\\[(.*?)\\\]/s,  // \[...\]
+    /\$(.*?)\$/s,      // $...$
+    /\$\$(.*?)\$\$/s,  // $$...$$
+    
+    // LaTeX environments
+    /\\begin\{(equation|align|matrix|bmatrix|pmatrix|cases|gather|array).*?\}/s,
+    /\\end\{(equation|align|matrix|bmatrix|pmatrix|cases|gather|array).*?\}/s,
+    
+    // Common LaTeX commands
+    /\\frac\{/s,       // Fractions
+    /\\dfrac\{/s,      // Display fractions
+    /\\sqrt\{/s,       // Square roots
+    /\\sum/s,          // Summations
+    /\\prod/s,         // Products
+    /\\int/s,          // Integrals
+    /\\lim/s,          // Limits
+    /\\inf/s,          // Infinity
+    /\\partial/s,      // Partial derivatives
+    /\\nabla/s,        // Nabla
+    /\\hat\{/s,        // Hat
+    /\\bar\{/s,        // Bar
+    /\\vec\{/s,        // Vector
+    /\\mathbf\{/s,     // Bold math
+    /\\math(rm|sf|tt|it|cal|bb)\{/s, // Math text styles
+    
+    // Mathematical symbols
+    /[=<>≤≥≈≠∑∫∂√π∞±×÷]/s,
+    
+    // Common math functions
+    /\\(sin|cos|tan|cot|sec|csc|log|ln|exp|lim|sup|inf|min|max|det|arg|gcd|lcm)/s,
+    
+    // Our special tags
+    /\[MATH_IMAGE:/s,   // Our special math image tag
+    /\[GRAPH:/s,        // Graph tag
+    /\[SOLUTION_GRAPH:/s, // Solution graph tag
+    
+    // Matrix notation
+    /\\begin\{(matrix|bmatrix|pmatrix|vmatrix|Vmatrix)/s,
+    
+    // Common physics notation
+    /\\(ket|bra|braket)\{/s,
+    
+    // Subscripts and superscripts with complex content
+    /\_\{[^\}]+\}/s,    // Complex subscripts
+    /\^\{[^\}]+\}/s,    // Complex superscripts
+    
+    // Aligned equations
+    /\\begin\{align/s,
+    
+    // Common in calculus
+    /\\(lim|int|sum|prod)\_\{/s,
+    
+    // Greek letters (common in math)
+    /\\(alpha|beta|gamma|delta|epsilon|zeta|eta|theta|iota|kappa|lambda|mu|nu|xi|pi|rho|sigma|tau|upsilon|phi|chi|psi|omega)/s,
+    
+    // Additional check for expressions that look mathematical
+    /\b[a-z]_[a-z0-9]\b/is,  // Subscripts like x_1
+    /\b[a-z]\^[a-z0-9]\b/is, // Superscripts like x^2
+  ];
+  
+  // Check if any pattern matches
+  for (const pattern of patterns) {
+    if (pattern.test(text)) {
+      return true;
+    }
+  }
+  
+  // Check for sequences that look like equations
+  // This helps catch things like "2x + 3y = 5" that don't use LaTeX but are mathematical
+  const equationLikePatterns = [
+    // Simple algebraic equations
+    /[a-z]\s*[+\-*\/]\s*[a-z0-9].*?=/is,
+    
+    // Multiple variables with operations
+    /[a-z][0-9]*\s*[+\-*\/]\s*[a-z][0-9]*/is,
+    
+    // Functions with arguments
+    /[a-z]\([a-z](,\s*[a-z])*\)/is,
+    
+    // Multiple equal signs in a paragraph (likely equations)
+    /=.*?=.*?=/s,
+  ];
+  
+  // Split text into paragraphs and check each
+  const paragraphs = text.split(/\n\s*\n/);
+  for (const paragraph of paragraphs) {
+    for (const pattern of equationLikePatterns) {
+      if (pattern.test(paragraph)) {
+        return true;
+      }
+    }
+    
+    // Check for high density of mathematical symbols in a paragraph
+    const mathSymbolCount = (paragraph.match(/[+\-*\/=<>^_{}()\[\]]/g) || []).length;
+    const paragraphLength = paragraph.length;
+    
+    if (paragraphLength > 20 && (mathSymbolCount / paragraphLength) > 0.15) {
+      // If more than 15% of characters are math symbols, likely mathematical content
+      return true;
+    }
+  }
+  
+  return false;
+}
+
+// Function to simplify LaTeX notation for fallback text responses
+async function simplifyLatexNotation(text) {
+  // Replace common LaTeX patterns with simplified text versions
+  let simplified = text;
+  
+  // Replace inline LaTeX
+  simplified = simplified.replace(/\\\((.*?)\\\)/g, '「$1」');
+  
+  // Replace display LaTeX
+  simplified = simplified.replace(/\\\[(.*?)\\\]/g, '\n「$1」\n');
+  
+  // Replace dollar notation
+  simplified = simplified.replace(/\$(.*?)\$/g, '「$1」');
+  simplified = simplified.replace(/\$\$(.*?)\$\$/g, '\n「$1」\n');
+  
+  // Replace common LaTeX commands
+  simplified = simplified.replace(/\\frac\{([^{}]*)\}\{([^{}]*)\}/g, '($1)/($2)');
+  simplified = simplified.replace(/\\sqrt\{([^{}]*)\}/g, '√($1)');
+  simplified = simplified.replace(/\^(\d+|{[^{}]*})/g, '^$1');
+  simplified = simplified.replace(/\_(\d+|{[^{}]*})/g, '_$1');
+  simplified = simplified.replace(/\\text\{([^{}]*)\}/g, '$1');
+  simplified = simplified.replace(/\\mathrm\{([^{}]*)\}/g, '$1');
+  
+  // Replace common mathematical environments
+  simplified = simplified.replace(/\\begin\{([^{}]*)\}(.*?)\\end\{\1\}/gs, 
+    (match, env, content) => {
+      return `\n【${env}】\n${content.trim()}\n【/${env}】\n`;
+    }
+  );
+  
+  return simplified;
+}
+
+// Helper function to parse text into sections of plain text and LaTeX
+function parseTextAndLatex(text) {
+  const sections = [];
+  
+  // LaTeX patterns with their start/end delimiters
+  const latexPatterns = [
+    // Standard LaTeX delimiters
+    { start: "\\(", end: "\\)", type: "inline" },
+    { start: "\\[", end: "\\]", type: "display" },
+    { start: "$", end: "$", type: "inline", 
+      validator: (pos, text) => {
+        // Validate that this is actually a math delimiter, not a currency symbol
+        // Check if preceded by a space, start of string, or non-word character
+        const prevChar = pos > 0 ? text[pos-1] : ' ';
+        const nextChar = pos < text.length-1 ? text[pos+1] : ' ';
+        
+        if (/\s/.test(prevChar) || /[^\w]/.test(prevChar) || pos === 0) {
+          // Check if followed by a letter/number/symbol typical in math
+          if (/[a-zA-Z0-9\-+=(]/.test(nextChar)) {
+            return true;
+          }
+        }
+        return false;
+      }
+    },
+    { start: "$$", end: "$$", type: "display" },
+    
+    // LaTeX environments
+    { 
+      start: "\\begin{equation}", 
+      end: "\\end{equation}", 
+      type: "environment" 
+    },
+    { 
+      start: "\\begin{align", 
+      end: "\\end{align", 
+      type: "environment",
+      // Special handling for align/align* environments
+      validator: (pos, text) => {
+        // Get the full environment start tag (could be align, align*, etc.)
+        const match = text.substring(pos).match(/\\begin\{(align\*?)\}/);
+        if (match) {
+          // Update the end pattern to match the exact environment
+          return {
+            newEnd: `\\end{${match[1]}}`
+          };
+        }
+        return true;
+      }
+    },
+    {
+      start: "\\begin{", 
+      end: "\\end{", 
+      type: "environment",
+      // Special handling for other environments
+      validator: (pos, text) => {
+        // Get the environment name
+        const match = text.substring(pos).match(/\\begin\{([a-zA-Z]+\*?)\}/);
+        if (match) {
+          const envName = match[1];
+          // Only process common math environments
+          if (['matrix', 'bmatrix', 'pmatrix', 'vmatrix', 'cases', 'gather', 'array'].includes(envName.replace('*',''))) {
+            // Update the end pattern to match the exact environment
+            return {
+              newEnd: `\\end{${envName}}`
+            };
+          }
+          return false; // Not a math environment we want to process
+        }
+        return false;
+      }
+    },
+    
+    // Custom tags
+    { start: "[MATH_IMAGE:", end: "]", type: "custom" },
+    { start: "[GRAPH:", end: "]", type: "custom" },
+    { start: "[SOLUTION_GRAPH:", end: "]", type: "custom" }
+  ];
+  
+  // Current position in text
+  let currentPos = 0;
+  
+  while (currentPos < text.length) {
+    // Find the next LaTeX pattern
+    let nextLatexPos = text.length;
+    let matchingPattern = null;
+    let patternConfig = null;
+    
+    for (const pattern of latexPatterns) {
+      const startPos = text.indexOf(pattern.start, currentPos);
+      if (startPos !== -1 && startPos < nextLatexPos) {
+        // If this pattern has a validator, check it
+        if (pattern.validator) {
+          const validationResult = pattern.validator(startPos, text);
+          if (validationResult === false) {
+            continue; // Skip this match
+          }
+          
+          // If validator returned config options, store them
+          if (typeof validationResult === 'object') {
+            patternConfig = validationResult;
+          }
+        }
+        
+        nextLatexPos = startPos;
+        matchingPattern = pattern;
+      }
+    }
+    
+    // Add text before the LaTeX
+    if (nextLatexPos > currentPos) {
+      const textContent = text.substring(currentPos, nextLatexPos);
+      sections.push({ 
+        type: "text", 
+        content: textContent,
+        endsWithParagraph: textContent.includes("\n\n")
+      });
+    }
+    
+    // If we found LaTeX content
+    if (matchingPattern) {
+      const startPos = nextLatexPos;
+      const startDelimLength = matchingPattern.start.length;
+      
+      // Determine end delimiter (might be adjusted by validator)
+      let endDelimiter = matchingPattern.end;
+      if (patternConfig && patternConfig.newEnd) {
+        endDelimiter = patternConfig.newEnd;
+      }
+      
+      // Find the end of this LaTeX section
+      let endPos = text.indexOf(endDelimiter, startPos + startDelimLength);
+      
+      // Handle special case for environments where we need to match the name
+      if (matchingPattern.type === "environment" && endDelimiter === "\\end{") {
+        // Find the closing bracket of the begin tag
+        const beginClosePos = text.indexOf("}", startPos + startDelimLength);
+        if (beginClosePos !== -1) {
+          // Extract environment name
+          const envName = text.substring(startPos + startDelimLength, beginClosePos);
+          // Find the matching end tag
+          endPos = text.indexOf(`\\end{${envName}}`, beginClosePos);
+          if (endPos !== -1) {
+            endDelimiter = `\\end{${envName}}`;
+          }
+        }
+      }
+      
+      if (endPos !== -1) {
+        // For environments, include the full begin/end tags
+        let latexContent;
+        if (matchingPattern.type === "environment") {
+          latexContent = text.substring(startPos, endPos + endDelimiter.length);
+        } else {
+          latexContent = text.substring(startPos + startDelimLength, endPos);
+        }
+        
+        sections.push({ 
+          type: "latex", 
+          content: latexContent,
+          latexType: matchingPattern.type,
+          endsWithParagraph: false
+        });
+        
+        // Move past this LaTeX content
+        currentPos = endPos + endDelimiter.length;
+      } else {
+        // If no end delimiter found, treat the rest as text
+        sections.push({ 
+          type: "text", 
+          content: text.substring(startPos),
+          endsWithParagraph: text.endsWith("\n\n")
+        });
+        currentPos = text.length;
+      }
+    } else {
+      // No more LaTeX found
+      currentPos = text.length;
+    }
+  }
+  
+  return sections;
+}
+
+// Helper function to perform text word wrapping
+function wordWrap(ctx, text, maxWidth) {
+  const lines = [];
+  const paragraphs = text.split(/\n\s*\n/); // Split on paragraph breaks
+  
+  for (const paragraph of paragraphs) {
+    const words = paragraph.split(/\s+/);
+    let currentLine = '';
+    
+    for (const word of words) {
+      const testLine = currentLine ? `${currentLine} ${word}` : word;
+      const metrics = ctx.measureText(testLine);
+      
+      if (metrics.width > maxWidth && currentLine) {
+        lines.push(currentLine);
+        currentLine = word;
+      } else {
+        currentLine = testLine;
+      }
+    }
+    
+    if (currentLine) {
+      lines.push(currentLine);
+    }
+    
+    // Add an empty line between paragraphs (except after the last paragraph)
+    if (paragraphs.indexOf(paragraph) < paragraphs.length - 1) {
+      lines.push('');
+    }
+  }
+  
+  return lines;
+}
+
+// Enhanced function to draw better-looking graph paper
+function drawEnhancedGraphPaper(ctx, width, height, gridSize) {
+  // Fill with a soft cream/yellow background for an "old paper" look
+  const gradient = ctx.createLinearGradient(0, 0, 0, height);
+  gradient.addColorStop(0, "#FFFEF0");   // Lightest at top
+  gradient.addColorStop(1, "#FFF8E8");   // Slightly darker at bottom
+  ctx.fillStyle = gradient;
+  ctx.fillRect(0, 0, width, height);
+  
+  // Add subtle paper texture
+  ctx.save();
+  ctx.globalAlpha = 0.03;
+  // Simulating paper texture with random noise
+  for (let i = 0; i < width; i += 4) {
+    for (let j = 0; j < height; j += 4) {
+      if (Math.random() > 0.5) {
+        ctx.fillStyle = "#000000";
+        ctx.fillRect(i, j, 2, 2);
+      }
+    }
+  }
+  ctx.restore();
+  
+  // Draw main grid lines (lighter)
+  ctx.strokeStyle = "#D8D8D8";
+  ctx.lineWidth = 0.8;
+
+  // Horizontal grid lines
+  for (let y = 0; y <= height; y += gridSize) {
+    ctx.beginPath();
+    ctx.moveTo(0, y);
+    ctx.lineTo(width, y);
+    ctx.stroke();
+  }
+
+  // Vertical grid lines
+  for (let x = 0; x <= width; x += gridSize) {
+    ctx.beginPath();
+    ctx.moveTo(x, 0);
+    ctx.lineTo(x, height);
+    ctx.stroke();
+  }
+
+  // Draw stronger grid lines every 5 cells for better readability
+  ctx.strokeStyle = "#B8B8B8";
+  ctx.lineWidth = 1.2;
+
+  // Stronger horizontal lines
+  for (let y = 0; y <= height; y += gridSize * 5) {
+    ctx.beginPath();
+    ctx.moveTo(0, y);
+    ctx.lineTo(width, y);
+    ctx.stroke();
+  }
+
+  // Stronger vertical lines
+  for (let x = 0; x <= width; x += gridSize * 5) {
+    ctx.beginPath();
+    ctx.moveTo(x, 0);
+    ctx.lineTo(x, height);
+    ctx.stroke();
+  }
+
+  // Add a decorative header/title area
+  ctx.fillStyle = "#F8F5E6";
+  ctx.fillRect(0, 0, width, 80);
+  
+  // Add subtle shadow under the header
+  ctx.fillStyle = "rgba(0,0,0,0.05)";
+  ctx.fillRect(0, 80, width, 5);
+  
+  // Draw header border
+  ctx.strokeStyle = "#A0A0A0";
+  ctx.lineWidth = 1.5;
+  ctx.beginPath();
+  ctx.moveTo(0, 80);
+  ctx.lineTo(width, 80);
+  ctx.stroke();
+
+  // Add title with shadow effect
+  ctx.shadowColor = "rgba(0, 0, 0, 0.2)";
+  ctx.shadowBlur = 3;
+  ctx.shadowOffsetX = 2;
+  ctx.shadowOffsetY = 2;
+  
+  ctx.fillStyle = "#404040";
+  ctx.font = "bold 30px 'Arial', sans-serif";
+  ctx.fillText("Ami DeepThinking", 30, 45);
+  
+  // Reset shadow
+  ctx.shadowColor = "transparent";
+  ctx.shadowBlur = 0;
+  ctx.shadowOffsetX = 0;
+  ctx.shadowOffsetY = 0;
+  
+  // Add subtitle
+  ctx.font = "italic 16px 'Arial', sans-serif";
+  ctx.fillStyle = "#606060";
+  ctx.fillText("Solusi Matematika", 32, 70);
+  
+  // Add date on the right
+  const currentDate = new Date().toLocaleDateString('id-ID', {
+    weekday: 'long', 
+    year: 'numeric', 
+    month: 'long', 
+    day: 'numeric'
+  });
+  ctx.font = "16px 'Arial', sans-serif";
+  ctx.textAlign = "right";
+  ctx.fillText(currentDate, width - 30, 45);
+  
+  // Reset text alignment
+  ctx.textAlign = "left";
+  
+  // Add a small watermark
+  ctx.font = "12px 'Arial', sans-serif";
+  ctx.fillStyle = "#A0A0A0";
+  ctx.textAlign = "right";
+  ctx.fillText("Powered by Renshu Mushy", width - 30, height - 20);
+  ctx.textAlign = "left";
+  
+  // Add page number style element at bottom
+  ctx.strokeStyle = "#C0C0C0";
+  ctx.lineWidth = 1;
+  ctx.beginPath();
+  ctx.moveTo(width/2 - 50, height - 40);
+  ctx.lineTo(width/2 + 50, height - 40);
+  ctx.stroke();
+  
+  ctx.font = "14px 'Arial', sans-serif";
+  ctx.fillStyle = "#808080";
+  ctx.textAlign = "center";
+  ctx.fillText("1", width/2, height - 20);
+  ctx.textAlign = "left";
+}
+
+// Improved renderTextWithLaTeX function that renders actual LaTeX content
+async function renderTextWithLaTeX(ctx, text, gridSize, width, height) {
+  // Set text style for handwritten look
+  ctx.font = "22px 'Comic Sans MS', cursive";
+  ctx.fillStyle = "#000080"; // Dark blue color for text
+  
+  // Parse text to identify LaTeX and regular text sections
+  const sections = parseTextAndLatex(text);
+  
+  // Initialize cursor position
+  let x = gridSize * 2;
+  let y = gridSize * 4 + 60; // Start below the header
+  const lineHeight = gridSize * 1.5;
+  const maxWidth = width - gridSize * 4;
+  
+  // For each section, either render as text or as LaTeX
+  for (const section of sections) {
+    if (section.type === "text") {
+      // Word wrap for regular text
+      const lines = wordWrap(ctx, section.content, maxWidth);
+      
+      for (const line of lines) {
+        ctx.fillText(line, x, y);
+        y += lineHeight;
+        
+        // Check if we need a new page (simple overflow handling)
+        if (y > height - gridSize * 2) {
+          console.log("Warning: Content overflows the canvas height");
+          // In a full implementation, you would create a new page here
+          break;
+        }
+      }
+      
+      // Add extra spacing after paragraphs
+      if (section.endsWithParagraph) {
+        y += lineHeight * 0.5;
+      }
+    } 
+    else if (section.type === "latex") {
+      try {
+        // For LaTeX, we'll render it as an image and draw on canvas
+        // Generate SVG for the LaTeX expression
+        const result = await MathJax.typeset({
+          math: section.content,
+          format: "TeX",
+          svg: true,
+        });
+        
+        if (result && result.svg) {
+          // Extract dimensions from SVG
+          const viewBoxMatch = result.svg.match(/viewBox=["']([^"']*)["']/);
+          let svgWidth = 400; // Default width
+          let svgHeight = 100; // Default height
+          
+          if (viewBoxMatch && viewBoxMatch[1]) {
+            const [, , w, h] = viewBoxMatch[1].split(' ').map(Number);
+            svgWidth = w;
+            svgHeight = h;
+          }
+          
+          // Calculate scaled dimensions to fit our canvas
+          const scale = Math.min(maxWidth / svgWidth, lineHeight * 2 / svgHeight);
+          const renderWidth = svgWidth * scale;
+          const renderHeight = svgHeight * scale;
+          
+          // Create a temporary image from the SVG
+          const imageBuffer = await convertSvgToImage(result.svg, renderWidth, renderHeight);
+          const tempFile = path.join(tempDir, `temp_latex_${Date.now()}.png`);
+          fs.writeFileSync(tempFile, imageBuffer);
+          
+          // Load the image and draw it on the canvas
+          const img = new Image();
+          img.src = tempFile;
+          
+          // Highlight area for math content
+          ctx.save();
+          ctx.fillStyle = "#F8F8FF"; // Very light background for math
+          ctx.fillRect(x, y - renderHeight + 5, renderWidth, renderHeight);
+          ctx.restore();
+          
+          // Draw the LaTeX image
+          ctx.drawImage(img, x, y - renderHeight + lineHeight/2, renderWidth, renderHeight);
+          
+          // Clean up temporary file
+          fs.unlinkSync(tempFile);
+          
+          // Move cursor down
+          y += lineHeight * 1.2;
+        }
+      } catch (error) {
+        console.error("Error rendering LaTeX:", error);
+        // Fallback: display LaTeX as plain text
+        ctx.fillStyle = "#800000"; // Dark red for LaTeX errors
+        ctx.fillText(`[Formula: ${section.content.substring(0, 40)}...]`, x, y);
+        y += lineHeight;
+      }
+    }
+  }
+}
+
+// Improved function to render entire response with LaTeX on graph paper
+async function renderResponseOnGraphPaper(responseText) {
+  console.log("Rendering full response on graph paper");
+  const width = 1200;  // Larger width for better readability
+  const height = 1600; // Taller height to accommodate more content
+  const format = 'png'; // Use PNG for better quality
+
+  try {
+    // Create canvas for graph paper
+    const canvas = createCanvas(width, height);
+    const ctx = canvas.getContext("2d");
+
+    console.log("Creating graph paper with text and LaTeX content");
+    
+    // Draw background and grid
+    const gridSize = 20;
+    drawEnhancedGraphPaper(ctx, width, height, gridSize);
+    
+    // Render text and LaTeX content
+    await renderTextWithLaTeX(ctx, responseText, gridSize, width, height);
+    
+    // Convert to buffer and save
+    const buffer = format.toLowerCase() === 'jpg' || format.toLowerCase() === 'jpeg'
+      ? canvas.toBuffer('image/jpeg', { quality: 0.95 })
+      : canvas.toBuffer('image/png');
+    
+    // Save to temporary file
+    const filename = `answer_${Date.now()}.${format}`;
+    const outputPath = path.join(tempDir, filename);
+    fs.writeFileSync(outputPath, buffer);
+    
+    console.log(`Response rendered and saved to ${outputPath}`);
+    return outputPath;
+  } catch (error) {
+    console.error("Error rendering response on graph paper:", error);
+    return null;
+  }
 }
 
 // Function to generate math images from LaTeX
@@ -497,22 +1235,6 @@ You are Ami DeepThinking, specialized in deep understanding and clear explanatio
 - Use analogies, examples, and visualizations to clarify abstract concepts
 - Connect theoretical concepts to real-world applications
 
-## CRITICAL INSTRUCTIONS FOR MATHEMATICAL CONTENT:
-When answering questions with mathematical expressions, you MUST follow these exact formatting rules:
-
-1. For simple expressions (x², y = mx + b, etc):
-   - Use monospace formatting: \`x² + y² = r²\`
-
-2. For complex equations or formulas:
-   - EXACTLY use this format: [MATH_IMAGE:LaTeX code here]
-   - Example: [MATH_IMAGE:\\int_{0}^{\\infty} e^{-x^2} dx = \\frac{\\sqrt{\\pi}}{2}]
-   - NEVER use standard LaTeX notation like \\(...\\) or \\[...\\]
-
-3. For graphs and visualizations:
-   - EXACTLY use this format: [GRAPH:JavaScript drawing code]
-   
-4. For solution presentations:
-   - EXACTLY use this format: [SOLUTION_GRAPH:JavaScript drawing code]
 ## SUBJECT EXPERTISE:
 1. *Mathematics*:
    - Clearly explain mathematical concepts, not just provide solutions
@@ -1226,8 +1948,7 @@ async function processReasoningModel(
   }
 }
 
-// Improved processDeepThinkingModel function with better logging
-// Improved processDeepThinkingModel function with additional error handling
+// Updated processDeepThinkingModel function that uses the new SVG-to-Image conversion
 async function processDeepThinkingModel(
   context,
   loadingMessage,
@@ -1249,47 +1970,21 @@ async function processDeepThinkingModel(
     });
     console.log("DeepThinking API response received");
 
-    // Debug: Log the full response structure to identify any issues
-    console.log(
-      "Full response structure:",
-      JSON.stringify(chatCompletion, null, 2)
-    );
-
-    // Proper validation with detailed logging
+    // Validate response
     if (
       !chatCompletion ||
       !chatCompletion.choices ||
-      chatCompletion.choices.length === 0
-    ) {
-      console.error(
-        "Invalid API response structure:",
-        JSON.stringify(chatCompletion)
-      );
-      throw new Error("Empty or invalid response from DeepThinking model");
-    }
-
-    if (
+      chatCompletion.choices.length === 0 ||
       !chatCompletion.choices[0].message ||
       !chatCompletion.choices[0].message.content
     ) {
-      console.error(
-        "Invalid message structure in response:",
-        JSON.stringify(chatCompletion.choices[0])
-      );
-      throw new Error(
-        "Empty or missing message content from DeepThinking model"
-      );
+      throw new Error("Empty or invalid response from DeepThinking model");
     }
 
     let finalResponse = chatCompletion.choices[0].message.content;
-    console.log(
-      "Raw response content received:",
-      finalResponse.substring(0, 100) + "..."
-    );
-
     const responseTime = ((Date.now() - startTime) / 1000).toFixed(1);
 
-    // First, notify user that response has been received and that we're preparing visualizations
+    // Stop the countdown timer
     if (countdownTracker) {
       countdownTracker.responseReceived = true;
       countdownTracker.processingResponse = true;
@@ -1298,38 +1993,80 @@ async function processDeepThinkingModel(
         countdownTracker.stopTimer();
       }
 
-      // First, send the simple text response - guaranteed to work even if image processing fails
-      try {
-        // Format WhatsApp response first
-        finalResponse = formatWhatsAppResponse(finalResponse.trim());
-
-        // Send the text response immediately
-        const finalMessage = await sock.sendMessage(m.from, {
-          text: `*Jawaban Ami DeepThinking* (${responseTime}s):\n\n${finalResponse}`,
+      // Detect if response contains mathematical content
+      const hasLatexContent = detectMathContent(finalResponse);
+      
+      if (hasLatexContent) {
+        // Update loading message to inform user
+        await sock.sendMessage(m.from, {
+          text: `✅ Ami telah menyelesaikan pemikiran dalam waktu ${responseTime} detik. Sedang membuat visualisasi tulisan tangan di kertas petak...`,
           edit: loadingMessage.key,
         });
-        console.log("Text response sent successfully");
-
-        // Store message ID for history
-        const messageId = finalMessage.key.id;
-
-        // Now look for special tags
+        
         try {
-          // Process any image generation requests in the response
-          await processSpecialTags(finalResponse, sock, m);
-          console.log("Special tags processing completed");
-        } catch (tagsError) {
-          console.error("Error processing special tags:", tagsError);
-          // Don't fail the whole function - we already sent text response
+          // Generate a graph paper visualization of the entire response
+          const imageFile = await renderResponseOnGraphPaper(finalResponse);
+          
+          if (imageFile) {
+            // Send the complete response as a single image
+            const finalMessage = await sock.sendMessage(m.from, {
+              image: fs.readFileSync(imageFile),
+              caption: `*Jawaban Ami DeepThinking* (${responseTime}s)`,
+            });
+            
+            // Clean up
+            fs.unlinkSync(imageFile);
+            
+            return {
+              messageId: finalMessage.key.id,
+              content: finalResponse,
+            };
+          } else {
+            throw new Error("Failed to generate response visualization");
+          }
+        } catch (visualizationError) {
+          console.error("Error creating visualization:", visualizationError);
+          
+          // Attempt to replace LaTeX with simplified notation before falling back
+          try {
+            const simplifiedResponse = await simplifyLatexNotation(finalResponse);
+            const formattedResponse = formatWhatsAppResponse(simplifiedResponse.trim());
+            
+            const finalMessage = await sock.sendMessage(m.from, {
+              text: `*Jawaban Ami DeepThinking* (${responseTime}s):\n\n${formattedResponse}\n\n(Maaf, tidak dapat menampilkan visualisasi rumus matematika)`,
+              edit: loadingMessage.key,
+            });
+            
+            return {
+              messageId: finalMessage.key.id,
+              content: finalResponse,
+            };
+          } catch (simplifyError) {
+            // Final fallback to raw text
+            const formattedResponse = formatWhatsAppResponse(finalResponse.trim());
+            const finalMessage = await sock.sendMessage(m.from, {
+              text: `*Jawaban Ami DeepThinking* (${responseTime}s):\n\n${formattedResponse}`,
+              edit: loadingMessage.key,
+            });
+            
+            return {
+              messageId: finalMessage.key.id,
+              content: finalResponse,
+            };
+          }
         }
-
+      } else {
+        // No math content, send as normal text message
+        const formattedResponse = formatWhatsAppResponse(finalResponse.trim());
+        const finalMessage = await sock.sendMessage(m.from, {
+          text: `*Jawaban Ami DeepThinking* (${responseTime}s):\n\n${formattedResponse}`,
+          edit: loadingMessage.key,
+        });
+        
         return {
-          messageId: messageId,
+          messageId: finalMessage.key.id,
           content: finalResponse,
         };
-      } catch (responseError) {
-        console.error("Error sending text response:", responseError);
-        throw responseError; // Re-throw to handle in the main try-catch
       }
     }
   } catch (error) {
@@ -1668,4 +2405,118 @@ export default function (handler) {
       writeUserContext(userId, userContext);
     }
   });
+}
+
+// Helper functions to process graph and solution tags
+async function processGraphTags(text, regex, sock, m) {
+  let match;
+  let count = 0;
+
+  while ((match = regex.exec(text)) !== null) {
+    try {
+      console.log(`Processing graph tag ${count + 1}`);
+      const graphCode = match[1];
+      console.log("Graph code:", graphCode);
+
+      // Create a function from the graph code
+      let drawFunction;
+      try {
+        drawFunction = new Function(
+          "ctx",
+          "width",
+          "height",
+          "gridSize",
+          graphCode
+        );
+      } catch (codeError) {
+        console.error("Error creating function from graph code:", codeError);
+        await sock.sendMessage(m.from, {
+          text: "Error: Kode grafik tidak valid. Mohon periksa kembali sintaks.",
+        });
+        continue;
+      }
+
+      // Generate the graph
+      const imageFile = await generateGraphPaperSolution(
+        drawFunction,
+        800,
+        800
+      );
+
+      if (imageFile) {
+        console.log(`Sending graph image: ${imageFile}`);
+        await sock.sendMessage(m.from, {
+          image: fs.readFileSync(imageFile),
+          caption: "Grafik Matematika",
+        });
+
+        // Clean up
+        fs.unlinkSync(imageFile);
+        console.log(`Deleted file: ${imageFile}`);
+      } else {
+        console.error("Failed to generate graph image");
+      }
+    } catch (err) {
+      console.error(`Error processing graph tag ${count + 1}:`, err);
+    }
+    count++;
+  }
+}
+
+async function processSolutionTags(text, regex, sock, m) {
+  let match;
+  let count = 0;
+
+  while ((match = regex.exec(text)) !== null) {
+    try {
+      console.log(`Processing solution graph tag ${count + 1}`);
+      const solutionCode = match[1];
+      console.log("Solution code:", solutionCode);
+
+      // Create a function from the solution code
+      let drawFunction;
+      try {
+        drawFunction = new Function(
+          "ctx",
+          "width",
+          "height",
+          "gridSize",
+          solutionCode
+        );
+      } catch (codeError) {
+        console.error(
+          "Error creating function from solution code:",
+          codeError
+        );
+        await sock.sendMessage(m.from, {
+          text: "Error: Kode solusi tidak valid. Mohon periksa kembali sintaks.",
+        });
+        continue;
+      }
+
+      // Generate the solution graph
+      const imageFile = await generateGraphPaperSolution(
+        drawFunction,
+        1000,
+        1200
+      );
+
+      if (imageFile) {
+        console.log(`Sending solution image: ${imageFile}`);
+        await sock.sendMessage(m.from, {
+          image: fs.readFileSync(imageFile),
+          caption: "Solusi Matematika",
+        });
+
+        // Clean up
+        fs.unlinkSync(imageFile);
+        console.log(`Deleted file: ${imageFile}`);
+      } else {
+        console.error("Failed to generate solution image");
+      }
+    } catch (err) {
+      console.error(`Error processing solution tag ${count + 1}:`, err);
+    }
+    count++;
+  }
 }
