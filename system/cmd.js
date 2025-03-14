@@ -150,14 +150,28 @@ export default class CommandHandler {
       // Handle story reading
       await this.handleStoryReading(m, sock, db);
 
-      // Handle registration or commands
-      if (!usr.register && !usr.banned) {
+      // CRITICAL: Check registration status first
+      // If user hasn't registered or is in progress, ONLY allow registration process
+      if (!usr.register || usr.progressreg) {
+        // If registration hasn't started yet, start it
         if (!usr.progressreg) {
           await this.sendWelcomeMessage(sock, m);
+          usr.progressreg = 1;
+          return true;
         }
+        
+        // Continue registration process and BLOCK all other commands
         return await this.handleRegister(usr, sock, m, db);
       }
 
+      // If user is banned, check before processing commands
+      if (usr.banned) {
+        // May want to send a message about being banned
+        return false;
+      }
+
+      // Only registered and non-banned users get here
+      // Process regular commands
       const prefixMatched = this.prefixes.find((p) => text.startsWith(p));
       return prefixMatched
         ? await this.handleCommand(
@@ -251,6 +265,19 @@ export default class CommandHandler {
     }
   }
 
+  async sendWelcomeMessage(sock, m) {
+    await sock.sendMessage(
+      m.from,
+      {
+        text: "Halo, aku Ami. Aku adalah asisten AI yang dibuat oleh Renshu Mushy untuk membantu kamu. Aku suka ngobrol dan selalu berusaha jadi teman yang ramah dan menyenangkan. Aku ingin kita bisa mengenal satu sama lain. Nama kamu, siapa?",
+      },
+      {
+        quoted: m,
+        ephemeralExpiration: m.expiration,
+      }
+    );
+  }
+
   async handleRegister(usr, sock, m, db) {
     try {
       const response = m.body.trim();
@@ -259,8 +286,8 @@ export default class CommandHandler {
         1: async () => {
           if (!utils.isValidName(response)) {
             const message = utils.containsBadWords(response)
-              ? "Eits, kata-kata yang kamu pakai nggak cocok buat nama, nih. Yuk coba masukkan nama yang baik-baik aja, ya! 😊"
-              : "Hmm, nama kamu harus pakai huruf aja, tanpa simbol, dan panjangnya 3-50 karakter. Yuk coba lagi. 😊";
+              ? "Hmm, kayaknya nama itu kurang cocok deh. Coba pakai nama yang lebih ramah ya? 😊"
+              : "Nama kamu harus pakai huruf aja (tanpa simbol) dan panjangnya 3-50 karakter. Coba lagi, ya?";
             await sock.sendMessage(m.from, { text: message }, { quoted: m });
           } else {
             usr.name = response;
@@ -268,7 +295,7 @@ export default class CommandHandler {
             await sock.sendMessage(
               m.from,
               {
-                text: `Nama kamu *${usr.name}*? Kalau sudah benar, ketik *Ya*. Kalau salah, ketik ulang nama kamu. 😊`,
+                text: `Senang bertemu dengan kamu ${usr.name}. Namamu ${usr.name}, benar? Kalau sudah benar, ketik *Ya*. Kalau belum, ketik nama yang benar ya.`,
               },
               { quoted: m }
             );
@@ -281,9 +308,7 @@ export default class CommandHandler {
             await sock.sendMessage(
               m.from,
               {
-                text: `Senang banget bisa kenalan sama kamu *${
-                  usr.name.split(" ")[0]
-                }!* 🥳\n\nOh iya, *tanggal lahir kamu kapan?* 😊\n\nPakai format *dd/mm/yyyy*. Misal kamu lahir tanggal *1 Januari 2005*, jadi kamu ketik: *01/01/2005*.`,
+                text: `Terima kasih ${usr.name.split(" ")[0]}! Untuk tahap selanjutnya, Ami perlu tahu tanggal lahir kamu untuk verifikasi umur.\n\nKetik dengan format *dd/mm/yyyy* ya. Misalnya, 01/01/2005 untuk 1 Januari 2005.`,
               },
               { quoted: m }
             );
@@ -291,7 +316,7 @@ export default class CommandHandler {
             await sock.sendMessage(
               m.from,
               {
-                text: "Hmm, nama kamu harus pakai huruf aja, tanpa simbol, dan panjangnya 3-50 karakter. Yuk coba lagi. 😊",
+                text: "Nama kamu harus pakai huruf aja (tanpa simbol) dan panjangnya 3-50 karakter. Coba lagi, ya?",
               },
               { quoted: m }
             );
@@ -300,7 +325,7 @@ export default class CommandHandler {
             await sock.sendMessage(
               m.from,
               {
-                text: `Nama kamu *${usr.name}*? Kalau sudah benar, ketik *Ya*. Kalau salah, ketik ulang nama kamu. 😊`,
+                text: `Senang bertemu dengan kamu ${usr.name}. Namamu ${usr.name}, benar? Kalau sudah benar, ketik *Ya*. Kalau belum, ketik nama yang benar ya.`,
               },
               { quoted: m }
             );
@@ -312,7 +337,7 @@ export default class CommandHandler {
             await sock.sendMessage(
               m.from,
               {
-                text: "Oops, format tanggal lahirnya salah nih. Coba kirim lagi dengan format *dd/mm/yyyy*. Misal kamu lahir tanggal *1 Januari 2005*, jadi kamu ketik: *01/02/2005*. 😊",
+                text: "Oops, format tanggalnya kurang tepat nih. Coba pakai format *dd/mm/yyyy* ya. Misalnya, 01/01/2005 untuk 1 Januari 2005.",
               },
               { quoted: m }
             );
@@ -327,8 +352,8 @@ export default class CommandHandler {
           if (!utils.isValidAge(year)) {
             const message =
               age < CONFIG.REGISTRATION.MIN_AGE
-                ? "Yah, umur kamu belum cukup buat pakai bot ini :(\n\nTapi kalau tadi *kamu salah ketik*, coba *kirim ulang tanggal lahir* kamu yang *benar*, ya! 😊"
-                : "Yah, sepertinya umur kamu sudah melewati batas yang disarankan untuk pakai bot ini 🙏 Bot ini didesain khusus untuk anak muda, jadi mungkin kurang cocok buat kamu.\n\nTapi kalau tadi *kamu salah ketik*, coba *kirim ulang tanggal lahir* kamu yang *benar*, ya!";
+                ? "Wah, sepertinya kamu masih terlalu muda untuk menggunakan bot ini. Tapi kalau tadi ada kesalahan ketik, coba kirim ulang tanggal lahir yang benar ya!"
+                : "Hmm, sepertinya ada kesalahan dengan tanggal yang kamu masukkan. Bot ini didesain untuk anak muda. Kalau tadi ada kesalahan ketik, coba kirim ulang tanggal lahir yang benar ya!";
             await sock.sendMessage(m.from, { text: message }, { quoted: m });
             return;
           }
@@ -338,11 +363,11 @@ export default class CommandHandler {
           await sock.sendMessage(
             m.from,
             {
-              text: `Tanggal lahir kamu *${utils.formatDate(
+              text: `Tanggal lahir kamu ${utils.formatDate(
                 day,
                 month,
                 year
-              )}*, benar? Kalau benar, ketik *Ya*. Kalau salah, ketik ulang tanggal lahirnya. 😊`,
+              )}, ya? Kalau benar, ketik *Ya*. Kalau salah, ketik ulang tanggal lahirnya.`,
             },
             { quoted: m }
           );
@@ -350,14 +375,11 @@ export default class CommandHandler {
 
         2.5: async () => {
           if (response.toLowerCase() === "ya") {
-            delete usr.progressreg;
-            usr.register = true;
+            usr.progressreg = 3;
             await sock.sendMessage(
               m.from,
               {
-                text: `Senang banget bisa kenalan sama kamu, *${
-                  usr.name.split(" ")[0]
-                }*. 😊\n\nSekarang aku mau kasih tahu cara pakai Ami Bot:\n- Ketik *.menu* untuk melihat fitur yang tersedia.\n- Ketik *Ami* diikuti pesanmu kalau mau ngobrol langsung sama aku.\n- Kalau kamu butuh bantuan, ketik *.bantuan*.\n\nYuk, coba sekarang. 😊`,
+                text: `Terima kasih atas konfirmasinya, ${usr.name.split(" ")[0]}!\n\nAmi perlu tahu hari raya yang kamu rayakan untuk beberapa fitur khusus. Silakan pilih:\n\n*1* - Idul Fitri (Islam)\n*2* - Natal (Kristen)\n*3* - Natal (Katolik)\n*4* - Nyepi (Hindu)\n*5* - Waisak (Buddha)\n*6* - Imlek (Konghucu)\n\nKetik angka pilihanmu ya.`,
               },
               { quoted: m }
             );
@@ -365,7 +387,7 @@ export default class CommandHandler {
             await sock.sendMessage(
               m.from,
               {
-                text: "Oops, format tanggal lahirnya salah nih. Coba kirim lagi dengan format *dd/mm/yyyy*. 😊",
+                text: "Oops, format tanggalnya masih kurang tepat nih. Coba pakai format *dd/mm/yyyy* ya.",
               },
               { quoted: m }
             );
@@ -377,11 +399,102 @@ export default class CommandHandler {
             await sock.sendMessage(
               m.from,
               {
-                text: `Tanggal lahir kamu *${utils.formatDate(
+                text: `Tanggal lahir kamu ${utils.formatDate(
                   day,
                   month,
                   year
-                )}*, benar? Kalau benar, ketik *Ya*. Kalau salah, ketik ulang tanggal lahirnya. 😊`,
+                )}, ya? Kalau benar, ketik *Ya*. Kalau salah, ketik ulang tanggal lahirnya.`,
+              },
+              { quoted: m }
+            );
+          }
+        },
+
+        3: async () => {
+          // Process religious holiday selection
+          const holidayOptions = {
+            "1": { name: "Idul Fitri", religion: "Islam" },
+            "2": { name: "Natal", religion: "Kristen" },
+            "3": { name: "Natal", religion: "Katolik" },
+            "4": { name: "Nyepi", religion: "Hindu" },
+            "5": { name: "Waisak", religion: "Buddha" },
+            "6": { name: "Imlek", religion: "Konghucu" }
+          };
+          
+          if (!holidayOptions[response]) {
+            await sock.sendMessage(
+              m.from,
+              {
+                text: "Mohon ketik angka 1-6 sesuai pilihan yang tersedia.",
+              },
+              { quoted: m }
+            );
+            return;
+          }
+          
+          const selectedHoliday = holidayOptions[response];
+          usr.holiday = selectedHoliday.name;
+          usr.religion = selectedHoliday.religion;
+          
+          usr.progressreg = 4;
+          await sock.sendMessage(
+            m.from,
+            {
+              text: `Ami mengerti! Kamu merayakan ${selectedHoliday.name}.\n\nTerakhir nih, kamu tinggal di provinsi mana? Ini akan membantu Ami memberikan info yang lebih relevan untukmu.`,
+            },
+            { quoted: m }
+          );
+        },
+
+        4: async () => {
+          // Process province info
+          usr.province = response;
+          usr.progressreg = 4.5;
+          
+          await sock.sendMessage(
+            m.from,
+            {
+              text: `Kamu tinggal di ${response} ya? Kalau bener, ketik *Ya*. Kalau ada kesalahan, ketik ulang provinsimu ya.`,
+            },
+            { quoted: m }
+          );
+        },
+
+        4.5: async () => {
+          if (response.toLowerCase() === "ya") {
+            delete usr.progressreg;
+            usr.register = true;
+            
+            // Kirim pesan pertama: pendaftaran selesai
+            await sock.sendMessage(
+              m.from,
+              {
+                text: `Pendaftaran selesai! 🎉\n\nAmi senang bisa mengenalmu, ${usr.name.split(" ")[0]}!`,
+              },
+              { quoted: m }
+            );
+
+            // Kirim pesan kedua: cara penggunaan bot
+            await sock.sendMessage(
+              m.from,
+              {
+                text: `Sekarang kamu bisa menggunakan semua fitur Ami Bot:\n\n- Ketik *.menu* untuk melihat semua fitur\n- Ketik *Ami, [pertanyaan]* untuk ngobrol dengan Ami\n- Butuh bantuan? Ketik *.bantuan*\n\nAmi siap membantumu kapan saja!`,
+              }
+            );
+
+            // Kirim pesan ketiga: disclaimer
+            await sock.sendMessage(
+              m.from,
+              {
+                text: `Ada hal yang perlu diketahui sebelum kita mulai bekerja sama, walaupun Ami berusaha memberikan yang terbaik dalam setiap percakapan, Ami tidak sempurna. Ami terkadang dapat menghasilkan informasi yang tidak tepat atau menyesatkan dan bias.`,
+              }
+            );
+          } else {
+            usr.province = response;
+            await sock.sendMessage(
+              m.from,
+              {
+                text: `Kamu tinggal di ${response} ya? Kalau bener, ketik *Ya*. Kalau ada kesalahan, ketik ulang provinsimu ya.`,
               },
               { quoted: m }
             );
@@ -517,19 +630,6 @@ export default class CommandHandler {
       if (expectedArgs[key]) argObject[key] = value || true;
     });
     return argObject;
-  }
-
-  async sendWelcomeMessage(sock, m) {
-    await sock.sendMessage(
-      m.from,
-      {
-        text: "Hai! 👋 Aku Ami Bot, bot Whatsapp yang dibuat oleh Renshu Visualz.\n\nAku bisa bantu kamu ngerjain PR, tanya jawab, brainstorm ide, download video dari TikTok/IG, ngingetin jadwal, dan masih banyak lagi!\n\nSebelum itu, kita kenalan dulu yuk, biar lebih akrab. *Nama kamu siapa?* ☺️",
-      },
-      {
-        quoted: m,
-        ephemeralExpiration: m.expiration,
-      }
-    );
   }
 
   clear() {
