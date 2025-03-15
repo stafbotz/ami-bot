@@ -455,7 +455,7 @@ export default class CommandHandler {
             await sock.sendMessage(
               m.from,
               {
-                text: `No problem! Kamu bisa update kode pos kapan aja nanti dengan ketik *.updatekodepos*.\n\nSebelum kita lanjut, ada hal yang perlu kamu tau:`,
+                text: `No problem! Kamu bisa update kode pos kapan aja nanti dengan ketik *.myprofile*.\n\nSebelum kita lanjut, ada hal yang perlu kamu tau:`,
               },
               { quoted: m }
             );
@@ -594,7 +594,7 @@ export default class CommandHandler {
             usr.tutorial_completed = true;
 
             await sock.sendMessage(m.from, {
-              text: `Wah! Kamu udah ngerti cara pake Ami Bot! 🎊\n\nSekarang kamu resmi jadi pengguna Ami Bot. Kamu bisa:\n- Ngobrol sama Ami: ketik *Ami*\n- Liat semua fitur: ketik *.menu*\n- Butuh bantuan: ketik *.bantuan*\n\nSemoga kamu suka ngobrol sama Ami! Ada pertanyaan lain? Langsung tanya aja~`,
+              text: `Wah! Kamu udah ngerti cara pake Ami Bot! 🎊\n\nSekarang kamu resmi jadi pengguna Ami Bot. Kamu bisa:\n- Ngobrol sama Ami: ketik *Ami*\n- Liat semua fitur: ketik *.menu*\n- Butuh bantuan: ketik *.bantuan*\n\nHappy chatting! 😎`,
             });
           } else {
             await sock.sendMessage(
