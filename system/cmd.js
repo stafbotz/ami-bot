@@ -269,7 +269,7 @@ export default class CommandHandler {
     await sock.sendMessage(
       m.from,
       {
-        text: "Halo, aku Ami. Aku adalah asisten AI yang dibuat oleh Renshu Mushy untuk membantu kamu. Aku suka ngobrol dan selalu berusaha jadi teman yang ramah dan menyenangkan. Aku ingin kita bisa mengenal satu sama lain. Nama kamu, siapa?",
+        text: "Hai! Aku Ami.\n\nAku asisten AI buatan Renshu Mushy yang siap bantu kamu. Aku suka ngobrol dan bakal jadi temen yang asik buat sharing atau tanya-tanya.\n\nKita kenalan dulu yuk!\n\n*Nama kamu siapa?*\n\n(ketik nama kamu untuk melanjutkan)",
       },
       {
         quoted: m,
@@ -505,7 +505,7 @@ export default class CommandHandler {
               {
                 text: `Siip! Pendaftaran hampir selesai, ${
                   usr.name.split(" ")[0]
-                }! 🎉\n\nSekarang aku mau kasi kamu tutorial singkat.\n\nPertama, coba ketik *.menu* (pake titik di depan).`,
+                }! 🎉\n\nMau tau cara pake bot? Aku ada tutorial singkat nih.\n\nKetik *Lanjut* buat ikutin tutorial atau *Skip* kalo kamu udah tau/pernah pake bot sejenis.`,
               },
               { quoted: m }
             );
@@ -520,7 +520,40 @@ export default class CommandHandler {
           }
         },
 
+        // Tambahkan kondisi baru di stage 6
         6: async () => {
+          if (response.toLowerCase() === "skip") {
+            // Skip tutorial dan langsung selesai
+            delete usr.progressreg;
+            usr.register = true;
+            usr.tutorial_completed = true;
+
+            await sock.sendMessage(m.from, {
+              text: `Sip! Kamu udah resmi jadi pengguna Ami Bot.\n\nInget ya:\n- Ngobrol sama Ami: ketik *Ami*\n- Liat semua fitur: ketik *.menu*\n- Butuh bantuan: ketik *.bantuan*\n\nHappy chatting! 😎`,
+            });
+          } else if (response.toLowerCase() === "lanjut") {
+            // Mulai tutorial
+            usr.progressreg = 6.5;
+            await sock.sendMessage(
+              m.from,
+              {
+                text: `Oke, kita mulai ya!\n\nPertama, coba ketik *.menu* (pake titik di depan) buat liat semua fitur Ami Bot.`,
+              },
+              { quoted: m }
+            );
+          } else {
+            await sock.sendMessage(
+              m.from,
+              {
+                text: `Cukup ketik *Lanjut* kalo mau tutorial atau *Skip* kalo udah tau cara makenya.`,
+              },
+              { quoted: m }
+            );
+          }
+        },
+
+        // Tambahkan stage 6.5 untuk menggantikan stage 6 yang asli
+        6.5: async () => {
           // Tutorial .menu
           if (response.toLowerCase() === ".menu") {
             usr.progressreg = 7;
@@ -540,17 +573,17 @@ export default class CommandHandler {
 
         7: async () => {
           // Tutorial Ami,
-          if (response.toLowerCase().startsWith("ami,")) {
+          if (response.toLowerCase() === "ami") {
             usr.progressreg = 8;
 
             await sock.sendMessage(m.from, {
-              text: `Mantap! Itu tadi cara untuk ngobrol sama aku Ami AI Assistant 🙌\n\nTerakhir, coba ketik *.bantuan*, ini cara untuk menghubungi layanan bantuan pelanggan.`,
+              text: `Mantap! Itu tadi cara untuk ngobrol sama aku Ami AI Assistant 🙌\n\nTerakhir nih, coba ketik *.bantuan* buat tau cara minta bantuan kalo ada masalah.`,
             });
           } else {
             await sock.sendMessage(
               m.from,
               {
-                text: `Coba lagi ya! Ketik *Ami*.`,
+                text: `Coba lagi ya! Ketik *Ami* aja (tanpa titik atau tambahan).`,
               },
               { quoted: m }
             );
@@ -565,13 +598,13 @@ export default class CommandHandler {
             usr.tutorial_completed = true;
 
             await sock.sendMessage(m.from, {
-              text: `Selamat! Kamu udah ngerti cara pake Ami Bot! 🎊\n\nSekarang kamu resmi jadi pengguna Ami Bot. Kamu bisa:\n- Ngobrol sama Ami pake *Ami,*\n- Banyak fitur lain di *.menu*\n\nSemoga kamu suka ngobrol sama Ami! Kalau ada yang kurang jelas, tinggal ketik *.bantuan* ya.`,
+              text: `Wah! Kamu udah ngerti cara pake Ami Bot! 🎊\n\nSekarang kamu resmi jadi pengguna Ami Bot. Kamu bisa:\n- Ngobrol sama Ami: ketik *Ami*\n- Liat semua fitur: ketik *.menu*\n- Butuh bantuan: ketik *.bantuan*\n\nSemoga kamu suka ngobrol sama Ami! Ada pertanyaan lain? Langsung tanya aja~`,
             });
           } else {
             await sock.sendMessage(
               m.from,
               {
-                text: `Coba lagi ya! Ketik *.bantuan*.`,
+                text: `Dikit lagi! Coba ketik *.bantuan* (pake titik di depan).`,
               },
               { quoted: m }
             );
