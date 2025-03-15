@@ -310,7 +310,7 @@ export default class CommandHandler {
               {
                 text: `Thanks ${
                   usr.name.split(" ")[0]
-                }! Next, Ami perlu tau tanggal lahir kamu buat verifikasi umur.\n\nKetik pake format *dd/mm/yyyy* ya. Contoh, 01/01/2005 untuk 1 Januari 2005.`,
+                }!\n\nNext, Ami perlu tau tanggal lahir kamu buat verifikasi umur.\n\nKetik dengan format: *tanggal/bulan/tahun*\n\nTips: Untuk tanggal & bulan yang satuan (1-9), tulis pake angka 0 di depan. Kalo udah puluhan (10-31) langsung aja.\n\nContoh:\n• *01/05/2005* untuk tanggal 1 Mei 2005\n• *15/12/2004* untuk tanggal 15 Desember 2004`,
               },
               { quoted: m }
             );
@@ -339,7 +339,7 @@ export default class CommandHandler {
             await sock.sendMessage(
               m.from,
               {
-                text: "Oops, format tanggalnya kurang tepat nih. Coba pakai format *dd/mm/yyyy* ya. Misalnya, 01/01/2005 untuk 1 Januari 2005.",
+                text: "Oops, format tanggalnya kurang tepat nih.\n\nInget ya, formatnya: *tanggal/bulan/tahun*\n\nUntuk tanggal & bulan yang satuan (1-9), tulis pake angka 0 di depan.\n\nContoh:\n• *01/05/2005* untuk tanggal 1 Mei 2005\n• *15/12/2004* untuk tanggal 15 Desember 2004",
               },
               { quoted: m }
             );
@@ -365,11 +365,7 @@ export default class CommandHandler {
           await sock.sendMessage(
             m.from,
             {
-              text: `Tanggal lahir kamu ${utils.formatDate(
-                day,
-                month,
-                year
-              )}, ya? Kalau bener, ketik *Ya* aja. Kalau salah, ketik ulang tanggal lahirnya.`,
+              text: `Jadi umur kamu sekarang ${age} tahun, ya?\n\nKalau udah bener, ketik *Ya* aja.\nKalau ada yang salah, ketik ulang tanggal lahirmu dengan format yang bener.`,
             },
             { quoted: m }
           );
