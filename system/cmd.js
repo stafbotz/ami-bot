@@ -159,7 +159,7 @@ export default class CommandHandler {
           usr.progressreg = 1;
           return true;
         }
-        
+
         // Continue registration process and BLOCK all other commands
         return await this.handleRegister(usr, sock, m, db);
       }
@@ -281,7 +281,7 @@ export default class CommandHandler {
   async handleRegister(usr, sock, m, db) {
     try {
       const response = m.body.trim();
-  
+
       const stages = {
         1: async () => {
           if (!utils.isValidName(response)) {
@@ -295,20 +295,22 @@ export default class CommandHandler {
             await sock.sendMessage(
               m.from,
               {
-                text: `Senang bertemu dengan kamu ${usr.name}! Namamu ${usr.name}, benar? Kalau udah bener, ketik *Ya* aja. Kalau belum, ketik nama yang bener ya.`,
+                text: `Namamu ${usr.name}, ya? Kalau udah bener, ketik *Ya* aja. Kalau belum, ketik nama yang bener ya.`,
               },
               { quoted: m }
             );
           }
         },
-  
+
         1.5: async () => {
           if (response.toLowerCase() === "ya") {
             usr.progressreg = 2;
             await sock.sendMessage(
               m.from,
               {
-                text: `Thanks ${usr.name.split(" ")[0]}! Next, Ami perlu tau tanggal lahir kamu buat verifikasi umur.\n\nKetik pake format *dd/mm/yyyy* ya. Contoh, 01/01/2005 untuk 1 Januari 2005.`,
+                text: `Thanks ${
+                  usr.name.split(" ")[0]
+                }! Next, Ami perlu tau tanggal lahir kamu buat verifikasi umur.\n\nKetik pake format *dd/mm/yyyy* ya. Contoh, 01/01/2005 untuk 1 Januari 2005.`,
               },
               { quoted: m }
             );
@@ -331,7 +333,7 @@ export default class CommandHandler {
             );
           }
         },
-  
+
         2: async () => {
           if (!utils.isValidDate(response)) {
             await sock.sendMessage(
@@ -343,12 +345,12 @@ export default class CommandHandler {
             );
             return;
           }
-  
+
           const [day, month, year] = response
             .split("/")
             .map((num) => parseInt(num));
           const age = new Date().getFullYear() - year;
-  
+
           if (!utils.isValidAge(year)) {
             const message =
               age < CONFIG.REGISTRATION.MIN_AGE
@@ -357,7 +359,7 @@ export default class CommandHandler {
             await sock.sendMessage(m.from, { text: message }, { quoted: m });
             return;
           }
-  
+
           usr.birth = response;
           usr.progressreg = 2.5;
           await sock.sendMessage(
@@ -372,14 +374,16 @@ export default class CommandHandler {
             { quoted: m }
           );
         },
-  
+
         2.5: async () => {
           if (response.toLowerCase() === "ya") {
             usr.progressreg = 3;
             await sock.sendMessage(
               m.from,
               {
-                text: `Makasih ${usr.name.split(" ")[0]}!\n\nAmi perlu tau hari raya yang kamu rayakan buat beberapa fitur khusus. Pilih aja:\n\n*1* - Idul Fitri (Islam)\n*2* - Natal (Kristen)\n*3* - Natal (Katolik)\n*4* - Nyepi (Hindu)\n*5* - Waisak (Buddha)\n*6* - Imlek (Konghucu)\n\nKetik angka pilihanmu.`,
+                text: `Makasih ${
+                  usr.name.split(" ")[0]
+                }!\n\nAmi perlu tau hari raya yang kamu rayakan buat beberapa fitur khusus. Pilih aja:\n\n*1* - Idul Fitri (Islam)\n*2* - Natal (Kristen)\n*3* - Natal (Katolik)\n*4* - Nyepi (Hindu)\n*5* - Waisak (Buddha)\n*6* - Imlek (Konghucu)\n\nKetik angka pilihanmu.`,
               },
               { quoted: m }
             );
@@ -409,18 +413,18 @@ export default class CommandHandler {
             );
           }
         },
-  
+
         3: async () => {
           // Process religious holiday selection
           const holidayOptions = {
-            "1": { name: "Idul Fitri", religion: "Islam" },
-            "2": { name: "Natal", religion: "Kristen" },
-            "3": { name: "Natal", religion: "Katolik" },
-            "4": { name: "Nyepi", religion: "Hindu" },
-            "5": { name: "Waisak", religion: "Buddha" },
-            "6": { name: "Imlek", religion: "Konghucu" }
+            1: { name: "Idul Fitri", religion: "Islam" },
+            2: { name: "Natal", religion: "Kristen" },
+            3: { name: "Natal", religion: "Katolik" },
+            4: { name: "Nyepi", religion: "Hindu" },
+            5: { name: "Waisak", religion: "Buddha" },
+            6: { name: "Imlek", religion: "Konghucu" },
           };
-          
+
           if (!holidayOptions[response]) {
             await sock.sendMessage(
               m.from,
@@ -431,11 +435,11 @@ export default class CommandHandler {
             );
             return;
           }
-          
+
           const selectedHoliday = holidayOptions[response];
           usr.holiday = selectedHoliday.name;
           usr.religion = selectedHoliday.religion;
-          
+
           usr.progressreg = 4;
           await sock.sendMessage(
             m.from,
@@ -445,13 +449,13 @@ export default class CommandHandler {
             { quoted: m }
           );
         },
-  
+
         4: async () => {
           // Process postal code info
           if (response.toLowerCase() === "skip") {
             usr.postal_code = "belum diisi";
             usr.progressreg = 5;
-            
+
             await sock.sendMessage(
               m.from,
               {
@@ -459,19 +463,15 @@ export default class CommandHandler {
               },
               { quoted: m }
             );
-            
+
             // Send disclaimer right away
-            await sock.sendMessage(
-              m.from,
-              {
-                text: `*DISCLAIMER*\n\nWalaupun Ami berusaha memberikan yang terbaik dalam setiap percakapan, Ami nggak sempurna. Ami kadang bisa ngasih info yang kurang tepat atau bias. Ami juga masih belajar dan berkembang.\n\nKetik *Setuju* untuk melanjutkan.`,
-              }
-            );
-          } 
-          else if (/^\d{5}$/.test(response)) {
+            await sock.sendMessage(m.from, {
+              text: `*DISCLAIMER*\n\nWalaupun Ami berusaha memberikan yang terbaik dalam setiap percakapan, Ami nggak sempurna. Ami kadang bisa ngasih info yang kurang tepat atau bias. Ami juga masih belajar dan berkembang.\n\nKetik *Setuju* untuk melanjutkan.`,
+            });
+          } else if (/^\d{5}$/.test(response)) {
             usr.postal_code = response;
             usr.progressreg = 5;
-            
+
             await sock.sendMessage(
               m.from,
               {
@@ -479,16 +479,12 @@ export default class CommandHandler {
               },
               { quoted: m }
             );
-            
+
             // Send disclaimer right away
-            await sock.sendMessage(
-              m.from,
-              {
-                text: `*DISCLAIMER*\n\nWalaupun Ami berusaha memberikan yang terbaik dalam setiap percakapan, Ami nggak sempurna. Ami kadang bisa ngasih info yang kurang tepat atau bias. Ami juga masih belajar dan berkembang.\n\nKetik *Setuju* untuk melanjutkan.`,
-              }
-            );
-          } 
-          else {
+            await sock.sendMessage(m.from, {
+              text: `*DISCLAIMER*\n\nWalaupun Ami berusaha memberikan yang terbaik dalam setiap percakapan, Ami nggak sempurna. Ami kadang bisa ngasih info yang kurang tepat atau bias. Ami juga masih belajar dan berkembang.\n\nKetik *Setuju* untuk melanjutkan.`,
+            });
+          } else {
             await sock.sendMessage(
               m.from,
               {
@@ -498,28 +494,20 @@ export default class CommandHandler {
             );
           }
         },
-  
+
         5: async () => {
           if (response.toLowerCase() === "setuju") {
-            delete usr.progressreg;
-            usr.register = true;
+            usr.progressreg = 6;
             usr.disclaimer_accepted = true;
-            
-            // Kirim pesan pendaftaran selesai
+
             await sock.sendMessage(
               m.from,
               {
-                text: `Siip! Pendaftaran selesai! 🎉\n\nAmi senang banget bisa kenalan sama kamu, ${usr.name.split(" ")[0]}!`,
+                text: `Siip! Pendaftaran hampir selesai, ${
+                  usr.name.split(" ")[0]
+                }! 🎉\n\nSekarang aku mau kasi kamu tutorial singkat.\n\nPertama, coba ketik *.menu* (pake titik di depan).`,
               },
               { quoted: m }
-            );
-  
-            // Kirim tutorial cara penggunaan bot
-            await sock.sendMessage(
-              m.from,
-              {
-                text: `Sekarang kamu bisa pake semua fitur Ami Bot:\n\n- Ketik *.menu* buat liat semua fitur\n- Ketik *Ami,* (pake koma) buat ngobrol sama Ami\n- Butuh bantuan? Ketik *.bantuan*\n\nAmi siap bantuin kamu kapan aja! 😊`,
-              }
             );
           } else {
             await sock.sendMessage(
@@ -531,8 +519,66 @@ export default class CommandHandler {
             );
           }
         },
+
+        6: async () => {
+          // Tutorial .menu
+          if (response.toLowerCase() === ".menu") {
+            usr.progressreg = 7;
+            await sock.sendMessage(m.from, {
+              text: `Keren! Kamu udah berhasil, itu tadi cara nampilin menu Ami Bot 👏\n\nNext, coba ketik *Ami*`,
+            });
+          } else {
+            await sock.sendMessage(
+              m.from,
+              {
+                text: `Ups, hampir bener! Coba ketik *.menu* (pake titik di depan).`,
+              },
+              { quoted: m }
+            );
+          }
+        },
+
+        7: async () => {
+          // Tutorial Ami,
+          if (response.toLowerCase().startsWith("ami,")) {
+            usr.progressreg = 8;
+
+            await sock.sendMessage(m.from, {
+              text: `Mantap! Itu tadi cara untuk ngobrol sama aku Ami AI Assistant 🙌\n\nTerakhir, coba ketik *.bantuan*, ini cara untuk menghubungi layanan bantuan pelanggan.`,
+            });
+          } else {
+            await sock.sendMessage(
+              m.from,
+              {
+                text: `Coba lagi ya! Ketik *Ami*.`,
+              },
+              { quoted: m }
+            );
+          }
+        },
+
+        8: async () => {
+          // Tutorial .bantuan
+          if (response.toLowerCase() === ".bantuan") {
+            delete usr.progressreg;
+            usr.register = true;
+            usr.tutorial_completed = true;
+
+            await sock.sendMessage(m.from, {
+              text: `Selamat! Kamu udah ngerti cara pake Ami Bot! 🎊\n\nSekarang kamu resmi jadi pengguna Ami Bot. Kamu bisa:\n- Ngobrol sama Ami pake *Ami,*\n- Banyak fitur lain di *.menu*\n\nSemoga kamu suka ngobrol sama Ami! Kalau ada yang kurang jelas, tinggal ketik *.bantuan* ya.`,
+            });
+          } else {
+            await sock.sendMessage(
+              m.from,
+              {
+                text: `Coba lagi ya! Ketik *.bantuan*.`,
+              },
+              { quoted: m }
+            );
+          }
+        },
       };
-  
+
       if (usr.progressreg in stages) {
         await stages[usr.progressreg]();
       } else if (!usr.progressreg) {
