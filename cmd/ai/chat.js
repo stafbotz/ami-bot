@@ -1180,6 +1180,7 @@ async function processDeepThinkingModel(
 // Fix 4: Improved model selection message
 export default function (handler) {
   handler.addFunction(async (m, { cmds, sock, db }) => {
+    if (!usr.register || usr.progressreg) return
     const userId = m.sender;
     const text = m.body?.trim().toLowerCase() || "";
     const userContext = readUserContext(userId);
