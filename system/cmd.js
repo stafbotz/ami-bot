@@ -281,7 +281,7 @@ export default class CommandHandler {
   async handleRegister(usr, sock, m, db) {
     try {
       const response = m.body.trim();
-
+  
       const stages = {
         1: async () => {
           if (!utils.isValidName(response)) {
@@ -295,20 +295,20 @@ export default class CommandHandler {
             await sock.sendMessage(
               m.from,
               {
-                text: `Senang bertemu dengan kamu ${usr.name}. Namamu ${usr.name}, benar? Kalau sudah benar, ketik *Ya*. Kalau belum, ketik nama yang benar ya.`,
+                text: `Senang bertemu dengan kamu ${usr.name}! Namamu ${usr.name}, benar? Kalau udah bener, ketik *Ya* aja. Kalau belum, ketik nama yang bener ya.`,
               },
               { quoted: m }
             );
           }
         },
-
+  
         1.5: async () => {
           if (response.toLowerCase() === "ya") {
             usr.progressreg = 2;
             await sock.sendMessage(
               m.from,
               {
-                text: `Terima kasih ${usr.name.split(" ")[0]}! Untuk tahap selanjutnya, Ami perlu tahu tanggal lahir kamu untuk verifikasi umur.\n\nKetik dengan format *dd/mm/yyyy* ya. Misalnya, 01/01/2005 untuk 1 Januari 2005.`,
+                text: `Thanks ${usr.name.split(" ")[0]}! Next, Ami perlu tau tanggal lahir kamu buat verifikasi umur.\n\nKetik pake format *dd/mm/yyyy* ya. Contoh, 01/01/2005 untuk 1 Januari 2005.`,
               },
               { quoted: m }
             );
@@ -325,13 +325,13 @@ export default class CommandHandler {
             await sock.sendMessage(
               m.from,
               {
-                text: `Senang bertemu dengan kamu ${usr.name}. Namamu ${usr.name}, benar? Kalau sudah benar, ketik *Ya*. Kalau belum, ketik nama yang benar ya.`,
+                text: `Senang bertemu dengan kamu ${usr.name}! Namamu ${usr.name}, benar? Kalau udah bener, ketik *Ya* aja. Kalau belum, ketik nama yang bener ya.`,
               },
               { quoted: m }
             );
           }
         },
-
+  
         2: async () => {
           if (!utils.isValidDate(response)) {
             await sock.sendMessage(
@@ -343,12 +343,12 @@ export default class CommandHandler {
             );
             return;
           }
-
+  
           const [day, month, year] = response
             .split("/")
             .map((num) => parseInt(num));
           const age = new Date().getFullYear() - year;
-
+  
           if (!utils.isValidAge(year)) {
             const message =
               age < CONFIG.REGISTRATION.MIN_AGE
@@ -357,7 +357,7 @@ export default class CommandHandler {
             await sock.sendMessage(m.from, { text: message }, { quoted: m });
             return;
           }
-
+  
           usr.birth = response;
           usr.progressreg = 2.5;
           await sock.sendMessage(
@@ -367,19 +367,19 @@ export default class CommandHandler {
                 day,
                 month,
                 year
-              )}, ya? Kalau benar, ketik *Ya*. Kalau salah, ketik ulang tanggal lahirnya.`,
+              )}, ya? Kalau bener, ketik *Ya* aja. Kalau salah, ketik ulang tanggal lahirnya.`,
             },
             { quoted: m }
           );
         },
-
+  
         2.5: async () => {
           if (response.toLowerCase() === "ya") {
             usr.progressreg = 3;
             await sock.sendMessage(
               m.from,
               {
-                text: `Terima kasih atas konfirmasinya, ${usr.name.split(" ")[0]}!\n\nAmi perlu tahu hari raya yang kamu rayakan untuk beberapa fitur khusus. Silakan pilih:\n\n*1* - Idul Fitri (Islam)\n*2* - Natal (Kristen)\n*3* - Natal (Katolik)\n*4* - Nyepi (Hindu)\n*5* - Waisak (Buddha)\n*6* - Imlek (Konghucu)\n\nKetik angka pilihanmu ya.`,
+                text: `Makasih ${usr.name.split(" ")[0]}!\n\nAmi perlu tau hari raya yang kamu rayakan buat beberapa fitur khusus. Pilih aja:\n\n*1* - Idul Fitri (Islam)\n*2* - Natal (Kristen)\n*3* - Natal (Katolik)\n*4* - Nyepi (Hindu)\n*5* - Waisak (Buddha)\n*6* - Imlek (Konghucu)\n\nKetik angka pilihanmu.`,
               },
               { quoted: m }
             );
@@ -403,13 +403,13 @@ export default class CommandHandler {
                   day,
                   month,
                   year
-                )}, ya? Kalau benar, ketik *Ya*. Kalau salah, ketik ulang tanggal lahirnya.`,
+                )}, ya? Kalau bener, ketik *Ya* aja. Kalau salah, ketik ulang tanggal lahirnya.`,
               },
               { quoted: m }
             );
           }
         },
-
+  
         3: async () => {
           // Process religious holiday selection
           const holidayOptions = {
@@ -425,7 +425,7 @@ export default class CommandHandler {
             await sock.sendMessage(
               m.from,
               {
-                text: "Mohon ketik angka 1-6 sesuai pilihan yang tersedia.",
+                text: "Ketik angka 1-6 aja sesuai pilihan ya.",
               },
               { quoted: m }
             );
@@ -440,68 +440,99 @@ export default class CommandHandler {
           await sock.sendMessage(
             m.from,
             {
-              text: `Ami mengerti! Kamu merayakan ${selectedHoliday.name}.\n\nTerakhir nih, kamu tinggal di provinsi mana? Ini akan membantu Ami memberikan info yang lebih relevan untukmu.`,
+              text: `Oke, kamu merayakan ${selectedHoliday.name} ya!\n\nNext, Ami mau tau kode pos daerah kamu nih. Ini bakal bantu Ami ngasih info cuaca, berita lokal, atau peringatan bencana yang relevan buat kamu.\n\nKetik kode pos kamu (5 digit) atau ketik *Skip* kalau mau isi nanti.`,
             },
             { quoted: m }
           );
         },
-
+  
         4: async () => {
-          // Process province info
-          usr.province = response;
-          usr.progressreg = 4.5;
-          
-          await sock.sendMessage(
-            m.from,
-            {
-              text: `Kamu tinggal di ${response} ya? Kalau bener, ketik *Ya*. Kalau ada kesalahan, ketik ulang provinsimu ya.`,
-            },
-            { quoted: m }
-          );
-        },
-
-        4.5: async () => {
-          if (response.toLowerCase() === "ya") {
-            delete usr.progressreg;
-            usr.register = true;
+          // Process postal code info
+          if (response.toLowerCase() === "skip") {
+            usr.postal_code = "belum diisi";
+            usr.progressreg = 5;
             
-            // Kirim pesan pertama: pendaftaran selesai
             await sock.sendMessage(
               m.from,
               {
-                text: `Pendaftaran selesai! 🎉\n\nAmi senang bisa mengenalmu, ${usr.name.split(" ")[0]}!`,
+                text: `No problem! Kamu bisa update kode pos kapan aja nanti dengan ketik *.updatekodepos*.\n\nSebelum kita lanjut, ada hal yang perlu kamu tau:`,
               },
               { quoted: m }
             );
-
-            // Kirim pesan kedua: cara penggunaan bot
+            
+            // Send disclaimer right away
             await sock.sendMessage(
               m.from,
               {
-                text: `Sekarang kamu bisa menggunakan semua fitur Ami Bot:\n\n- Ketik *.menu* untuk melihat semua fitur\n- Ketik *Ami, [pertanyaan]* untuk ngobrol dengan Ami\n- Butuh bantuan? Ketik *.bantuan*\n\nAmi siap membantumu kapan saja!`,
+                text: `*DISCLAIMER*\n\nWalaupun Ami berusaha memberikan yang terbaik dalam setiap percakapan, Ami nggak sempurna. Ami kadang bisa ngasih info yang kurang tepat atau bias. Ami juga masih belajar dan berkembang.\n\nKetik *Setuju* untuk melanjutkan.`,
               }
             );
-
-            // Kirim pesan ketiga: disclaimer
+          } 
+          else if (/^\d{5}$/.test(response)) {
+            usr.postal_code = response;
+            usr.progressreg = 5;
+            
             await sock.sendMessage(
               m.from,
               {
-                text: `Ada hal yang perlu diketahui sebelum kita mulai bekerja sama, walaupun Ami berusaha memberikan yang terbaik dalam setiap percakapan, Ami tidak sempurna. Ami terkadang dapat menghasilkan informasi yang tidak tepat atau menyesatkan dan bias.`,
+                text: `Thanks! Ami udah catat kode pos kamu: ${response}.\n\nSebelum kita lanjut, ada hal yang perlu kamu tau:`,
+              },
+              { quoted: m }
+            );
+            
+            // Send disclaimer right away
+            await sock.sendMessage(
+              m.from,
+              {
+                text: `*DISCLAIMER*\n\nWalaupun Ami berusaha memberikan yang terbaik dalam setiap percakapan, Ami nggak sempurna. Ami kadang bisa ngasih info yang kurang tepat atau bias. Ami juga masih belajar dan berkembang.\n\nKetik *Setuju* untuk melanjutkan.`,
+              }
+            );
+          } 
+          else {
+            await sock.sendMessage(
+              m.from,
+              {
+                text: `Hmm, format kode posnya kayaknya kurang tepat. Kode pos biasanya 5 digit angka. Coba lagi atau ketik *Skip* kalau mau isi nanti.`,
+              },
+              { quoted: m }
+            );
+          }
+        },
+  
+        5: async () => {
+          if (response.toLowerCase() === "setuju") {
+            delete usr.progressreg;
+            usr.register = true;
+            usr.disclaimer_accepted = true;
+            
+            // Kirim pesan pendaftaran selesai
+            await sock.sendMessage(
+              m.from,
+              {
+                text: `Siip! Pendaftaran selesai! 🎉\n\nAmi senang banget bisa kenalan sama kamu, ${usr.name.split(" ")[0]}!`,
+              },
+              { quoted: m }
+            );
+  
+            // Kirim tutorial cara penggunaan bot
+            await sock.sendMessage(
+              m.from,
+              {
+                text: `Sekarang kamu bisa pake semua fitur Ami Bot:\n\n- Ketik *.menu* buat liat semua fitur\n- Ketik *Ami,* (pake koma) buat ngobrol sama Ami\n- Butuh bantuan? Ketik *.bantuan*\n\nAmi siap bantuin kamu kapan aja! 😊`,
               }
             );
           } else {
-            usr.province = response;
             await sock.sendMessage(
               m.from,
               {
-                text: `Kamu tinggal di ${response} ya? Kalau bener, ketik *Ya*. Kalau ada kesalahan, ketik ulang provinsimu ya.`,
+                text: `Untuk lanjut pake Ami Bot, kamu perlu menyetujui disclaimer dulu ya. Ketik *Setuju* untuk melanjutkan.`,
               },
               { quoted: m }
             );
           }
         },
       };
-
+  
       if (usr.progressreg in stages) {
         await stages[usr.progressreg]();
       } else if (!usr.progressreg) {
