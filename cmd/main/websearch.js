@@ -48,20 +48,19 @@ export default (handler) => {
       let data = await chatbot.send(
         [
           {
-            role: "user",
-            content: m.text,
-          },
-          {
             role: "system",
             content:
               "Kamu sekarang adalah NekoBot, Bot asisten yang diciptakan oleh Lorenzxz",
+          },
+          {
+            role: "user",
+            content: m.text,
           },
         ],
         "gpt-3.5-turbo"
       );
 
-      if (!data.choices)
-        return m.reply("> Gagal mendapatkan respons dari ChatGPT");
+      if (!data.choices) return m.reply("> Gagal mendapatkan respons dari ChatGPT");
       m.reply(data.choices[0].message.content.trim());
     },
   });
