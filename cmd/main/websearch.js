@@ -59,7 +59,7 @@ export default (handler) => {
         ],
         "gpt-3.5-turbo"
       );
-
+      console.log(data)
       if (!data.choices) return m.reply("> Gagal mendapatkan respons dari ChatGPT");
       m.reply(data.choices[0].message.content.trim());
     },
