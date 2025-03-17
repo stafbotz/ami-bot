@@ -3,7 +3,9 @@ import * as cheerio from "cheerio";
 
 async function webSearch(query) {
   try {
-    const searchUrl = `https://www.google.com/search?q=${encodeURIComponent(query)}`;
+    const searchUrl = `https://www.google.com/search?q=${encodeURIComponent(
+      query
+    )}&hl=en`;
 
     const response = await axios.get(searchUrl, {
       headers: {
@@ -12,32 +14,46 @@ async function webSearch(query) {
       },
     });
 
+    // Debug: Cetak sebagian HTML untuk memastikan responnya sesuai
+    console.log("Scraped HTML snippet:", response.data.slice(0, 200));
+
     const $ = cheerio.load(response.data);
     const results = [];
 
     $("div.g").each((i, element) => {
-      const title = $(element).find("div.yuRUbf > a > h3").text();
+      const title = $(element).find("div.yuRUbf > a > h3").text().trim();
       const link = $(element).find("div.yuRUbf > a").attr("href");
       const snippet =
-        $(element).find("div.IsZvec").text() ||
-        $(element).find(".VwiC3b").text();
+        $(element).find("div.IsZvec").text().trim() ||
+        $(element).find(".VwiC3b").text().trim();
 
       if (title && link) {
+        let url = link;
+        if (link.startsWith("/url?q=")) {
+          const endIndex = link.indexOf("&", 7);
+          url = link.slice(7, endIndex !== -1 ? endIndex : undefined);
+        }
         results.push({
           title,
-          url: link.startsWith("/url?q=") ? link.slice(7) : link,
+          url,
           description: snippet || "Deskripsi tidak tersedia",
         });
       }
     });
+
+    console.log("Parsed results:", results);
 
     const contentsPromises = results.map(async (result) => {
       try {
         const pageResponse = await axios.get(result.url);
         const $page = cheerio.load(pageResponse.data);
         const content =
-          $page("article, .content, .main-content, main")
-            .text()
+          (
+            $page("article").text() ||
+            $page(".content").text() ||
+            $page(".main-content").text() ||
+            $page("main").text()
+          )
             .replace(/\s+/g, " ")
             .trim()
             .slice(0, 500) + "...";
@@ -66,6 +82,7 @@ export default (handler) => {
 
       try {
         const results = await webSearch(query);
+
         let response = `🔍 Hasil pencarian untuk: "${query}"\n\n`;
 
         results.forEach((result, index) => {
