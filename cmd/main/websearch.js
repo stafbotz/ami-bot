@@ -49,7 +49,7 @@ export default (handler) => {
         [
           {
             role: "user",
-            content: text,
+            content: m.text,
           },
           {
             role: "system",
