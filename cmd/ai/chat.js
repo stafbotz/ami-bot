@@ -843,32 +843,32 @@ function formatWhatsAppResponse(text) {
 
   let formattedText = text;
 
-   // Replace markdown headers with WhatsApp bold
-   formattedText = formattedText.replace(/^###\s+(.+)$/gm, "*$1*");
-   formattedText = formattedText.replace(/^##\s+(.+)$/gm, "*$1*");
-   formattedText = formattedText.replace(/^#\s+(.+)$/gm, "*$1*");
- 
-   // Replace markdown bold with WhatsApp bold
-   formattedText = formattedText.replace(/\*\*([^*]+)\*\*/g, "*$1*");
- 
-   // Replace markdown italic with WhatsApp italic
-   formattedText = formattedText.replace(/\_\_([^_]+)\_\_/g, "_$1_");
- 
-   // Replace markdown code with WhatsApp monospace
-   formattedText = formattedText.replace(/\`([^`]+)\`/g, "`$1`");
- 
-   // More aggressively remove all horizontal rules
-   formattedText = formattedText.replace(/^[\-=_*]{3,}$/gm, "");
-   formattedText = formattedText.replace(/^(\s*[\-=_*][^\w\s]*\s*)+$/gm, "");
-   
-   // Remove any empty lines at the beginning
-   formattedText = formattedText.replace(/^\s*[\r\n]+/, "");
-   
-   // Consolidate multiple blank lines
-   formattedText = formattedText.replace(/(\r?\n){3,}/g, "\n\n");
-   
-   // Clean up any trailing horizontal lines
-   formattedText = formattedText.replace(/[\-=_*]{3,}\s*$/, "");
+  // Replace markdown headers with WhatsApp bold
+  formattedText = formattedText.replace(/^###\s+(.+)$/gm, "*$1*");
+  formattedText = formattedText.replace(/^##\s+(.+)$/gm, "*$1*");
+  formattedText = formattedText.replace(/^#\s+(.+)$/gm, "*$1*");
+
+  // Replace markdown bold with WhatsApp bold
+  formattedText = formattedText.replace(/\*\*([^*]+)\*\*/g, "*$1*");
+
+  // Replace markdown italic with WhatsApp italic
+  formattedText = formattedText.replace(/\_\_([^_]+)\_\_/g, "_$1_");
+
+  // Replace markdown code with WhatsApp monospace
+  formattedText = formattedText.replace(/\`([^`]+)\`/g, "`$1`");
+
+  // More aggressively remove all horizontal rules
+  formattedText = formattedText.replace(/^[\-=_*]{3,}$/gm, "");
+  formattedText = formattedText.replace(/^(\s*[\-=_*][^\w\s]*\s*)+$/gm, "");
+
+  // Remove any empty lines at the beginning
+  formattedText = formattedText.replace(/^\s*[\r\n]+/, "");
+
+  // Consolidate multiple blank lines
+  formattedText = formattedText.replace(/(\r?\n){3,}/g, "\n\n");
+
+  // Clean up any trailing horizontal lines
+  formattedText = formattedText.replace(/[\-=_*]{3,}\s*$/, "");
 
   return formattedText;
 }
@@ -1180,7 +1180,6 @@ async function processDeepThinkingModel(
 // Fix 4: Improved model selection message
 export default function (handler) {
   handler.addFunction(async (m, { cmds, sock, db }) => {
-    if (!usr.register || usr.progressreg) return
     const userId = m.sender;
     const text = m.body?.trim().toLowerCase() || "";
     const userContext = readUserContext(userId);
@@ -1191,6 +1190,7 @@ export default function (handler) {
       birth: "Tidak diketahui",
     };
 
+    if (!user.register || user.progressreg) return;
     if (!text) return;
     let session = getSession(userId);
 
