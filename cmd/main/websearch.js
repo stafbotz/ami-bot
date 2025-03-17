@@ -60,7 +60,6 @@ export default (handler) => {
         "gpt-3.5-turbo"
       );
       console.log(data);
-      const axios = require("axios");
 
       const payload = {
         model: "gpt-3.5-turbo",
