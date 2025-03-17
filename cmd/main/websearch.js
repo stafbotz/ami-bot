@@ -59,8 +59,29 @@ export default (handler) => {
         ],
         "gpt-3.5-turbo"
       );
-      console.log(data)
-      if (!data.choices) return m.reply("> Gagal mendapatkan respons dari ChatGPT");
+      console.log(data);
+      const axios = require("axios");
+
+      const payload = {
+        model: "gpt-3.5-turbo",
+        messages: [{ role: "user", content: "Hello, how are you?" }],
+      };
+
+      axios
+        .post("https://chatgpt-api.shn.hk/v1/", payload, {
+          headers: {
+            "Content-Type": "application/json",
+          },
+        })
+        .then((response) => {
+          console.log("Response: ", response.data);
+        })
+        .catch((error) => {
+          console.error("Error: ", error);
+        });
+
+      if (!data.choices)
+        return m.reply("> Gagal mendapatkan respons dari ChatGPT");
       m.reply(data.choices[0].message.content.trim());
     },
   });
