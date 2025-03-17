@@ -45,7 +45,7 @@ export default (handler) => {
     desc: "Search on Internet",
     run: async (m, { sock }) => {
       if (!m.text) return m.reply("Yang Mau Dicari Apa?");
-      let data = await Scraper.chatbot.send(
+      let data = await chatbot.send(
         [
           {
             role: "user",
