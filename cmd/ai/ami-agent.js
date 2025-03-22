@@ -13,7 +13,7 @@ import {
     getGreeting,
     date,
     time
-} from "./system/function.js";
+} from "../../system/function.js";
 import {
     setupAutomatedBriefing,
     generateTimedZapBrief,
