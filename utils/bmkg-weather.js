@@ -193,6 +193,7 @@ class BMKGWeather {
    * @returns {Object} - Weather data
    */
   async getWeatherData(regionCode) {
+    console.log(regionCode)
     try {
       const response = await axios.get(`${this.apiBaseUrl}?adm4=${regionCode}`);
       return response.data;
