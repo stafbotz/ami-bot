@@ -2,7 +2,7 @@ import { readUserContext, writeUserContext } from "./context-provider.js";
 import schedule from "node-schedule";
 import path from "path";
 import fs from "fs";
-import { getGreeting, date, time } from "../system/function.js";
+import { getGreeting, date, time } from "./function.js";
 import OpenAI from "openai";
 
 // Initialize OpenRouter API
