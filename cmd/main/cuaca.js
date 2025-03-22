@@ -1,177 +1,251 @@
-export default (handler) => {
-    handler.reg({
-      cmd: ["cuaca"],
-      tags: "main",
-      desc: "Mendapatkan informasi cuaca dari BMKG berdasarkan kode pos",
-      run: async (m, { sock }) => {
-        try {
-          // Ekstrak kode pos dari pesan
-          const text = m.text.trim();
-          const postalCode = text.split(" ")[1];
-          
-          if (!postalCode) {
-            return sock.sendMessage(m.from, {
-              text: `❌ Silakan masukkan kode pos.\nContoh: .cuaca 40111`
-            }, { quoted: m });
+const fs = require("fs");
+const xml = require("xml2js");
+const request = require("request");
+const async = require("async");
+
+// Daftar URL data BMKG
+const bmkg_data = [
+  "http://data.bmkg.go.id/datamkg/MEWS/DigitalForecast/DigitalForecast-Aceh.xml",
+  "http://data.bmkg.go.id/datamkg/MEWS/DigitalForecast/DigitalForecast-Bali.xml",
+  "http://data.bmkg.go.id/datamkg/MEWS/DigitalForecast/DigitalForecast-BangkaBelitung.xml",
+  "http://data.bmkg.go.id/datamkg/MEWS/DigitalForecast/DigitalForecast-Banten.xml",
+  "http://data.bmkg.go.id/datamkg/MEWS/DigitalForecast/DigitalForecast-Bengkulu.xml",
+  "http://data.bmkg.go.id/datamkg/MEWS/DigitalForecast/DigitalForecast-DIYogyakarta.xml",
+  "http://data.bmkg.go.id/datamkg/MEWS/DigitalForecast/DigitalForecast-DKIJakarta.xml",
+  "http://data.bmkg.go.id/datamkg/MEWS/DigitalForecast/DigitalForecast-Gorontalo.xml",
+  "http://data.bmkg.go.id/datamkg/MEWS/DigitalForecast/DigitalForecast-Jambi.xml",
+  "http://data.bmkg.go.id/datamkg/MEWS/DigitalForecast/DigitalForecast-JawaBarat.xml",
+  "http://data.bmkg.go.id/datamkg/MEWS/DigitalForecast/DigitalForecast-JawaTengah.xml",
+  "http://data.bmkg.go.id/datamkg/MEWS/DigitalForecast/DigitalForecast-JawaTimur.xml",
+  "http://data.bmkg.go.id/datamkg/MEWS/DigitalForecast/DigitalForecast-KalimantanBarat.xml",
+  "http://data.bmkg.go.id/datamkg/MEWS/DigitalForecast/DigitalForecast-KalimantanSelatan.xml",
+  "http://data.bmkg.go.id/datamkg/MEWS/DigitalForecast/DigitalForecast-KalimantanTengah.xml",
+  "http://data.bmkg.go.id/datamkg/MEWS/DigitalForecast/DigitalForecast-KalimantanTengah.xml",
+  "http://data.bmkg.go.id/datamkg/MEWS/DigitalForecast/DigitalForecast-KepulauanRiau.xml",
+  "http://data.bmkg.go.id/datamkg/MEWS/DigitalForecast/DigitalForecast-Lampung.xml",
+  "http://data.bmkg.go.id/datamkg/MEWS/DigitalForecast/DigitalForecast-Maluku.xml",
+  "http://data.bmkg.go.id/datamkg/MEWS/DigitalForecast/DigitalForecast-MalukuUtara.xml",
+  "http://data.bmkg.go.id/datamkg/MEWS/DigitalForecast/DigitalForecast-NusaTenggaraBarat.xml",
+  "http://data.bmkg.go.id/datamkg/MEWS/DigitalForecast/DigitalForecast-NusaTenggaraTimur.xml",
+  "http://data.bmkg.go.id/datamkg/MEWS/DigitalForecast/DigitalForecast-Papua.xml",
+  "http://data.bmkg.go.id/datamkg/MEWS/DigitalForecast/DigitalForecast-PapuaBarat.xml",
+  "http://data.bmkg.go.id/datamkg/MEWS/DigitalForecast/DigitalForecast-Riau.xml",
+  "http://data.bmkg.go.id/datamkg/MEWS/DigitalForecast/DigitalForecast-SulawesiBarat.xml",
+  "http://data.bmkg.go.id/datamkg/MEWS/DigitalForecast/DigitalForecast-SulawesiSelatan.xml",
+  "http://data.bmkg.go.id/datamkg/MEWS/DigitalForecast/DigitalForecast-SulawesiTengah.xml",
+  "http://data.bmkg.go.id/datamkg/MEWS/DigitalForecast/DigitalForecast-SulawesiTenggara.xml",
+  "http://data.bmkg.go.id/datamkg/MEWS/DigitalForecast/DigitalForecast-SulawesiUtara.xml",
+  "http://data.bmkg.go.id/datamkg/MEWS/DigitalForecast/DigitalForecast-SumateraBarat.xml",
+  "http://data.bmkg.go.id/datamkg/MEWS/DigitalForecast/DigitalForecast-SumateraSelatan.xml",
+  "http://data.bmkg.go.id/datamkg/MEWS/DigitalForecast/DigitalForecast-SumateraUtara.xml"
+];
+
+// Fungsi untuk format data BMKG dari hasil parsing XML
+function formatDataBmkg(json) {
+  const data = json.data.forecast[0].area
+    // Hilangkan data duplikat
+    .filter((element, index, inputArray) => {
+      return inputArray.indexOf(element) == index;
+    })
+    // Hilangkan element yang tidak memiliki parameter
+    .filter((element) => {
+      return element.parameter != null;
+    })
+    // Format output data
+    .map((area) => {
+      // Ambil nilai suhu minimal
+      const temp_min = area.parameter
+        .filter((params) => params.$.id === "tmin")
+        .map((params) =>
+          params.timerange.map((timerange) => {
+            const dateTime = timerange.$.day;
+            return {
+              date: dateTime,
+              value: timerange.value[0]._
+            };
+          })
+        );
+
+      // Ambil nilai suhu maksimal  
+      const temp_max = area.parameter
+        .filter((params) => params.$.id === "tmax")
+        .map((params) =>
+          params.timerange.map((timerange) => {
+            const dateTime = timerange.$.day;
+            return {
+              date: dateTime,
+              value: timerange.value[0]._
+            };
+          })
+        );
+
+      // Ambil informasi cuaca (weather)
+      const weather = area.parameter
+        .filter((params) => params.$.id === "weather")
+        .map((params) => {
+          const weahter = params.timerange
+            .filter((timerange) => {
+              return (
+                timerange.$.h == "6" ||
+                timerange.$.h == "18" ||
+                timerange.$.h == "30" ||
+                timerange.$.h == "42" ||
+                timerange.$.h == "54" ||
+                timerange.$.h == "66"
+              );
+            })
+            .map((timerange) => {
+              const codeCuaca = timerange.value[0]._;
+              const dateTime = timerange.$.datetime;
+              return {
+                date: dateTime,
+                value: codeCuaca
+              };
+            });
+          return weahter;
+        })
+        .map((val) => {
+          return [
+            { date: val[0].date, siang: val[0].value, malam: val[1].value },
+            { date: val[2].date, siang: val[2].value, malam: val[3].value },
+            { date: val[4].date, siang: val[4].value, malam: val[5].value }
+          ];
+        });
+
+      // Format akhir untuk output data
+      const format = {
+        provinsi: area.$.domain,
+        kota: area.name[1]._,
+        parameter: [
+          {
+            date: temp_min[0][0].date,
+            temp_min: temp_min[0][0].value,
+            temp_max: temp_max[0][0].value,
+            weather_day: weather[0][0].siang,
+            weather_night: weather[0][0].malam
+          },
+          {
+            date: temp_min[0][1].date,
+            temp_min: temp_min[0][1].value,
+            temp_max: temp_max[0][1].value,
+            weather_day: weather[0][1].siang,
+            weather_night: weather[0][1].malam
+          },
+          {
+            date: temp_min[0][2].date,
+            temp_min: temp_min[0][2].value,
+            temp_max: temp_max[0][2].value,
+            weather_day: weather[0][2].siang,
+            weather_night: weather[0][2].malam
           }
-          
-          // Kirim pesan loading
-          await sock.sendMessage(m.from, {
-            text: `🔍 Mencari informasi cuaca untuk kode pos ${postalCode}...`
-          }, { quoted: m });
-          
-          // Ambil data dari API BMKG
-          const weatherData = await getWeatherByPostalCode(postalCode);
-          
-          if (!weatherData) {
-            return sock.sendMessage(m.from, {
-              text: `❌ Tidak dapat menemukan informasi cuaca untuk kode pos ${postalCode}.`
-            }, { quoted: m });
-          }
-          
-          // Format pesan cuaca
-          const weatherMessage = formatWeatherMessage(weatherData);
-          
-          // Kirim informasi cuaca
-          await sock.sendMessage(m.from, {
-            text: weatherMessage
-          }, { quoted: m });
-          
-        } catch (error) {
-          console.error('Error in weather command:', error);
-          sock.sendMessage(m.from, {
-            text: `❌ Terjadi kesalahan: ${error.message}`
-          }, { quoted: m });
-        }
-      }
+        ]
+      };
+      return format;
     });
-    
-    // Fungsi untuk mendapatkan data cuaca berdasarkan kode pos
-    async function getWeatherByPostalCode(postalCode) {
-      try {
-        // URL API BMKG untuk mendapatkan data cuaca berdasarkan lokasi terdekat
-        const response = await fetch(`https://ibnux.github.io/BMKG-importer/cuaca/wilayah.json`);
-        const regions = await response.json();
-        
-        // Cari lokasi terdekat berdasarkan kode pos
-        // Catatan: Dalam implementasi sebenarnya, Anda mungkin perlu pemetaan kode pos ke ID area BMKG
-        // Contoh penggunaan sederhana untuk demo
-        const closestRegion = findClosestRegionByPostalCode(regions, postalCode);
-        
-        if (!closestRegion) {
-          return null;
+
+  return data;
+}
+
+// Fungsi untuk mengambil data cuaca dari BMKG secara asinkron
+async function getWeatherData() {
+  return new Promise((resolve, reject) => {
+    let dataArray = [];
+
+    console.log("getting weather data...");
+
+    async.forEachOf(
+      bmkg_data,
+      (link, key, callback) => {
+        request(link, function (error, response, body) {
+          console.log(link);
+          if (!error && response.statusCode == 200) {
+            xml.parseString(response.body, function (err, result) {
+              if (err) {
+                console.log(err);
+                callback(err);
+              } else {
+                let data = formatDataBmkg(result);
+                data.forEach((e) => dataArray.push(e));
+                callback();
+              }
+            });
+          } else {
+            callback(error);
+          }
+        });
+      },
+      (err) => {
+        if (err) {
+          console.log(err);
+          reject(err);
+        } else {
+          console.log("done get weather");
+          resolve(dataArray);
         }
-        
-        // Ambil data cuaca berdasarkan ID area
-        const weatherResponse = await fetch(`https://ibnux.github.io/BMKG-importer/cuaca/${closestRegion.id}.json`);
-        const weatherData = await weatherResponse.json();
-        
-        return {
-          location: closestRegion.propinsi + ", " + closestRegion.kota + ", " + closestRegion.kecamatan,
-          data: weatherData
-        };
-      } catch (error) {
-        console.error('Error fetching weather data:', error);
-        return null;
+      }
+    );
+  });
+}
+
+/*
+  Export command handler dengan perintah 'gc'.
+  Pada command ini, user cukup mengirimkan teks (kode pos atau nama lokasi)
+  dan bot akan menampilkan info cuaca yang difilter berdasarkan kota/provinsi.
+*/
+export default (handler) => {
+  handler.reg({
+    cmd: ["cc"],
+    tags: "main",
+    desc: "Detail cuaca",
+    run: async (m, { sock }) => {
+      // Ambil query dari pesan user (kode pos/nama lokasi)
+      const query = m.text.trim();
+
+      if (!query) {
+        return sock.sendMessage(m.chat, {
+          text: "Masukkan kode pos atau nama lokasi."
+        });
+      }
+
+      try {
+        // Dapatkan data cuaca BMKG
+        let weatherData = await getWeatherData();
+
+        // Filter data berdasarkan query (cocokkan nama kota atau provinsi)
+        let filtered = weatherData.filter(
+          (item) =>
+            (item.kota &&
+              item.kota.toLowerCase().includes(query.toLowerCase())) ||
+            (item.provinsi &&
+              item.provinsi.toLowerCase().includes(query.toLowerCase()))
+        );
+
+        if (filtered.length === 0) {
+          return sock.sendMessage(m.chat, {
+            text: `Tidak ditemukan data cuaca untuk "${query}".`
+          });
+        }
+
+        // Format pesan yang akan dikirim
+        let pesan = "";
+        filtered.forEach((area) => {
+          pesan += `*Provinsi:* ${area.provinsi}\n*Kota:* ${area.kota}\n`;
+          area.parameter.forEach((param) => {
+            pesan +=
+              `Tanggal: ${param.date}\n` +
+              `Suhu Min/Max: ${param.temp_min}°C / ${param.temp_max}°C\n` +
+              `Cuaca Siang: ${param.weather_day}\n` +
+              `Cuaca Malam: ${param.weather_night}\n\n`;
+          });
+        });
+
+        sock.sendMessage(m.chat, { text: pesan });
+      } catch (err) {
+        console.log(err);
+        sock.sendMessage(m.chat, {
+          text: "Terjadi kesalahan saat mendapatkan data cuaca."
+        });
       }
     }
-    
-    // Fungsi untuk mencari lokasi terdekat berdasarkan kode pos
-    // Implementasi sederhana, dalam kasus nyata mungkin perlu database atau API mapping
-    function findClosestRegionByPostalCode(regions, postalCode) {
-      // Contoh implementasi sederhana
-      // Dalam implementasi sebenarnya, Anda mungkin ingin menggunakan database atau layanan lain
-      // untuk memetakan kode pos ke ID area BMKG
-      
-      // Basis kode pos Jakarta
-      if (postalCode.startsWith('10') || postalCode.startsWith('11') || 
-          postalCode.startsWith('12') || postalCode.startsWith('13') || 
-          postalCode.startsWith('14')) {
-        return regions.find(r => r.kota.includes('Jakarta'));
-      }
-      
-      // Basis kode pos Bandung
-      if (postalCode.startsWith('40')) {
-        return regions.find(r => r.kota.includes('Bandung'));
-      }
-      
-      // Basis kode pos Surabaya
-      if (postalCode.startsWith('60')) {
-        return regions.find(r => r.kota.includes('Surabaya'));
-      }
-      
-      // Basis kode pos Medan
-      if (postalCode.startsWith('20')) {
-        return regions.find(r => r.kota.includes('Medan'));
-      }
-      
-      // Jika tidak ada yang cocok, gunakan region pertama sebagai default (tidak disarankan untuk produksi)
-      // Pada implementasi produksi, sebaiknya kembalikan null dan beri tahu pengguna
-      return regions[0];
-    }
-    
-    // Fungsi untuk memformat pesan cuaca
-    function formatWeatherMessage(weatherData) {
-      if (!weatherData || !weatherData.data || !weatherData.data.length) {
-        return "❌ Data cuaca tidak tersedia.";
-      }
-      
-      // Ambil prakiraan cuaca untuk hari ini
-      const today = weatherData.data.filter(item => {
-        const date = new Date(item.jamCuaca);
-        const now = new Date();
-        return date.getDate() === now.getDate() && date.getMonth() === now.getMonth();
-      });
-      
-      if (!today.length) {
-        return "❌ Data cuaca untuk hari ini tidak tersedia.";
-      }
-      
-      // Kelompokkan berdasarkan waktu (pagi, siang, malam)
-      const morning = today.find(item => {
-        const hour = new Date(item.jamCuaca).getHours();
-        return hour >= 6 && hour < 12;
-      });
-      
-      const afternoon = today.find(item => {
-        const hour = new Date(item.jamCuaca).getHours();
-        return hour >= 12 && hour < 18;
-      });
-      
-      const night = today.find(item => {
-        const hour = new Date(item.jamCuaca).getHours();
-        return hour >= 18 || hour < 6;
-      });
-      
-      // Buat pesan
-      let message = `🌤️ *INFORMASI CUACA BMKG* 🌤️\n\n`;
-      message += `📍 *Lokasi:* ${weatherData.location}\n`;
-      message += `📅 *Tanggal:* ${new Date().toLocaleDateString('id-ID', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}\n\n`;
-      
-      if (morning) {
-        message += `🌅 *Pagi (06:00-12:00)*\n`;
-        message += `   Cuaca: ${morning.cuaca}\n`;
-        message += `   Suhu: ${morning.tempC}°C\n`;
-        message += `   Kelembaban: ${morning.humidity}%\n\n`;
-      }
-      
-      if (afternoon) {
-        message += `☀️ *Siang (12:00-18:00)*\n`;
-        message += `   Cuaca: ${afternoon.cuaca}\n`;
-        message += `   Suhu: ${afternoon.tempC}°C\n`;
-        message += `   Kelembaban: ${afternoon.humidity}%\n\n`;
-      }
-      
-      if (night) {
-        message += `🌙 *Malam (18:00-06:00)*\n`;
-        message += `   Cuaca: ${night.cuaca}\n`;
-        message += `   Suhu: ${night.tempC}°C\n`;
-        message += `   Kelembaban: ${night.humidity}%\n\n`;
-      }
-      
-      message += `ℹ️ Data dari BMKG Indonesia\n`;
-      message += `Ketik .cuaca [kode pos] untuk melihat cuaca di lokasi lain`;
-      
-      return message;
-    }
-  };
+  });
+};
