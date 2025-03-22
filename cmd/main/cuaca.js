@@ -20,8 +20,8 @@ export default (handler) => {
         const cuaca = new BMKGWeather();
         const result = cuaca.getWeatherForecast(query);
       
-
-        sock.sendMessage(m.from, { text: result });
+        console.log(result)
+       // sock.sendMessage(m.from, { text: result });
       } catch (err) {
         console.log(err);
         sock.sendMessage(m.chat, {
