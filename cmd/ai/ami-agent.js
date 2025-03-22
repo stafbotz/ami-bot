@@ -23,7 +23,7 @@ import {
 // Initialize OpenRouter API with Gemini models
 const openai = new OpenAI({
     baseURL: "https://openrouter.ai/api/v1",
-    apiKey: "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"
+    apiKey: "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"
 });
 
 // Model configuration
