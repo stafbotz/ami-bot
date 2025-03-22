@@ -1,5 +1,5 @@
-const axios = require("axios");
-const xml2js = require("xml2js");
+import axios from "axios";
+import { Parser } from "xml2js";
 
 // Peta provinsi dengan kode BMKG
 const provinceMap = {
@@ -40,8 +40,8 @@ const provinceMap = {
 };
 
 // Peta kode pos ke provinsi (versi sederhana)
+// Format: 'awalan kode pos': 'provinsi_bmkg'
 const postalCodeRegionMap = {
-  // Format: 'awalan kode pos': 'provinsi_bmkg'
   10: "jakarta",
   11: "jakarta",
   12: "jakarta",
@@ -165,7 +165,7 @@ async function getBmkgWeatherData(provinceId) {
     );
 
     // Parse XML menjadi JSON
-    const parser = new xml2js.Parser({ explicitArray: false });
+    const parser = new Parser({ explicitArray: false });
     const result = await parser.parseStringPromise(response.data);
 
     return result;
@@ -300,31 +300,32 @@ async function getWeatherByPostalCode(postalCode) {
   }
 }
 
+// Daftarkan handler (asumsi handler ini diberikan oleh framework bot yang digunakan)
 export default (handler) => {
   handler.reg({
     cmd: ["gc"],
     tags: "main",
     desc: "Detail scuacca",
     run: async (m, { sock }) => {
-        // Mendapatkan kode pos dari pesan
-        const postalCode = m.text;
+      // Mendapatkan kode pos dari pesan
+      const postalCode = m.text;
 
-        if (postalCode) {
-          // Mengirim pesan sedang memproses
-          await sock.sendMessage(m.from, {
-            text: "Sedang mencari informasi cuaca... ⏳",
-          });
+      if (postalCode) {
+        // Mengirim pesan sedang memproses
+        await sock.sendMessage(m.from, {
+          text: "Sedang mencari informasi cuaca... ⏳",
+        });
 
-          // Mendapatkan data cuaca
-          const weatherInfo = await getWeatherByPostalCode(postalCode);
+        // Mendapatkan data cuaca
+        const weatherInfo = await getWeatherByPostalCode(postalCode);
 
-          // Mengirim informasi cuaca
-          await sock.sendMessage(m.from, { text: weatherInfo });
-        } else {
-          await sock.sendMessage(m.from, {
-            text: "Format tidak valid. Gunakan: !cuaca [kode_pos]\nContoh: !cuaca 40111",
-          });
-        }
+        // Mengirim informasi cuaca
+        await sock.sendMessage(m.from, { text: weatherInfo });
+      } else {
+        await sock.sendMessage(m.from, {
+          text: "Format tidak valid. Gunakan: !cuaca [kode_pos]\nContoh: !cuaca 40111",
+        });
       }
+    },
   });
 };
