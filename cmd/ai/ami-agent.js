@@ -3,7 +3,7 @@ import * as chrono from "chrono-node";
 import {
     readUserContext,
     writeUserContext
-} from "../system/ai/context-provider.js";
+} from ".../system/ai/context-provider.js";
 import path from "path";
 import fs from "fs";
 import axios from "axios";
@@ -18,7 +18,7 @@ import {
     setupAutomatedBriefing,
     generateTimedZapBrief,
     toggleAutoBriefing
-} from "../system/ai/automated-zap-brief.js";
+} from ".../system/ai/automated-zap-brief.js";
 
 // Initialize OpenRouter API with Gemini models
 const openai = new OpenAI({
