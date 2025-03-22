@@ -1,7 +1,7 @@
-const fs = require("fs");
-const xml = require("xml2js");
-const request = require("request");
-const async = require("async");
+import fs from "fs";
+import { parseString } from "xml2js";
+import request from "request";
+import async from "async";
 
 // Daftar URL data BMKG
 const bmkg_data = [
@@ -40,18 +40,14 @@ const bmkg_data = [
   "http://data.bmkg.go.id/datamkg/MEWS/DigitalForecast/DigitalForecast-SumateraUtara.xml"
 ];
 
-// Fungsi untuk format data BMKG dari hasil parsing XML
+// Fungsi untuk format data BMKG dari hasil parse XML
 function formatDataBmkg(json) {
   const data = json.data.forecast[0].area
-    // Hilangkan data duplikat
-    .filter((element, index, inputArray) => {
-      return inputArray.indexOf(element) == index;
-    })
-    // Hilangkan element yang tidak memiliki parameter
-    .filter((element) => {
-      return element.parameter != null;
-    })
-    // Format output data
+    // Hilangkan duplikat
+    .filter((element, index, inputArray) => inputArray.indexOf(element) === index)
+    // Hanya ambil element yang memiliki parameter
+    .filter((element) => element.parameter != null)
+    // Format data tiap area
     .map((area) => {
       // Ambil nilai suhu minimal
       const temp_min = area.parameter
@@ -66,7 +62,7 @@ function formatDataBmkg(json) {
           })
         );
 
-      // Ambil nilai suhu maksimal  
+      // Ambil nilai suhu maksimal
       const temp_max = area.parameter
         .filter((params) => params.$.id === "tmax")
         .map((params) =>
@@ -79,19 +75,19 @@ function formatDataBmkg(json) {
           })
         );
 
-      // Ambil informasi cuaca (weather)
+      // Ambil informasi cuaca
       const weather = area.parameter
         .filter((params) => params.$.id === "weather")
         .map((params) => {
           const weahter = params.timerange
             .filter((timerange) => {
               return (
-                timerange.$.h == "6" ||
-                timerange.$.h == "18" ||
-                timerange.$.h == "30" ||
-                timerange.$.h == "42" ||
-                timerange.$.h == "54" ||
-                timerange.$.h == "66"
+                timerange.$.h === "6" ||
+                timerange.$.h === "18" ||
+                timerange.$.h === "30" ||
+                timerange.$.h === "42" ||
+                timerange.$.h === "54" ||
+                timerange.$.h === "66"
               );
             })
             .map((timerange) => {
@@ -112,7 +108,7 @@ function formatDataBmkg(json) {
           ];
         });
 
-      // Format akhir untuk output data
+      // Format output akhir
       const format = {
         provinsi: area.$.domain,
         kota: area.name[1]._,
@@ -146,11 +142,56 @@ function formatDataBmkg(json) {
   return data;
 }
 
-// Fungsi untuk mengambil data cuaca dari BMKG secara asinkron
+// ======================================================================
+// Versi pertama: Fungsi untuk ambil data cuaca dan tulis ke cache
+// (diubah dari CJS menjadi ESM dengan melakukan export sebagai named export)
+export const get = async () => {
+  let dataArray = [];
+  console.log("getting weather data...");
+
+  async.forEachOf(
+    bmkg_data,
+    (link, key, callback) => {
+      request(link, function (error, response, body) {
+        console.log(link);
+        if (!error && response.statusCode === 200) {
+          parseString(response.body, function (err, result) {
+            let data = formatDataBmkg(result);
+            if (err) {
+              console.log(err);
+            } else {
+              data.forEach((e) => dataArray.push(e));
+            }
+            callback();
+          });
+        } else {
+          callback(error);
+        }
+      });
+    },
+    (err) => {
+      if (err) {
+        console.log(err);
+      } else {
+        const file = "cache/weather.json";
+        const data = JSON.stringify(dataArray);
+        fs.writeFile(file, data, "utf-8", (e) => {
+          if (e) {
+            console.log(e);
+          } else {
+            console.log("done get weather");
+          }
+        });
+      }
+    }
+  );
+};
+
+// ======================================================================
+// Fungsi untuk mengambil data cuaca dan mengembalikan hasil berupa Promise
 async function getWeatherData() {
   return new Promise((resolve, reject) => {
     let dataArray = [];
-
     console.log("getting weather data...");
 
     async.forEachOf(
@@ -158,8 +199,8 @@ async function getWeatherData() {
       (link, key, callback) => {
         request(link, function (error, response, body) {
           console.log(link);
-          if (!error && response.statusCode == 200) {
-            xml.parseString(response.body, function (err, result) {
+          if (!error && response.statusCode === 200) {
+            parseString(response.body, function (err, result) {
               if (err) {
                 console.log(err);
                 callback(err);
@@ -187,18 +228,15 @@ async function getWeatherData() {
   });
 }
 
-/*
-  Export command handler dengan perintah 'gc'.
-  Pada command ini, user cukup mengirimkan teks (kode pos atau nama lokasi)
-  dan bot akan menampilkan info cuaca yang difilter berdasarkan kota/provinsi.
-*/
+// ======================================================================
+// Ekspor default command handler untuk WhatsApp bot via Baileys
 export default (handler) => {
   handler.reg({
-    cmd: ["cc"],
+    cmd: ["gc"],
     tags: "main",
     desc: "Detail cuaca",
     run: async (m, { sock }) => {
-      // Ambil query dari pesan user (kode pos/nama lokasi)
+      // Ambil query (kode pos/nama lokasi) dari pesan user
       const query = m.text.trim();
 
       if (!query) {
@@ -211,7 +249,7 @@ export default (handler) => {
         // Dapatkan data cuaca BMKG
         let weatherData = await getWeatherData();
 
-        // Filter data berdasarkan query (cocokkan nama kota atau provinsi)
+        // Filter data berdasarkan query (cocokkan nama kota/propinsi)
         let filtered = weatherData.filter(
           (item) =>
             (item.kota &&
