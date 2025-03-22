@@ -232,7 +232,7 @@ async function getWeatherData() {
 // Ekspor default command handler untuk WhatsApp bot via Baileys
 export default (handler) => {
   handler.reg({
-    cmd: ["gc"],
+    cmd: ["cuaca"],
     tags: "main",
     desc: "Detail cuaca",
     run: async (m, { sock }) => {
