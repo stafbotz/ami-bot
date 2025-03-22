@@ -10,7 +10,7 @@ export default (handler) => {
       const query = m.text.trim();
 
       if (!query) {
-        return sock.sendMessage(m.chat, {
+        return sock.sendMessage(m.from, {
           text: "Masukkan nama lokasi."
         });
       }
@@ -21,7 +21,7 @@ export default (handler) => {
         const result = cuaca.getWeatherForecast(query);
       
 
-        sock.sendMessage(m.chat, { text: result });
+        sock.sendMessage(m.from, { text: result });
       } catch (err) {
         console.log(err);
         sock.sendMessage(m.chat, {
