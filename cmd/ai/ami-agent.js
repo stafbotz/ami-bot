@@ -13,12 +13,12 @@ import {
     getGreeting,
     date,
     time
-} from "../system/function.js";
+} from "../../system/function.js";
 import {
     setupAutomatedBriefing,
     generateTimedZapBrief,
     toggleAutoBriefing
-} from ".../system/ai/automated-zap-brief.js";
+} from "../../system/ai/automated-zap-brief.js";
 
 // Initialize OpenRouter API with Gemini models
 const openai = new OpenAI({
