@@ -3,7 +3,7 @@ import * as chrono from "chrono-node";
 import {
     readUserContext,
     writeUserContext
-} from ".../system/ai/context-provider.js";
+} from "../../system/ai/context-provider.js";
 import path from "path";
 import fs from "fs";
 import axios from "axios";
