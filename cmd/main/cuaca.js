@@ -18,7 +18,7 @@ export default (handler) => {
       try {
         // Dapatkan data cuaca BMKG
         const cuaca = new BMKGWeather();
-        cosnt result = cuaca.getWeatherForecast(query);
+        const result = cuaca.getWeatherForecast(query);
       
 
         sock.sendMessage(m.chat, { text: result });
