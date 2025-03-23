@@ -1,4 +1,5 @@
 import BMKGWeather from '../../utils/bmkg-weather.js';
+import KodeposScraper from '../../utils/kodepos-scraper.js';
 
 export default (handler) => {
   handler.reg({
@@ -17,11 +18,13 @@ export default (handler) => {
 
       try {
         // Dapatkan data cuaca BMKG
-        const cuaca = new BMKGWeather();
-        const result = await cuaca.getWeatherForecast(query);
+        const scuaca = new BMKGWeather();
+        const skodepos = new KodeposScraper();
+        const kodepos = await skodepos.getByKodePos(query);
+        //const cuaca = await scuaca.getWeatherForecast(query);
       
 
-       sock.sendMessage(m.from, { text: result });
+       sock.sendMessage(m.from, { text: skodepos });
       } catch (err) {
         console.log(err);
         sock.sendMessage(m.chat, {
