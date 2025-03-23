@@ -22,7 +22,8 @@ export default (handler) => {
         const skodepos = new KodeposScraper();
         const kodepos = await skodepos.getByKodePos(query);
         //const cuaca = await scuaca.getWeatherForecast(query);
-        sock.sendMessage(m.from, { text: kodepos });
+        console.log(kodepos)
+        //sock.sendMessage(m.from, { text: k });
       } catch (err) {
         console.log(err);
         sock.sendMessage(m.chat, {
