@@ -1,5 +1,5 @@
 import BMKGWeather from '../../utils/bmkg-weather.js';
-import KodeposScraper from '../../utils/kodepos-scraper.js';
+import KodeposScraper from '../../utils/kode-pos.js';
 
 export default (handler) => {
   handler.reg({
