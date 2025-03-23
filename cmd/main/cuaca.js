@@ -1,5 +1,5 @@
-import BMKGWeather from '../../utils/bmkg-weather.js';
-import KodeposScraper from '../../utils/kode-pos.js';
+import BMKGWeather from "../../utils/bmkg-weather.js";
+import KodeposScraper from "../../utils/kode-pos.js";
 
 export default (handler) => {
   handler.reg({
@@ -12,7 +12,7 @@ export default (handler) => {
 
       if (!query) {
         return sock.sendMessage(m.from, {
-          text: "Masukkan nama lokasi."
+          text: "Masukkan nama lokasi.",
         });
       }
 
@@ -22,15 +22,13 @@ export default (handler) => {
         const skodepos = new KodeposScraper();
         const kodepos = await skodepos.getByKodePos(query);
         //const cuaca = await scuaca.getWeatherForecast(query);
-      
-
-       sock.sendMessage(m.from, { text: skodepos });
+        sock.sendMessage(m.from, { text: kodepos });
       } catch (err) {
         console.log(err);
         sock.sendMessage(m.chat, {
-          text: "Terjadi kesalahan saat mendapatkan data cuaca."
+          text: "Terjadi kesalahan saat mendapatkan data cuaca.",
         });
       }
-    }
+    },
   });
 };
