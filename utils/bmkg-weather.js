@@ -30,7 +30,7 @@ async function scrapeBmkgWeather(locationCode) {
 
     // --- 3. Ekstrak Data "Saat Ini" ---
     let saatIniData = null;
-    const currentTempElement = $('p[class*="text-\\[40px\\]"]'); // Cari elemen suhu
+    const currentTempElement = $('p[class*="text-\\[40px\\]"]');
     if (currentTempElement.length > 0) {
         const currentContentDiv = currentTempElement.closest('div.mt-6.md\\:mt-0');
         if (currentContentDiv.length > 0) {
@@ -65,42 +65,45 @@ async function scrapeBmkgWeather(locationCode) {
 
     // --- 4. Ekstrak Data "Prakiraan Per Jam" ---
     const prakiraanPerJam = [];
-    const forecastContainer = $('div.swiper-wrapper'); // Kontainer utama untuk slider
+    const forecastContainer = $('div.swiper-wrapper');
 
     if (forecastContainer.length > 0) {
       forecastContainer.find('div.swiper-slide').each((index, element) => {
         const slide = $(element);
-        // Cari kontainer konten di dalam slide (kelasnya bisa sedikit berbeda, cari yang paling konsisten)
-        const hourlyContainer = slide.find('div[class*="p-5"][class*="rounded-2xl"]'); // Cari div dengan padding dan rounded
+        const hourlyContainer = slide.find('div[class*="p-5"][class*="rounded-2xl"]');
 
         if (hourlyContainer.length > 0) {
           const jam = hourlyContainer.find('h4').text().trim();
-          const suhu = hourlyContainer.find('p[class*="text-\\[32px\\]"]').text().trim(); // Suhu di prakiraan biasanya lebih kecil
-          const deskripsiCuaca = hourlyContainer.find('p.font-bold.mt-4').text().trim(); // Deskripsi di bawah suhu
+          const suhu = hourlyContainer.find('p[class*="text-\\[32px\\]"]').text().trim();
+          const deskripsiCuaca = hourlyContainer.find('p.font-bold.mt-4').text().trim();
 
-          // Cari detail kelembapan, angin, jarak pandang
-          const detailsDivs = hourlyContainer.find('div[class*="relative mt-4"] > div'); // Div yang berisi detail per baris
+          // ==========================================================
+          // PERBAIKAN SELEKTOR DI BAGIAN INI
+          // ==========================================================
+          const detailsDivs = hourlyContainer.find('div[class*="relative mt-4"] > div');
           let kelembapan = '', kecepatanAngin = '', arahAngin = '', jarakPandang = '';
 
           detailsDivs.each((i, detailEl) => {
              const detailDiv = $(detailEl);
-             // Cari teks bold yang merupakan nilainya
-             const value = detailDiv.find('p span.font-bold').text().trim();
-             // Cek ikon atau urutan untuk menentukan jenis data
-             if (i === 0) { // Asumsikan urutan: Kelembapan
-                 kelembapan = value;
-             } else if (i === 1) { // Asumsikan urutan: Kecepatan Angin
-                 kecepatanAngin = value;
-             } else if (i === 2) { // Asumsikan urutan: Arah Angin
-                 // Ambil teks bold dari span di dalam span utama
+             // Cari <p> yang berisi nilai (biasanya punya kelas font-bold)
+             const valueP = detailDiv.find('p.font-bold');
+
+             if (i === 0) { // Kelembapan
+                 kelembapan = valueP.text().trim(); // Target <p> langsung
+             } else if (i === 1) { // Kecepatan Angin
+                 kecepatanAngin = valueP.text().trim(); // Target <p> langsung
+             } else if (i === 2) { // Arah Angin
+                 // Arah angin ada di dalam nested span, selector ini benar
                  arahAngin = detailDiv.find('p span > span.font-bold').text().trim();
-             } else if (i === 3) { // Asumsikan urutan: Jarak Pandang
-                 jarakPandang = value;
+             } else if (i === 3) { // Jarak Pandang
+                 jarakPandang = valueP.text().trim(); // Target <p> langsung
              }
           });
+          // ==========================================================
+          // AKHIR PERBAIKAN
+          // ==========================================================
 
-
-          if (jam) { // Hanya tambahkan jika jam ditemukan (menghindari slide kosong/template)
+          if (jam) {
             prakiraanPerJam.push({
               jam,
               suhu,
@@ -123,7 +126,7 @@ async function scrapeBmkgWeather(locationCode) {
     // --- 5. Return Gabungan Data ---
     if (!saatIniData && prakiraanPerJam.length === 0) {
         console.error('Error: Gagal mengekstrak data "Saat Ini" maupun "Prakiraan Per Jam".');
-        return null; // Gagal total
+        return null;
     }
 
     return {
@@ -152,7 +155,6 @@ async function scrapeBmkgWeather(locationCode) {
 
   if (dataCuaca) {
     console.log('\n--- Hasil Scraping Cuaca BMKG ---');
-    // Tampilkan data "Saat Ini" jika ada
     if (dataCuaca.saatIni) {
         console.log('\n** Cuaca Saat Ini **');
         console.log(JSON.stringify(dataCuaca.saatIni, null, 2));
@@ -160,7 +162,6 @@ async function scrapeBmkgWeather(locationCode) {
         console.log('\n** Cuaca Saat Ini: Tidak ditemukan **');
     }
 
-    // Tampilkan data "Prakiraan Per Jam" jika ada
     if (dataCuaca.prakiraanPerJam && dataCuaca.prakiraanPerJam.length > 0) {
         console.log('\n** Prakiraan Per Jam **');
         console.log(JSON.stringify(dataCuaca.prakiraanPerJam, null, 2));
