@@ -231,8 +231,8 @@ async function scrapeBMKGWithPuppeteer(kodeWilayah) {
             });
             console.log(`Konten swiper terdeteksi berubah untuk ${tanggalTarget}. Jam pertama sekarang: ${jamPertamaSetelahWait}`);
 
-            // *** PERBAIKAN YANG SEHARUSNYA BENAR ***
-            await page.waitForTimeout(500); // Gunakan T kapital
+            // *** BARIS YANG BERMASALAH DIHAPUS ***
+            // await page.waitForTimeout(500); // Tidak dibutuhkan jika waitForFunction di atas cukup
 
             console.log(`Mengambil data untuk tanggal: ${tanggalTarget}...`);
             const dataHariBerikutnya = await page.evaluate(extractPageData);
@@ -256,7 +256,6 @@ async function scrapeBMKGWithPuppeteer(kodeWilayah) {
             if (error.name === 'TimeoutError') {
                 console.error(`Timeout saat memproses tab ${tanggalTarget}. Konten mungkin tidak berubah atau tombol/tab tidak aktif tepat waktu.`);
             } else {
-                // Jika error BUKAN TimeoutError, kemungkinan besar itu adalah error ketik saya lagi, atau error lain.
                 console.error(`Gagal memproses tab ${tanggalTarget}: ${error.message}`);
             }
              try {
