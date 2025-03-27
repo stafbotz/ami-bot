@@ -1,5 +1,5 @@
 import axios from 'axios';
-import cheerio from 'cheerio';
+import * as cheerio from 'cheerio';
 
 /**
  * Fungsi untuk melakukan scraping data cuaca saat ini dari halaman BMKG berdasarkan kode wilayah.
