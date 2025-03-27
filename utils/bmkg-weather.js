@@ -178,11 +178,14 @@ async function scrapeBMKGWithPuppeteer(kodeWilayah) {
     const dataHariPertama = await page.evaluate(extractPageData);
     hasilScraping.cuacaSaatIni = dataHariPertama.cuacaSaatIni;
     hasilScraping.peringatan = dataHariPertama.peringatan;
+    let jamPertamaHariIni = null; // Simpan jam pertama untuk perbandingan nanti
     if (dataHariPertama.tanggalAktif && dataHariPertama.prakiraanPerJam.length > 0) {
       hasilScraping.prakiraanMultiHari.push({
         tanggal: dataHariPertama.tanggalAktif,
         data: dataHariPertama.prakiraanPerJam
       });
+      jamPertamaHariIni = dataHariPertama.prakiraanPerJam[0]?.waktu; // Ambil waktu slide pertama
+      console.log(`Data hari pertama (${dataHariPertama.tanggalAktif}) diambil. Jam pertama: ${jamPertamaHariIni}`);
     } else {
         console.warn("Data prakiraan hari pertama tidak lengkap atau tidak ditemukan.");
     }
@@ -203,53 +206,62 @@ async function scrapeBMKGWithPuppeteer(kodeWilayah) {
         const tanggalTarget = tabDates[i];
         console.log(`\nMencoba memproses tab untuk tanggal: ${tanggalTarget}...`);
 
-        try {
-            // *** PERUBAHAN DI SINI: Gunakan page.click dengan selector teks ***
-            // Selector ini mencari button yang mengandung teks tanggal target.
-            // Menggunakan '::-p-text' adalah cara Puppeteer (seringkali) untuk menargetkan teks.
-            // Perlu diapit dengan benar.
-            const buttonSelector = `button ::-p-text("${tanggalTarget}")`;
+        // Simpan jam pertama *sebelum* klik, untuk perbandingan nanti
+        const jamPertamaSebelumKlik = await page.evaluate(() => {
+             const firstSlideHeader = document.querySelector('div.swiper-slide h4');
+             return firstSlideHeader ? firstSlideHeader.textContent.trim().replace(/\s+/g, ' ').replace('WIB', '').trim() : null;
+        });
+        console.log(`[Debug] Jam pertama sebelum klik ${tanggalTarget}: ${jamPertamaSebelumKlik}`);
 
+
+        try {
+            const buttonSelector = `button ::-p-text("${tanggalTarget}")`;
             console.log(`Mencari dan mengklik tombol dengan selector: ${buttonSelector}`);
-            await page.waitForSelector(buttonSelector, { timeout: 10000 }); // Tunggu tombol ada
+            await page.waitForSelector(buttonSelector, { timeout: 10000 });
             await page.click(buttonSelector);
             console.log(`Tombol tab ${tanggalTarget} diklik.`);
 
-            // *** STRATEGI MENUNGGU SETELAH KLIK ***
-            console.log(`Menunggu tab ${tanggalTarget} menjadi aktif...`);
+            // *** STRATEGI MENUNGGU BARU: Tunggu Perubahan Konten Swiper ***
+            console.log(`Menunggu konten swiper berubah dari jam ${jamPertamaSebelumKlik}...`);
             await page.waitForFunction(
-                 (dateText) => {
-                     const activeButton = document.querySelector('button.border-blue-primary');
-                     return activeButton && activeButton.textContent.trim().replace(/\s+/g, ' ') === dateText;
-                 },
-                 { timeout: 15000 }, // Timeout 15 detik
-                 tanggalTarget
-             );
-             console.log(`Tab ${tanggalTarget} aktif.`);
+                (previousFirstHour) => {
+                    const currentFirstSlideHeader = document.querySelector('div.swiper-slide h4');
+                    const currentFirstHour = currentFirstSlideHeader ? currentFirstSlideHeader.textContent.trim().replace(/\s+/g, ' ').replace('WIB', '').trim() : null;
+                    // Tunggu sampai jam pertama BERBEDA dari sebelumnya DAN tidak null
+                    return currentFirstHour !== null && currentFirstHour !== previousFirstHour;
+                },
+                { timeout: 20000 }, // Timeout 20 detik
+                jamPertamaSebelumKlik // Kirim jam sebelumnya ke fungsi
+            );
+            console.log(`Konten swiper terdeteksi berubah untuk ${tanggalTarget}.`);
 
-             // Jeda singkat untuk render (opsional)
-             await page.waitForTimeout(500);
+            // Jeda singkat tambahan setelah konten berubah (opsional)
+            await page.waitForTimeout(500);
 
             console.log(`Mengambil data untuk tanggal: ${tanggalTarget}...`);
             const dataHariBerikutnya = await page.evaluate(extractPageData);
 
-            // Validasi
-            if (dataHariBerikutnya.tanggalAktif === tanggalTarget && dataHariBerikutnya.prakiraanPerJam.length > 0) {
+            // Validasi (Tanggal aktif mungkin belum tentu berubah secepat konten)
+            // Fokus pada apakah data prakiraan berhasil diambil
+            if (dataHariBerikutnya.prakiraanPerJam.length > 0) {
+                 // Kita gunakan tanggalTarget dari loop karena itu yang kita klik
                  hasilScraping.prakiraanMultiHari.push({
-                    tanggal: dataHariBerikutnya.tanggalAktif,
+                    tanggal: tanggalTarget, // Gunakan tanggal dari loop
                     data: dataHariBerikutnya.prakiraanPerJam
                 });
                  console.log(`Data untuk ${tanggalTarget} berhasil diambil.`);
-            } else if (dataHariBerikutnya.prakiraanPerJam.length === 0) {
-                 console.warn(`Tidak ada data prakiraan ditemukan untuk tanggal ${tanggalTarget} setelah klik dan menunggu.`);
+                 // Log jika tanggal aktif terdeteksi berbeda (hanya sebagai info)
+                 if (dataHariBerikutnya.tanggalAktif !== tanggalTarget) {
+                     console.warn(`[Info] Tanggal aktif terdeteksi (${dataHariBerikutnya.tanggalAktif}) berbeda dari target (${tanggalTarget}), tapi data diambil.`);
+                 }
             } else {
-                 console.warn(`Tanggal aktif terdeteksi (${dataHariBerikutnya.tanggalAktif}) tidak cocok dengan target (${tanggalTarget}) setelah menunggu.`);
+                 console.warn(`Tidak ada data prakiraan ditemukan untuk tanggal ${tanggalTarget} setelah konten berubah.`);
             }
 
         } catch (error) {
             if (error.name === 'TimeoutError') {
-                // Bisa jadi timeout dari waitForSelector, click, atau waitForFunction
-                console.error(`Timeout saat memproses tab ${tanggalTarget}. Tombol mungkin tidak ditemukan atau tab tidak aktif tepat waktu.`);
+                // Bisa jadi timeout dari waitForSelector, click, atau waitForFunction (menunggu konten berubah)
+                console.error(`Timeout saat memproses tab ${tanggalTarget}. Konten mungkin tidak berubah atau tombol tidak ditemukan.`);
             } else {
                 console.error(`Gagal memproses tab ${tanggalTarget}: ${error.message}`);
             }
