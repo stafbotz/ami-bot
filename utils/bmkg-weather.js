@@ -21,12 +21,10 @@ async function scrapeBmkgCuaca(kodeWilayah) {
     const page = await browser.newPage();
     await page.setUserAgent('Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36');
 
-    // --- PERUBAHAN DI SINI ---
     await page.goto(url, {
-      waitUntil: 'networkidle2', // Lebih fleksibel dari networkidle0
-      timeout: 90000 // Tingkatkan timeout menjadi 90 detik
+      waitUntil: 'networkidle2',
+      timeout: 90000
     });
-    // --- AKHIR PERUBAHAN ---
 
     console.log('Halaman berhasil dimuat. Memulai ekstraksi data...');
 
@@ -116,15 +114,23 @@ async function scrapeBmkgCuaca(kodeWilayah) {
                     }
                 }
             });
-        }
 
-        // --- Ekstrak Peringatan ---
-        const warningElement = document.querySelector('.bg-\\[rgba\\(255\\,_165\\,_0\\,_0\\.10\\)\\] p span, .bg-\\[#FFA5001A\\] p span');
-        hasil.peringatan = warningElement ? warningElement.textContent?.trim() : null;
-        const generalWarning = document.querySelector('.bg-\\[#FF000029\\], .bg-\\[#FFC90029\\], .bg-\\[#00990029\\]');
-        if (!hasil.peringatan && generalWarning) {
-            hasil.peringatan = generalWarning.querySelector('p span')?.textContent?.trim() || generalWarning.textContent?.trim() || null;
-        }
+            // --- Ekstrak Peringatan (REVISI) ---
+            let warningText = null;
+            // Cari div yang mungkin berisi peringatan di dalam currentSection (seringkali setelah elemen <time>)
+            const potentialWarningContainer = currentSection.querySelector('.mt-4'); // Div setelah elemen <time>
+            if (potentialWarningContainer) {
+                // Cari div di dalamnya yang memiliki border dan background (ciri khas warning box)
+                const warningDiv = potentialWarningContainer.querySelector('div[class*="border-"][class*="bg-"]');
+                if (warningDiv) {
+                    // Jika ditemukan, ambil teks dari span di dalamnya
+                    warningText = warningDiv.querySelector('p span')?.textContent?.trim() || warningDiv.textContent?.trim() || null;
+                }
+            }
+            hasil.peringatan = warningText;
+            // --- AKHIR REVISI PERINGATAN ---
+
+        } // Akhir if (currentSection)
 
 
         // --- Ekstrak Prakiraan Per Jam ---
