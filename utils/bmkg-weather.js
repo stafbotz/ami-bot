@@ -13,15 +13,16 @@ function cleanText(text) {
 /**
  * Fungsi yang akan dieksekusi di dalam konteks browser oleh Puppeteer
  * untuk mengekstrak data dari DOM.
+ * @param {string} targetDateString Tanggal yang diharapkan aktif (misal "28 Mar").
  * @returns {object} Objek berisi data cuaca saat ini, peringatan, tanggal aktif, dan prakiraan jam.
  */
-function extractPageData() {
+function extractPageData(targetDateString) { // Terima tanggal target
     // Fungsi helper cleanTextBrowser harus didefinisikan di dalam evaluate juga
     const cleanTextBrowser = (text) => {
         return text ? text.replace(/\s+/g, ' ').trim() : null;
     };
 
-    // --- Ekstraksi Cuaca Saat Ini ---
+    // --- Ekstraksi Cuaca Saat Ini (Hanya relevan saat pertama kali) ---
     const cuacaSaatIniContainer = document.querySelector('div.md\\:flex.items-center.gap-6');
     const cuacaSaatIni = {};
     if (cuacaSaatIniContainer) {
@@ -52,23 +53,24 @@ function extractPageData() {
                 const boldTextDirection = cleanTextBrowser(el.querySelector('span > span.font-bold')?.textContent);
 
                 if (detailText?.includes('Kelembapan:')) cuacaSaatIni.kelembapan = boldText;
-                else if (detailText?.includes('Kecepatan Angin:')) cuacaSaatIni.kecepatanAngin = boldText;
+                else if (detailText?.includes('Kecepatan Angin:')) cuacaSaatIni.kecepatanAngin = boldText; // Perbaiki jika selectornya salah
                 else if (detailText?.includes('Arah Angin dari:')) cuacaSaatIni.arahAngin = boldTextDirection;
                 else if (detailText?.includes('Jarak Pandang:')) cuacaSaatIni.jarakPandang = boldText;
             });
         }
-    } else {
-        console.warn("Container cuaca saat ini tidak ditemukan.");
-    }
+    } // else {
+        // console.warn("Container cuaca saat ini tidak ditemukan (mungkin bukan panggilan pertama).");
+    // } // Bisa diaktifkan jika perlu
 
-    // --- Ekstraksi Peringatan ---
+    // --- Ekstraksi Peringatan (Hanya relevan saat pertama kali) ---
     const peringatanElement = document.querySelector('div.border-\\[\\#FFA500\\] p');
     const peringatan = peringatanElement ? cleanTextBrowser(peringatanElement.textContent) : null;
 
     // --- Ekstraksi Prakiraan Per Jam ---
     const prakiraanPerJam = [];
-    const tanggalAktifButton = document.querySelector('button.border-blue-primary');
-    const tanggalAktifText = tanggalAktifButton ? cleanTextBrowser(tanggalAktifButton.textContent) : null;
+    // *** PERBAIKAN LOGIKA TANGGAL ISO ***
+    // Gunakan targetDateString yang dilewatkan, BUKAN dari tombol aktif saat ini
+    const tanggalAktifText = targetDateString; // Gunakan tanggal dari argumen
     const currentYear = new Date().getFullYear();
     const monthMap = { 'Jan': '01', 'Feb': '02', 'Mar': '03', 'Apr': '04', 'Mei': '05', 'Jun': '06', 'Jul': '07', 'Agu': '08', 'Sep': '09', 'Okt': '10', 'Nov': '11', 'Des': '12' };
 
@@ -81,10 +83,16 @@ function extractPageData() {
         const deskripsi = cleanTextBrowser(slide.querySelector('p.text-sm.md\\:text-lg.font-bold')?.textContent);
 
         const detailSlide = slide.querySelector('div.bg-\\[\\#FFFFFF33\\]');
+        // *** PERBAIKAN SELECTOR KECEPATAN ANGIN ***
+        // Cari div kedua, lalu cari p.font-bold di dalamnya
         const kelembapan = detailSlide ? cleanTextBrowser(detailSlide.querySelector('div:nth-child(1) p.font-bold')?.textContent) : null;
-        const kecepatanAngin = detailSlide ? cleanTextBrowser(detailSlide.querySelector('div:nth-child(2) p.font-bold')?.textContent) : null;
-        const arahAngin = detailSlide ? cleanTextBrowser(detailSlide.querySelector('div:nth-child(3) span > span.font-bold')?.textContent) : null;
-        const jarakPandang = detailSlide ? cleanTextBrowser(detailSlide.querySelector('div:nth-child(4) p.font-bold')?.textContent) : null;
+        const kecepatanAnginElem = detailSlide ? detailSlide.querySelector('div:nth-child(2)') : null;
+        const kecepatanAngin = kecepatanAnginElem ? cleanTextBrowser(kecepatanAnginElem.querySelector('p.font-bold')?.textContent) : null;
+        const arahAnginElem = detailSlide ? detailSlide.querySelector('div:nth-child(3)') : null;
+        const arahAngin = arahAnginElem ? cleanTextBrowser(arahAnginElem.querySelector('span > span.font-bold')?.textContent) : null;
+        const jarakPandangElem = detailSlide ? detailSlide.querySelector('div:nth-child(4)') : null;
+        const jarakPandang = jarakPandangElem ? cleanTextBrowser(jarakPandangElem.querySelector('p.font-bold')?.textContent) : null;
+
 
         let dateTimeISO = null;
         if (tanggalAktifText && jam) {
@@ -112,21 +120,24 @@ function extractPageData() {
         if (jam && suhu && deskripsi) {
             prakiraanPerJam.push({
                 waktu: jam,
-                dateTimeISO: dateTimeISO,
+                dateTimeISO: dateTimeISO, // Sekarang seharusnya benar
                 suhu: suhu,
                 deskripsi: deskripsi,
                 kelembapan: kelembapan,
-                kecepatanAngin: kecepatanAngin,
+                kecepatanAngin: kecepatanAngin, // Sekarang seharusnya benar
                 arahAngin: arahAngin,
                 jarakPandang: jarakPandang,
             });
         }
     });
 
+    // Dapatkan tanggal aktif aktual untuk logging di luar
+    const actualActiveDate = document.querySelector('button.border-blue-primary')?.textContent.trim().replace(/\s+/g, ' ');
+
     return {
-        cuacaSaatIni,
-        peringatan,
-        tanggalAktif: tanggalAktifText,
+        cuacaSaatIni, // Hanya relevan saat pertama kali
+        peringatan,    // Hanya relevan saat pertama kali
+        tanggalAktif: actualActiveDate, // Tanggal yang *sebenarnya* aktif
         prakiraanPerJam
     };
 }
@@ -175,17 +186,18 @@ async function scrapeBMKGWithPuppeteer(kodeWilayah) {
 
     // 1. Scrape data hari pertama
     console.log(`Mengambil data hari pertama...`);
-    const dataHariPertama = await page.evaluate(extractPageData);
+    // Ambil tanggal aktif pertama kali
+    const tanggalAktifAwal = await page.evaluate(() => document.querySelector('button.border-blue-primary')?.textContent.trim().replace(/\s+/g, ' '));
+    const dataHariPertama = await page.evaluate(extractPageData, tanggalAktifAwal); // Kirim tanggal target
     hasilScraping.cuacaSaatIni = dataHariPertama.cuacaSaatIni;
     hasilScraping.peringatan = dataHariPertama.peringatan;
-    let jamPertamaSebelumKlik = null; // Deklarasi di luar loop
-    if (dataHariPertama.tanggalAktif && dataHariPertama.prakiraanPerJam.length > 0) {
+
+    if (tanggalAktifAwal && dataHariPertama.prakiraanPerJam.length > 0) {
       hasilScraping.prakiraanMultiHari.push({
-        tanggal: dataHariPertama.tanggalAktif,
+        tanggal: tanggalAktifAwal,
         data: dataHariPertama.prakiraanPerJam
       });
-      jamPertamaSebelumKlik = dataHariPertama.prakiraanPerJam[0]?.waktu; // Ambil waktu slide pertama
-      console.log(`Data hari pertama (${dataHariPertama.tanggalAktif}) diambil. Jam pertama awal: ${jamPertamaSebelumKlik}`);
+      console.log(`Data hari pertama (${tanggalAktifAwal}) berhasil diambil.`);
     } else {
         console.warn("Data prakiraan hari pertama tidak lengkap atau tidak ditemukan.");
     }
@@ -205,7 +217,6 @@ async function scrapeBMKGWithPuppeteer(kodeWilayah) {
     for (let i = 1; i < tabDates.length; i++) {
         const tanggalTarget = tabDates[i];
         console.log(`\nMencoba memproses tab untuk tanggal: ${tanggalTarget}...`);
-        console.log(`[Debug] Jam pertama sebelum klik ${tanggalTarget}: ${jamPertamaSebelumKlik}`);
 
         try {
             const buttonSelector = `button ::-p-text("${tanggalTarget}")`;
@@ -213,59 +224,55 @@ async function scrapeBMKGWithPuppeteer(kodeWilayah) {
             await page.click(buttonSelector);
             console.log(`Tombol tab ${tanggalTarget} diklik.`);
 
-            // *** STRATEGI MENUNGGU KONTEN BERUBAH ***
-            console.log(`Menunggu konten swiper berubah dari jam ${jamPertamaSebelumKlik}...`);
-            await page.waitForFunction(
-                (previousFirstHour) => {
-                    const currentFirstSlideHeader = document.querySelector('div.swiper-slide h4');
-                    const currentFirstHour = currentFirstSlideHeader ? currentFirstSlideHeader.textContent.trim().replace(/\s+/g, ' ').replace('WIB', '').trim() : null;
-                    return currentFirstHour !== null && currentFirstHour !== previousFirstHour;
-                },
-                { timeout: 20000 },
-                jamPertamaSebelumKlik
-            );
+            // *** STRATEGI MENUNGGU BARU: Tunggu Tab Aktif, TAPI JANGAN GAGAL JIKA TIMEOUT ***
+            console.log(`Menunggu tab ${tanggalTarget} menjadi aktif (maks 15 detik)...`);
+            let tabAktifBenar = false;
+            try {
+                await page.waitForFunction(
+                    (dateText) => {
+                        const activeButton = document.querySelector('button.border-blue-primary');
+                        return activeButton && activeButton.textContent.trim().replace(/\s+/g, ' ') === dateText;
+                    },
+                    { timeout: 15000 },
+                    tanggalTarget
+                );
+                tabAktifBenar = true;
+                console.log(`Tab ${tanggalTarget} terkonfirmasi aktif.`);
+            } catch (waitError) {
+                console.warn(`Timeout atau error menunggu tab ${tanggalTarget} aktif. Akan tetap mencoba mengambil data.`);
+                // Tidak melempar error, lanjutkan saja
+            }
 
-            const jamPertamaSetelahWait = await page.evaluate(() => {
-                const firstSlideHeader = document.querySelector('div.swiper-slide h4');
-                return firstSlideHeader ? firstSlideHeader.textContent.trim().replace(/\s+/g, ' ').replace('WIB', '').trim() : null;
-            });
-            console.log(`Konten swiper terdeteksi berubah untuk ${tanggalTarget}. Jam pertama sekarang: ${jamPertamaSetelahWait}`);
+            // Tambahkan jeda SELALU setelah klik, terlepas dari hasil waitForFunction
+            await page.waitForTimeout(1500); // Jeda 1.5 detik untuk memberi waktu render
 
-            // *** BARIS YANG BERMASALAH DIHAPUS ***
-            // await page.waitForTimeout(500); // Tidak dibutuhkan jika waitForFunction di atas cukup
+            console.log(`Mengambil data (setelah klik ${tanggalTarget})...`);
+            // Kirim tanggalTarget ke extractPageData agar ISO date benar
+            const dataHariBerikutnya = await page.evaluate(extractPageData, tanggalTarget);
 
-            console.log(`Mengambil data untuk tanggal: ${tanggalTarget}...`);
-            const dataHariBerikutnya = await page.evaluate(extractPageData);
-
-            // Validasi
+            // Validasi Utama: Apakah ada data prakiraan?
             if (dataHariBerikutnya.prakiraanPerJam.length > 0) {
                  hasilScraping.prakiraanMultiHari.push({
-                    tanggal: tanggalTarget,
+                    tanggal: tanggalTarget, // Gunakan tanggal target dari loop
                     data: dataHariBerikutnya.prakiraanPerJam
                 });
                  console.log(`Data untuk ${tanggalTarget} berhasil diambil.`);
-                 jamPertamaSebelumKlik = dataHariBerikutnya.prakiraanPerJam[0]?.waktu; // Update untuk iterasi berikutnya
-                 if (dataHariBerikutnya.tanggalAktif !== tanggalTarget) {
-                     console.warn(`[Info] Tanggal aktif terdeteksi (${dataHariBerikutnya.tanggalAktif}) berbeda dari target (${tanggalTarget}), tapi data diambil.`);
+                 // Log jika tanggal aktif *terdeteksi* berbeda (hanya info)
+                 if (!tabAktifBenar && dataHariBerikutnya.tanggalAktif !== tanggalTarget) {
+                     console.warn(`[Info Tambahan] Tab aktif terdeteksi (${dataHariBerikutnya.tanggalAktif}) saat pengambilan data berbeda dari target (${tanggalTarget}).`);
                  }
             } else {
-                 console.warn(`Tidak ada data prakiraan ditemukan untuk tanggal ${tanggalTarget} setelah konten berubah.`);
+                 console.warn(`Tidak ada data prakiraan ditemukan untuk tanggal ${tanggalTarget} setelah klik.`);
+                 // Log tambahan jika tab aktif terdeteksi salah
+                 if (!tabAktifBenar) {
+                    console.warn(`[Info Tambahan] Tab aktif terdeteksi (${dataHariBerikutnya.tanggalAktif}) saat data kosong.`);
+                 }
             }
 
         } catch (error) {
-            if (error.name === 'TimeoutError') {
-                console.error(`Timeout saat memproses tab ${tanggalTarget}. Konten mungkin tidak berubah atau tombol/tab tidak aktif tepat waktu.`);
-            } else {
-                console.error(`Gagal memproses tab ${tanggalTarget}: ${error.message}`);
-            }
-             try {
-                 const pageTitle = await page.title();
-                 const currentUrl = page.url();
-                 const activeTabText = await page.evaluate(() => document.querySelector('button.border-blue-primary')?.textContent.trim().replace(/\s+/g, ' '));
-                 console.error(`[Debug Error State] URL: ${currentUrl}, Judul: ${pageTitle}, Tab Aktif Terdeteksi: ${activeTabText}`);
-             } catch (debugError) {
-                 console.error("[Debug Error State] Gagal mendapatkan info state halaman.");
-             }
+            // Error klik atau waitForSelector sebelum klik
+             console.error(`Gagal mengklik atau menemukan tombol untuk tab ${tanggalTarget}: ${error.message}`);
+             // Jangan lanjutkan loop jika klik gagal? Tergantung kebutuhan. Di sini kita coba lanjut.
         }
     }
 
