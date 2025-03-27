@@ -205,38 +205,34 @@ async function scrapeBMKGWithPuppeteer(kodeWilayah) {
     for (let i = 1; i < tabDates.length; i++) {
         const tanggalTarget = tabDates[i];
         console.log(`\nMencoba memproses tab untuk tanggal: ${tanggalTarget}...`);
-        console.log(`[Debug] Jam pertama sebelum klik ${tanggalTarget}: ${jamPertamaSebelumKlik}`); // Log jam sebelum klik
+        console.log(`[Debug] Jam pertama sebelum klik ${tanggalTarget}: ${jamPertamaSebelumKlik}`);
 
         try {
             const buttonSelector = `button ::-p-text("${tanggalTarget}")`;
-            // console.log(`Mencari dan mengklik tombol dengan selector: ${buttonSelector}`); // Log ini bisa di-skip
             await page.waitForSelector(buttonSelector, { timeout: 10000 });
             await page.click(buttonSelector);
             console.log(`Tombol tab ${tanggalTarget} diklik.`);
 
-            // *** STRATEGI MENUNGGU + DEBUGGING ***
+            // *** STRATEGI MENUNGGU KONTEN BERUBAH ***
             console.log(`Menunggu konten swiper berubah dari jam ${jamPertamaSebelumKlik}...`);
             await page.waitForFunction(
                 (previousFirstHour) => {
                     const currentFirstSlideHeader = document.querySelector('div.swiper-slide h4');
                     const currentFirstHour = currentFirstSlideHeader ? currentFirstSlideHeader.textContent.trim().replace(/\s+/g, ' ').replace('WIB', '').trim() : null;
-                    // Log di dalam browser console (akan muncul jika headless=false atau via page.on('console'))
-                    // console.log(`[Browser] Cek perubahan: Prev='${previousFirstHour}', Current='${currentFirstHour}'`);
                     return currentFirstHour !== null && currentFirstHour !== previousFirstHour;
                 },
-                { timeout: 20000 }, // Timeout 20 detik
-                jamPertamaSebelumKlik // Kirim jam sebelumnya ke fungsi
+                { timeout: 20000 },
+                jamPertamaSebelumKlik
             );
 
-             // Ambil jam pertama *setelah* waitForFunction berhasil
             const jamPertamaSetelahWait = await page.evaluate(() => {
                 const firstSlideHeader = document.querySelector('div.swiper-slide h4');
                 return firstSlideHeader ? firstSlideHeader.textContent.trim().replace(/\s+/g, ' ').replace('WIB', '').trim() : null;
             });
             console.log(`Konten swiper terdeteksi berubah untuk ${tanggalTarget}. Jam pertama sekarang: ${jamPertamaSetelahWait}`);
 
-            // *** PERBAIKAN DI SINI: Ganti waitForTimeout ***
-            await page.waitForTimeout(500); // Jeda singkat untuk render (0.5 detik)
+            // *** PERBAIKAN DI SINI: waitForTimeout() ***
+            await page.waitForTimeout(500); // Jeda singkat untuk render
 
             console.log(`Mengambil data untuk tanggal: ${tanggalTarget}...`);
             const dataHariBerikutnya = await page.evaluate(extractPageData);
@@ -244,28 +240,24 @@ async function scrapeBMKGWithPuppeteer(kodeWilayah) {
             // Validasi
             if (dataHariBerikutnya.prakiraanPerJam.length > 0) {
                  hasilScraping.prakiraanMultiHari.push({
-                    tanggal: tanggalTarget, // Gunakan tanggal dari loop
+                    tanggal: tanggalTarget,
                     data: dataHariBerikutnya.prakiraanPerJam
                 });
                  console.log(`Data untuk ${tanggalTarget} berhasil diambil.`);
-                 // Update jamPertamaSebelumKlik untuk iterasi berikutnya
-                 jamPertamaSebelumKlik = dataHariBerikutnya.prakiraanPerJam[0]?.waktu;
+                 jamPertamaSebelumKlik = dataHariBerikutnya.prakiraanPerJam[0]?.waktu; // Update untuk iterasi berikutnya
                  if (dataHariBerikutnya.tanggalAktif !== tanggalTarget) {
                      console.warn(`[Info] Tanggal aktif terdeteksi (${dataHariBerikutnya.tanggalAktif}) berbeda dari target (${tanggalTarget}), tapi data diambil.`);
                  }
             } else {
                  console.warn(`Tidak ada data prakiraan ditemukan untuk tanggal ${tanggalTarget} setelah konten berubah.`);
-                 // Jangan update jamPertamaSebelumKlik jika data gagal diambil
             }
 
         } catch (error) {
             if (error.name === 'TimeoutError') {
-                console.error(`Timeout saat memproses tab ${tanggalTarget}. Konten mungkin tidak berubah atau tombol tidak ditemukan/aktif.`);
+                console.error(`Timeout saat memproses tab ${tanggalTarget}. Konten mungkin tidak berubah atau tombol/tab tidak aktif tepat waktu.`);
             } else {
-                 // Error lain, seperti page.waitForTimeout yang salah
-                console.error(`Gagal memproses tab ${tanggalTarget}: ${error.message}`);
+                console.error(`Gagal memproses tab ${tanggalTarget}: ${error.message}`); // Akan menampilkan error waitForTimeout yg salah jika ada
             }
-             // Coba dapatkan info tambahan tentang state halaman saat error
              try {
                  const pageTitle = await page.title();
                  const currentUrl = page.url();
@@ -274,7 +266,6 @@ async function scrapeBMKGWithPuppeteer(kodeWilayah) {
              } catch (debugError) {
                  console.error("[Debug Error State] Gagal mendapatkan info state halaman.");
              }
-            // Lanjutkan ke tab berikutnya meskipun ada error di tab ini
         }
     }
 
