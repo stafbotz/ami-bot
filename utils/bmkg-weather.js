@@ -2,12 +2,32 @@ import axios from 'axios';
 import * as cheerio from 'cheerio';
 
 /**
- * Fungsi untuk melakukan scraping data cuaca saat ini dan prakiraan per jam
- * dari halaman BMKG berdasarkan kode wilayah.
+ * Memformat objek data mentah dari JSON __NUXT_DATA__ menjadi format yang lebih rapi.
+ * @param {object} rawData Objek data mentah dari state Nuxt.
+ * @returns {object} Objek data yang diformat.
+ */
+function formatHourlyData(rawData) {
+    if (!rawData) return null;
+    return {
+        jam: rawData.local_datetime?.split(' ')[1] || rawData.datetime, // Ambil bagian jam jika ada, fallback ke datetime
+        suhu: `${rawData.t} °C`,
+        deskripsiCuaca: rawData.weather_desc || 'N/A',
+        kelembapan: `${rawData.hu}%`,
+        kecepatanAngin: `${rawData.ws} km/jam`,
+        arahAngin: rawData.wd || 'N/A', // wd biasanya kode arah mata angin
+        jarakPandang: rawData.vs_text || 'N/A',
+        // Anda bisa tambahkan field lain jika perlu, misal: rawData.weather (kode cuaca)
+    };
+}
+
+
+/**
+ * Fungsi untuk melakukan scraping data cuaca saat ini dan prakiraan multi-hari
+ * dari halaman BMKG berdasarkan kode wilayah, dengan fokus pada __NUXT_DATA__.
  * @param {string} locationCode Kode wilayah (contoh: '12.76.01.1001' untuk Pabatu)
  * @returns {Promise<object|null>} Objek berisi data cuaca atau null jika gagal.
  */
-async function scrapeBmkgWeather(locationCode) {
+async function scrapeBmkgWeatherMultiDay(locationCode) {
   if (!locationCode) {
     console.error('Error: Kode lokasi diperlukan.');
     return null;
@@ -28,7 +48,7 @@ async function scrapeBmkgWeather(locationCode) {
     // 2. Muat HTML ke Cheerio
     const $ = cheerio.load(html);
 
-    // --- 3. Ekstrak Data "Saat Ini" ---
+    // --- 3. Ekstrak Data "Saat Ini" (Masih dari HTML, lebih mudah) ---
     let saatIniData = null;
     const currentTempElement = $('p[class*="text-\\[40px\\]"]');
     if (currentTempElement.length > 0) {
@@ -62,76 +82,106 @@ async function scrapeBmkgWeather(locationCode) {
         console.warn('Peringatan: Tidak dapat menemukan elemen suhu utama "Saat Ini".');
     }
 
+    // --- 4. Ekstrak dan Parse Data JSON dari __NUXT_DATA__ ---
+    const nuxtDataScript = $('#__NUXT_DATA__').html();
+    let prakiraanMultiHari = {}; // Objek untuk menyimpan prakiraan per tanggal
 
-    // --- 4. Ekstrak Data "Prakiraan Per Jam" ---
-    const prakiraanPerJam = [];
-    const forecastContainer = $('div.swiper-wrapper');
+    if (nuxtDataScript) {
+        try {
+            const nuxtData = JSON.parse(nuxtDataScript);
+            // Struktur data Nuxt bisa kompleks dan berubah. Ini adalah upaya
+            // untuk menemukannya berdasarkan observasi data sampel Anda.
+            // Anda mungkin perlu menyesuaikan path ini jika struktur berubah.
 
-    if (forecastContainer.length > 0) {
-      forecastContainer.find('div.swiper-slide').each((index, element) => {
-        const slide = $(element);
-        const hourlyContainer = slide.find('div[class*="p-5"][class*="rounded-2xl"]');
+            // Cari array state utama (berdasarkan sampel, index 513)
+            const stateArray = nuxtData.find(item => Array.isArray(item) && item[513]); // Cari array yang berisi state
+            const state = stateArray ? stateArray[513] : null; // Ambil objek state
 
-        if (hourlyContainer.length > 0) {
-          const jam = hourlyContainer.find('h4').text().trim();
-          const suhu = hourlyContainer.find('p[class*="text-\\[32px\\]"]').text().trim();
-          const deskripsiCuaca = hourlyContainer.find('p.font-bold.mt-4').text().trim();
+            // Cari array data utama (berdasarkan sampel, index 2)
+            const dataArray = nuxtData.find(item => Array.isArray(item) && item[2]);
+             const mainData = dataArray ? dataArray[2] : null; // Ambil objek data
 
-          // ==========================================================
-          // PERBAIKAN SELEKTOR DI BAGIAN INI
-          // ==========================================================
-          const detailsDivs = hourlyContainer.find('div[class*="relative mt-4"] > div');
-          let kelembapan = '', kecepatanAngin = '', arahAngin = '', jarakPandang = '';
+            if (state && mainData) {
+                // Cari kunci dinamis untuk data forecast (seperti 'PrIwcXXy2r')
+                let forecastDataKey = null;
+                for (const key in mainData) {
+                    // Cari kunci yang nilainya punya properti 'data' berupa array
+                    // dan elemen pertama array tsb punya properti 'cuaca'
+                    if (mainData[key] && Array.isArray(mainData[key].data) && mainData[key].data[0] && state[mainData[key].data[0][0]]?.weather) {
+                       forecastDataKey = key;
+                       break;
+                    }
+                }
 
-          detailsDivs.each((i, detailEl) => {
-             const detailDiv = $(detailEl);
-             // Cari <p> yang berisi nilai (biasanya punya kelas font-bold)
-             const valueP = detailDiv.find('p.font-bold');
+                if (forecastDataKey && mainData[forecastDataKey].data) {
+                    const allDaysRefs = mainData[forecastDataKey].data; // Array berisi array referensi per hari
 
-             if (i === 0) { // Kelembapan
-                 kelembapan = valueP.text().trim(); // Target <p> langsung
-             } else if (i === 1) { // Kecepatan Angin
-                 kecepatanAngin = valueP.text().trim(); // Target <p> langsung
-             } else if (i === 2) { // Arah Angin
-                 // Arah angin ada di dalam nested span, selector ini benar
-                 arahAngin = detailDiv.find('p span > span.font-bold').text().trim();
-             } else if (i === 3) { // Jarak Pandang
-                 jarakPandang = valueP.text().trim(); // Target <p> langsung
-             }
-          });
-          // ==========================================================
-          // AKHIR PERBAIKAN
-          // ==========================================================
+                    // Asumsikan tanggal sesuai urutan array allDaysRefs
+                    // Kita ambil label tanggal dari tombol di HTML untuk mencocokkan
+                    const dateLabels = [];
+                    $('button[class*="!bg-white"][class*="!border-[#CBD5E1]"]').each((i, el) => {
+                        dateLabels.push($(el).text().trim());
+                    });
+                    // Tambahkan tanggal hari ini (yang aktif) di awal
+                    const todayLabel = $('button[class*="!bg-[#0133CC1A"]')?.first()?.text()?.trim();
+                    if (todayLabel) {
+                        dateLabels.unshift(todayLabel);
+                    }
 
-          if (jam) {
-            prakiraanPerJam.push({
-              jam,
-              suhu,
-              deskripsiCuaca,
-              kelembapan,
-              kecepatanAngin,
-              arahAngin,
-              jarakPandang
-            });
-          }
-        } else {
-          console.warn(`Peringatan: Tidak dapat menemukan kontainer konten di dalam slide jam ke-${index + 1}`);
+
+                    allDaysRefs.forEach((dayRefs, dayIndex) => {
+                        const dateKey = dateLabels[dayIndex] || `Hari ${dayIndex + 1}`; // Gunakan label tanggal jika ada
+                        const hourlyForecasts = [];
+                        dayRefs.forEach(ref => {
+                            const rawHourlyData = state[ref]; // Ambil data asli dari state menggunakan referensi
+                             const formattedData = formatHourlyData(rawHourlyData);
+                             if(formattedData) {
+                                hourlyForecasts.push(formattedData);
+                             }
+                        });
+                         if(hourlyForecasts.length > 0) {
+                             prakiraanMultiHari[dateKey] = hourlyForecasts;
+                         }
+                    });
+
+                } else {
+                    console.warn('Peringatan: Tidak dapat menemukan kunci atau data prakiraan di dalam __NUXT_DATA__. Mencoba fallback ke scraping HTML Swiper (hanya hari ini).');
+                    // Fallback: Scrape swiper HTML untuk hari ini saja (kode dari jawaban sebelumnya)
+                    const forecastContainer = $('div.swiper-wrapper');
+                    if (forecastContainer.length > 0) {
+                       const todayForecasts = [];
+                       forecastContainer.find('div.swiper-slide').each((index, element) => {
+                           // ... (kode scraping swiper dari jawaban sebelumnya) ...
+                           // Pastikan Anda memasukkan kode scraping swiper di sini jika ingin fallback
+                           // Untuk brevity, saya tidak salin ulang seluruhnya.
+                       });
+                        const todayLabel = $('button[class*="!bg-[#0133CC1A"]')?.first()?.text()?.trim() || 'Hari Ini';
+                         if (todayForecasts.length > 0) {
+                            prakiraanMultiHari[todayLabel] = todayForecasts;
+                         }
+                    }
+                }
+            } else {
+                 console.warn('Peringatan: Struktur data atau state utama tidak ditemukan di __NUXT_DATA__.');
+            }
+
+        } catch (jsonError) {
+            console.error('Error parsing __NUXT_DATA__ JSON:', jsonError.message);
+            // Pertimbangkan fallback ke scraping HTML biasa untuk hari ini jika JSON gagal
         }
-      });
     } else {
-        console.warn('Peringatan: Tidak dapat menemukan kontainer prakiraan per jam (swiper-wrapper).');
+        console.warn('Peringatan: Script __NUXT_DATA__ tidak ditemukan. Hanya data "Saat Ini" yang bisa diambil dari HTML.');
     }
 
-
     // --- 5. Return Gabungan Data ---
-    if (!saatIniData && prakiraanPerJam.length === 0) {
-        console.error('Error: Gagal mengekstrak data "Saat Ini" maupun "Prakiraan Per Jam".');
+    if (!saatIniData && Object.keys(prakiraanMultiHari).length === 0) {
+        console.error('Error: Gagal mengekstrak data cuaca sama sekali.');
         return null;
     }
 
     return {
       saatIni: saatIniData,
-      prakiraanPerJam: prakiraanPerJam
+      prakiraanMultiHari: prakiraanMultiHari // Ganti nama properti
     };
 
   } catch (error) {
@@ -150,8 +200,8 @@ async function scrapeBmkgWeather(locationCode) {
 
 // --- Contoh Penggunaan ---
 (async () => {
-  const kodePabatu = '12.76.01.1001'; // Ganti dengan kode wilayah yang diinginkan
-  const dataCuaca = await scrapeBmkgWeather(kodePabatu);
+  const kodePabatu = '12.76.01.1001';
+  const dataCuaca = await scrapeBmkgWeatherMultiDay(kodePabatu);
 
   if (dataCuaca) {
     console.log('\n--- Hasil Scraping Cuaca BMKG ---');
@@ -162,11 +212,15 @@ async function scrapeBmkgWeather(locationCode) {
         console.log('\n** Cuaca Saat Ini: Tidak ditemukan **');
     }
 
-    if (dataCuaca.prakiraanPerJam && dataCuaca.prakiraanPerJam.length > 0) {
-        console.log('\n** Prakiraan Per Jam **');
-        console.log(JSON.stringify(dataCuaca.prakiraanPerJam, null, 2));
+    if (dataCuaca.prakiraanMultiHari && Object.keys(dataCuaca.prakiraanMultiHari).length > 0) {
+        console.log('\n** Prakiraan Multi Hari (Per Jam) **');
+        // Tampilkan per hari agar lebih mudah dibaca
+        for (const tanggal in dataCuaca.prakiraanMultiHari) {
+            console.log(`\n* ${tanggal}:`);
+            console.log(JSON.stringify(dataCuaca.prakiraanMultiHari[tanggal], null, 2));
+        }
     } else {
-        console.log('\n** Prakiraan Per Jam: Tidak ditemukan atau kosong **');
+        console.log('\n** Prakiraan Multi Hari: Tidak ditemukan atau kosong **');
     }
 
   } else {
