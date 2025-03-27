@@ -22,22 +22,21 @@ async function scrapeBmkgCuaca(kodeWilayah) {
         await page.setUserAgent('Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36');
 
         await page.goto(url, {
-            waitUntil: 'networkidle2',
+            waitUntil: 'networkidle2', // Cukup fleksibel
             timeout: 90000
         });
 
         console.log('Halaman berhasil dimuat.');
 
-        // Tunggu slider prakiraan jam, karena ini tampaknya paling konsisten
+        // Tunggu slider prakiraan jam
         try {
             await page.waitForSelector('.swiper-wrapper', { timeout: 20000 });
             console.log('Kontainer prakiraan jam ditemukan. Memulai ekstraksi data...');
         } catch (waitError) {
-            console.error('Kontainer prakiraan jam tidak ditemukan. Halaman mungkin tidak lengkap.');
-            // Log HTML saat gagal
+            console.error('Kontainer prakiraan jam tidak ditemukan setelah menunggu.');
             const htmlContent = await page.content();
             console.log("---------- HTML Content (Failure - Swiper) ----------");
-            console.log(htmlContent.substring(0, 5000));
+            console.log(htmlContent.substring(0, 5000)); // Log sebagian HTML untuk debug
             console.log("-----------------------------------------------------");
             throw new Error('Kontainer prakiraan jam tidak ditemukan');
         }
@@ -58,38 +57,33 @@ async function scrapeBmkgCuaca(kodeWilayah) {
             }
 
             // --- Lokasi ---
-            // Coba targetkan elemen p deskripsi dengan kelas yg lebih umum
-            const headingElement = document.querySelector('h1'); // Ambil H1 sebagai referensi
-            hasil.lokasi.nama = getCleanText(headingElement, /^Prakiraan Cuaca\s+/i); // Ambil nama dari H1
+            const headingElement = document.querySelector('h1');
+            hasil.lokasi.nama = getCleanText(headingElement, /^Prakiraan Cuaca\s+/i);
 
-            // Cari <p> setelah H1 yang berisi teks 'di'
+            // Cari <p> deskripsi dengan lebih toleran
+            const descriptionCandidates = Array.from(document.querySelectorAll('p.text-gray-primary.text-center'));
             let descriptionElement = null;
-            if (headingElement) {
-                 let sibling = headingElement.nextElementSibling;
-                 while(sibling) {
-                    if (sibling.tagName === 'P' && sibling.textContent?.toLowerCase().includes('prakiraan cuaca di')) {
-                        descriptionElement = sibling;
-                        break;
-                    }
-                    sibling = sibling.nextElementSibling;
-                 }
+            for (const p of descriptionCandidates) {
+                if (getText(p)?.toLowerCase().startsWith('prakiraan cuaca di')) {
+                    descriptionElement = p;
+                    break;
+                }
             }
 
             const descriptionTextRaw = getText(descriptionElement);
             if (descriptionTextRaw && descriptionTextRaw.includes(',')) {
                 const parts = descriptionTextRaw.split(',').map(part => part.trim());
-                 if (parts.length >= 4) { // Kelurahan, Kec, Kab, Prov
+                if (parts.length >= 4) { // Kelurahan, Kec, Kab, Prov
                     hasil.lokasi.provinsi = parts[parts.length - 1];
                     hasil.lokasi.kabupaten = parts[parts.length - 2].replace(/^Kabupaten\s+/i, '');
                     hasil.lokasi.kecamatan = parts[parts.length - 3].replace(/^Kecamatan\s+/i, '');
-                    // Nama dari H1 biasanya lebih akurat/singkat
+                    // Nama sudah diambil dari H1
                 } else if (parts.length === 3) { // Kab/Kota, Kec, Prov
-                     hasil.lokasi.provinsi = parts[parts.length - 1];
-                     hasil.lokasi.kecamatan = parts[parts.length - 2].replace(/^Kecamatan\s+/i, '');
-                     hasil.lokasi.kabupaten = parts[0].replace(/^Prakiraan cuaca di\s+/i, ''); // Asumsi bagian pertama adalah Kab/Kota
+                    hasil.lokasi.provinsi = parts[parts.length - 1];
+                    hasil.lokasi.kecamatan = parts[parts.length - 2].replace(/^Kecamatan\s+/i, '');
+                    hasil.lokasi.kabupaten = parts[0].replace(/^Prakiraan cuaca di\s+/i, '');
                 } else if (parts.length === 2) { // Lokasi, Prov
                     hasil.lokasi.provinsi = parts[parts.length - 1];
-                    // Kec/Kab tidak ada
                 }
             }
              if (!hasil.lokasi.kode) {
@@ -108,9 +102,8 @@ async function scrapeBmkgCuaca(kodeWilayah) {
             }
 
             // --- Cuaca Saat Ini ---
-            // Cari elemen 'Saat ini' sebagai anchor
             let currentTimeAnchor = null;
-            const timeElements = Array.from(document.querySelectorAll('time.font-medium')); // Cari semua <time>
+            const timeElements = Array.from(document.querySelectorAll('time.font-medium'));
             timeElements.forEach(t => {
                 if(getText(t)?.toLowerCase().startsWith('saat ini')) {
                     currentTimeAnchor = t;
@@ -118,22 +111,17 @@ async function scrapeBmkgCuaca(kodeWilayah) {
             });
 
             if (currentTimeAnchor) {
-                const currentSection = currentTimeAnchor.closest('div.md\\:flex'); // Cari parent div.md:flex terdekat
-
+                const currentSection = currentTimeAnchor.closest('div.md\\:flex');
                 if (currentSection) {
-                     const updateTimeEl = currentSection.querySelector('time span span'); // Cari span di dalam time
+                     const updateTimeEl = currentSection.querySelector('time span span');
                      hasil.cuacaSaatIni.waktuPembaruan = getCleanText(updateTimeEl, 'Pemutakhiran:');
 
-                    // Suhu: Cari <p> dengan angka dan '°C'
                      const tempEl = currentSection.querySelector('p[class*="text-"][class*="leading-"]');
                      hasil.cuacaSaatIni.suhu = getText(tempEl);
 
-                    // Deskripsi: Cari <p> font-medium di dekat suhu
                     const descEl = currentSection.querySelector('p.font-medium[class*="text-"]');
                      hasil.cuacaSaatIni.deskripsi = getText(descEl);
 
-                    // Detail (Kelembapan, Angin, dll.)
-                     // Cari container detail (flex, wrap, gap-3)
                      const detailContainer = currentSection.querySelector('.flex.flex-wrap.gap-3');
                      if (detailContainer) {
                         const detailElements = detailContainer.querySelectorAll(':scope > div.border');
@@ -153,18 +141,17 @@ async function scrapeBmkgCuaca(kodeWilayah) {
                         });
                     }
 
-                    // Peringatan (di bawah container detail)
-                     let potentialWarningContainer = detailContainer?.parentElement?.nextElementSibling; // Cari sibling setelah parent container detail
+                    // Peringatan
+                    let potentialWarningContainer = detailContainer?.parentElement?.nextElementSibling;
                      if(potentialWarningContainer && potentialWarningContainer.querySelector('svg path[d*="M8.485 2.495c"]')) {
                          const warningDiv = potentialWarningContainer.querySelector('div[class*="border-"]');
                          if (warningDiv) {
                             hasil.peringatan = warningDiv.querySelector('p span')?.textContent?.trim() || warningDiv.textContent?.trim() || null;
                          }
                      } else {
-                         // Coba cari di tempat lain jika tidak ketemu di sana
-                         const warningIcon = document.querySelector('svg path[d*="M8.485 2.495c"]'); // Cari ikon warning global
+                         const warningIcon = document.querySelector('svg path[d*="M8.485 2.495c"]');
                          const warningDivGlobal = warningIcon?.closest('div[class*="border-"]');
-                          if (warningDivGlobal && !warningDivGlobal.closest('.swiper-slide')) { // Pastikan bukan di slide
+                          if (warningDivGlobal && !warningDivGlobal.closest('.swiper-slide')) {
                             hasil.peringatan = warningDivGlobal.querySelector('p span')?.textContent?.trim() || warningDivGlobal.textContent?.trim() || null;
                           }
                      }
@@ -186,16 +173,37 @@ async function scrapeBmkgCuaca(kodeWilayah) {
                     if (detailBox) {
                         const detailItems = detailBox.querySelectorAll(':scope > div');
                         detailItems.forEach((item) => {
-                             const textContent = getText(item);
-                             const value = item.querySelector('p.font-bold')?.textContent?.trim();
+                            const textContent = getText(item);
+                            const value = item.querySelector('p.font-bold')?.textContent?.trim();
+                            const svgs = item.querySelectorAll('svg'); // Hitung SVG di dalam item
+
                              if (textContent) {
-                                if (textContent.includes('%')) jam.kelembapan = value || textContent.split(':').pop().trim();
-                                else if (textContent.toLowerCase().includes('km/jam')) jam.kecepatanAngin = value || textContent.split(':').pop().trim();
-                                else if (item.querySelector('svg[d*="M10 .833a9"]')) { // Cari ikon kompas untuk arah angin
-                                    const arahSpan = item.querySelector('span > span.font-bold');
-                                    jam.arahAngin = getText(arahSpan) || textContent.split(':').pop().split('<')[0].trim();
-                                }
-                                else if (item.querySelector('svg path[d*="M10 3.333c"]')) { // Cari ikon mata untuk jarak pandang
+                                if (textContent.includes('%')) {
+                                    jam.kelembapan = value || textContent.split(':').pop().trim();
+                                } else if (textContent.toLowerCase().includes('km/jam')) {
+                                    jam.kecepatanAngin = value || textContent.split(':').pop().trim();
+                                } else if (svgs.length >= 2) { // Identifikasi Arah Angin berdasarkan punya 2 SVG (kompas & panah)
+                                    const arahSpan = item.querySelector('span > span.font-bold'); // Target span bold di dalam span lain
+                                    jam.arahAngin = getText(arahSpan);
+                                    // Fallback jika struktur span berubah
+                                    if (!jam.arahAngin) {
+                                        // Coba ambil semua text node sebelum SVG pertama
+                                        let directionText = '';
+                                        let currentNode = item.querySelector('p')?.firstChild; // Mulai dari anak pertama <p>
+                                        while (currentNode) {
+                                            if (currentNode.nodeType === Node.TEXT_NODE) {
+                                                directionText += currentNode.textContent;
+                                            } else if (currentNode.nodeName === 'svg') {
+                                                break; // Berhenti jika ketemu SVG
+                                            } else if (currentNode.nodeType === Node.ELEMENT_NODE) {
+                                                 // Jika ada elemen lain (misal <span>), ambil teksnya juga
+                                                 directionText += currentNode.textContent;
+                                            }
+                                            currentNode = currentNode.nextSibling;
+                                        }
+                                        jam.arahAngin = directionText.replace(/Arah Angin dari:/i,'').trim() || null;
+                                    }
+                                } else if (textContent.toLowerCase().includes('km') || textContent.includes('>')) { // Jarak pandang
                                      jam.jarakPandang = value || textContent.split(':').pop().trim();
                                 }
                             }
@@ -205,8 +213,6 @@ async function scrapeBmkgCuaca(kodeWilayah) {
                 });
             }
 
-            // Hapus debug info sebelum return final
-            delete hasil._debug;
             return hasil;
         }, kodeWilayah);
 
@@ -215,7 +221,18 @@ async function scrapeBmkgCuaca(kodeWilayah) {
 
     } catch (error) {
         console.error(`Error saat scraping ${url}:`, error);
-        return null; // Return null pada error umum
+         // Log HTML saat error di evaluate
+        if (error.message.includes('evaluate')) {
+             try {
+                const htmlContent = await page.content();
+                console.log("---------- HTML Content (Evaluation Error) ----------");
+                console.log(htmlContent.substring(0, 5000));
+                console.log("-----------------------------------------------------");
+             } catch (htmlError) {
+                 console.error("Gagal mendapatkan HTML setelah error evaluate:", htmlError);
+             }
+        }
+        return null;
     } finally {
         if (browser) {
             await browser.close();
