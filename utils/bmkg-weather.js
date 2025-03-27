@@ -162,10 +162,9 @@ async function scrapeBMKGWithPuppeteer(kodeWilayah) {
     await page.setViewport({ width: 1366, height: 768 });
 
     console.log(`Navigasi ke halaman...`);
-    // *** PERUBAHAN DI SINI ***
     await page.goto(url, {
-        waitUntil: 'networkidle2', // Kembali ke networkidle2
-        timeout: 120000 // Tingkatkan timeout menjadi 120 detik
+        waitUntil: 'networkidle2',
+        timeout: 120000 // Timeout 120 detik
     });
 
     console.log(`Menunggu elemen kunci muncul...`);
@@ -193,7 +192,10 @@ async function scrapeBMKGWithPuppeteer(kodeWilayah) {
     const tabDates = [];
     for (const btn of allTabButtons) {
         const dateText = await page.evaluate(el => el.textContent.trim().replace(/\s+/g, ' '), btn);
-        if (dateText) tabDates.push(dateText);
+        // Filter tombol 'Contact Center 196' yang mungkin ikut terambil
+        if (dateText && !dateText.includes('Contact Center')) {
+            tabDates.push(dateText);
+        }
     }
     console.log(`Menemukan total ${tabDates.length} tab tanggal: ${tabDates.join(', ')}`);
 
@@ -203,16 +205,21 @@ async function scrapeBMKGWithPuppeteer(kodeWilayah) {
         console.log(`\nMencoba memproses tab untuk tanggal: ${tanggalTarget}...`);
 
         try {
-            const selectorTombol = `//button[contains(., "${tanggalTarget}")]`;
-            const [tabButton] = await page.$x(selectorTombol);
+            // *** PERUBAHAN DI SINI: Menggunakan page.waitForXPath ***
+            const selectorTombolXPath = `//button[contains(., "${tanggalTarget}")]`;
+            console.log(`Mencari tombol dengan XPath: ${selectorTombolXPath}`);
+            const tabButton = await page.waitForXPath(selectorTombolXPath, { timeout: 10000 }); // Tunggu tombol muncul
 
             if (!tabButton) {
-                console.warn(`Tidak dapat menemukan tombol untuk tanggal ${tanggalTarget}. Melanjutkan...`);
-                continue;
+                console.warn(`Tidak dapat menemukan tombol handle untuk tanggal ${tanggalTarget} menggunakan XPath. Melanjutkan...`);
+                continue; // Lanjut ke iterasi berikutnya
             }
 
             console.log(`Mengklik tab ${tanggalTarget}...`);
             await tabButton.click();
+
+            // Buang handle setelah diklik jika tidak diperlukan lagi
+            await tabButton.dispose();
 
             console.log(`Menunggu tab ${tanggalTarget} menjadi aktif...`);
             await page.waitForFunction(
@@ -244,10 +251,12 @@ async function scrapeBMKGWithPuppeteer(kodeWilayah) {
 
         } catch (error) {
             if (error.name === 'TimeoutError') {
-                console.error(`Timeout menunggu tab ${tanggalTarget} menjadi aktif. Data mungkin tidak dimuat.`);
+                // Bisa jadi timeout dari waitForXPath atau waitForFunction
+                console.error(`Timeout saat memproses tab ${tanggalTarget}. Data mungkin tidak dimuat atau tombol tidak ditemukan/aktif tepat waktu.`);
             } else {
                 console.error(`Gagal memproses tab ${tanggalTarget}: ${error.message}`);
             }
+            // Lanjutkan ke tab berikutnya meskipun ada error di tab ini
         }
     }
 
