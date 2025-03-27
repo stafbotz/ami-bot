@@ -2,11 +2,12 @@ import axios from 'axios';
 import * as cheerio from 'cheerio';
 
 /**
- * Fungsi untuk melakukan scraping data cuaca saat ini dari halaman BMKG berdasarkan kode wilayah.
+ * Fungsi untuk melakukan scraping data cuaca saat ini dan prakiraan per jam
+ * dari halaman BMKG berdasarkan kode wilayah.
  * @param {string} locationCode Kode wilayah (contoh: '12.76.01.1001' untuk Pabatu)
- * @returns {Promise<object|null>} Objek berisi data cuaca saat ini atau null jika gagal.
+ * @returns {Promise<object|null>} Objek berisi data cuaca atau null jika gagal.
  */
-async function scrapeBmkgCurrentWeather(locationCode) {
+async function scrapeBmkgWeather(locationCode) {
   if (!locationCode) {
     console.error('Error: Kode lokasi diperlukan.');
     return null;
@@ -18,68 +19,126 @@ async function scrapeBmkgCurrentWeather(locationCode) {
   try {
     // 1. Ambil HTML dari URL
     const response = await axios.get(url, {
-        // Tambahkan header User-Agent untuk meniru browser
-         headers: {
-            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
-         }
+      headers: {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
+      }
     });
     const html = response.data;
 
     // 2. Muat HTML ke Cheerio
     const $ = cheerio.load(html);
 
-    // 3. Cari kontainer utama untuk bagian "Saat ini"
-    //    Kita cari elemen unik di dekatnya, misalnya <p> dengan suhu besar
+    // --- 3. Ekstrak Data "Saat Ini" ---
+    let saatIniData = null;
     const currentTempElement = $('p[class*="text-\\[40px\\]"]'); // Cari elemen suhu
-    if (currentTempElement.length === 0) {
-        console.error('Tidak dapat menemukan elemen suhu utama. Struktur halaman mungkin berubah.');
-        return null;
+    if (currentTempElement.length > 0) {
+        const currentContentDiv = currentTempElement.closest('div.mt-6.md\\:mt-0');
+        if (currentContentDiv.length > 0) {
+            const pemutakhiranText = currentContentDiv.find('time > span > span').text().trim();
+            const suhu = currentTempElement.text().trim();
+            const deskripsiCuaca = currentContentDiv.find('div[class*="md:flex"] > p.text-black-primary').first().text().trim();
+            const lokasi = currentContentDiv.find('div[class*="md:flex"] > p.text-\\[\\#475569\\]').text().trim().replace('di ', '');
+
+            const detailContainer = currentContentDiv.find('div.relative.mt-5');
+            const kelembapan = detailContainer.find('p:contains("Kelembapan:") span.font-bold').text().trim();
+            const kecepatanAngin = detailContainer.find('p:contains("Kecepatan Angin:") span.font-bold').text().trim();
+            const arahAngin = detailContainer.find('p:contains("Arah Angin dari:") span > span.font-bold').text().trim();
+            const jarakPandang = detailContainer.find('p:contains("Jarak Pandang:") span.font-bold').text().trim();
+
+            saatIniData = {
+              pemutakhiran: pemutakhiranText.replace('Pemutakhiran: ', ''),
+              suhu: suhu,
+              deskripsiCuaca: deskripsiCuaca,
+              lokasi: lokasi,
+              kelembapan: kelembapan,
+              kecepatanAngin: kecepatanAngin,
+              arahAngin: arahAngin,
+              jarakPandang: jarakPandang
+            };
+        } else {
+            console.warn('Peringatan: Tidak dapat menemukan kontainer konten "Saat Ini".');
+        }
+    } else {
+        console.warn('Peringatan: Tidak dapat menemukan elemen suhu utama "Saat Ini".');
     }
-    // Naik ke kontainer utama berdasarkan struktur yang diobservasi
-    const currentContentDiv = currentTempElement.closest('div.mt-6.md\\:mt-0');
-     if (currentContentDiv.length === 0) {
-        console.error('Tidak dapat menemukan kontainer konten utama "Saat ini". Struktur halaman mungkin berubah.');
-        return null;
+
+
+    // --- 4. Ekstrak Data "Prakiraan Per Jam" ---
+    const prakiraanPerJam = [];
+    const forecastContainer = $('div.swiper-wrapper'); // Kontainer utama untuk slider
+
+    if (forecastContainer.length > 0) {
+      forecastContainer.find('div.swiper-slide').each((index, element) => {
+        const slide = $(element);
+        // Cari kontainer konten di dalam slide (kelasnya bisa sedikit berbeda, cari yang paling konsisten)
+        const hourlyContainer = slide.find('div[class*="p-5"][class*="rounded-2xl"]'); // Cari div dengan padding dan rounded
+
+        if (hourlyContainer.length > 0) {
+          const jam = hourlyContainer.find('h4').text().trim();
+          const suhu = hourlyContainer.find('p[class*="text-\\[32px\\]"]').text().trim(); // Suhu di prakiraan biasanya lebih kecil
+          const deskripsiCuaca = hourlyContainer.find('p.font-bold.mt-4').text().trim(); // Deskripsi di bawah suhu
+
+          // Cari detail kelembapan, angin, jarak pandang
+          const detailsDivs = hourlyContainer.find('div[class*="relative mt-4"] > div'); // Div yang berisi detail per baris
+          let kelembapan = '', kecepatanAngin = '', arahAngin = '', jarakPandang = '';
+
+          detailsDivs.each((i, detailEl) => {
+             const detailDiv = $(detailEl);
+             // Cari teks bold yang merupakan nilainya
+             const value = detailDiv.find('p span.font-bold').text().trim();
+             // Cek ikon atau urutan untuk menentukan jenis data
+             if (i === 0) { // Asumsikan urutan: Kelembapan
+                 kelembapan = value;
+             } else if (i === 1) { // Asumsikan urutan: Kecepatan Angin
+                 kecepatanAngin = value;
+             } else if (i === 2) { // Asumsikan urutan: Arah Angin
+                 // Ambil teks bold dari span di dalam span utama
+                 arahAngin = detailDiv.find('p span > span.font-bold').text().trim();
+             } else if (i === 3) { // Asumsikan urutan: Jarak Pandang
+                 jarakPandang = value;
+             }
+          });
+
+
+          if (jam) { // Hanya tambahkan jika jam ditemukan (menghindari slide kosong/template)
+            prakiraanPerJam.push({
+              jam,
+              suhu,
+              deskripsiCuaca,
+              kelembapan,
+              kecepatanAngin,
+              arahAngin,
+              jarakPandang
+            });
+          }
+        } else {
+          console.warn(`Peringatan: Tidak dapat menemukan kontainer konten di dalam slide jam ke-${index + 1}`);
+        }
+      });
+    } else {
+        console.warn('Peringatan: Tidak dapat menemukan kontainer prakiraan per jam (swiper-wrapper).');
     }
 
-    // 4. Ekstrak data menggunakan selector Cheerio
-    const pemutakhiranText = currentContentDiv.find('time > span > span').text().trim();
-    const suhu = currentTempElement.text().trim();
-    const deskripsiCuaca = currentContentDiv.find('div[class*="md:flex"] > p.text-black-primary').first().text().trim();
-    const lokasi = currentContentDiv.find('div[class*="md:flex"] > p.text-\\[\\#475569\\]').text().trim().replace('di ', ''); // Hapus 'di '
 
-    // Ekstrak detail tambahan (Kelembapan, Angin, Jarak Pandang)
-    const detailContainer = currentContentDiv.find('div.relative.mt-5');
-    const kelembapan = detailContainer.find('p:contains("Kelembapan:") span.font-bold').text().trim();
-    const kecepatanAngin = detailContainer.find('p:contains("Kecepatan Angin:") span.font-bold').text().trim();
-    const arahAngin = detailContainer.find('p:contains("Arah Angin dari:") span > span.font-bold').text().trim();
-    const jarakPandang = detailContainer.find('p:contains("Jarak Pandang:") span.font-bold').text().trim();
+    // --- 5. Return Gabungan Data ---
+    if (!saatIniData && prakiraanPerJam.length === 0) {
+        console.error('Error: Gagal mengekstrak data "Saat Ini" maupun "Prakiraan Per Jam".');
+        return null; // Gagal total
+    }
 
-    // 5. Format data ke dalam objek JSON
-    const weatherData = {
-      pemutakhiran: pemutakhiranText.replace('Pemutakhiran: ', ''), // Hapus label
-      suhu: suhu,
-      deskripsiCuaca: deskripsiCuaca,
-      lokasi: lokasi,
-      kelembapan: kelembapan,
-      kecepatanAngin: kecepatanAngin,
-      arahAngin: arahAngin,
-      jarakPandang: jarakPandang
+    return {
+      saatIni: saatIniData,
+      prakiraanPerJam: prakiraanPerJam
     };
-
-    return weatherData;
 
   } catch (error) {
     if (error.response) {
-      // Server merespons dengan status error (misalnya 404, 500)
       console.error(`Error: Gagal mengambil data. Status: ${error.response.status} - ${error.response.statusText}`);
       console.error(`URL: ${url}`);
     } else if (error.request) {
-      // Request dibuat tapi tidak ada respons (misalnya masalah jaringan)
       console.error('Error: Tidak ada respons dari server. Cek koneksi internet atau URL.');
-       console.error(`URL: ${url}`);
+      console.error(`URL: ${url}`);
     } else {
-      // Error lain saat setup request atau parsing
       console.error('Error saat scraping:', error.message);
     }
     return null;
@@ -89,22 +148,27 @@ async function scrapeBmkgCurrentWeather(locationCode) {
 // --- Contoh Penggunaan ---
 (async () => {
   const kodePabatu = '12.76.01.1001'; // Ganti dengan kode wilayah yang diinginkan
-  const dataCuacaPabatu = await scrapeBmkgCurrentWeather(kodePabatu);
+  const dataCuaca = await scrapeBmkgWeather(kodePabatu);
 
-  if (dataCuacaPabatu) {
-    console.log('\n--- Data Cuaca Saat Ini ---');
-    console.log(JSON.stringify(dataCuacaPabatu, null, 2)); // Tampilkan JSON dengan format rapi
+  if (dataCuaca) {
+    console.log('\n--- Hasil Scraping Cuaca BMKG ---');
+    // Tampilkan data "Saat Ini" jika ada
+    if (dataCuaca.saatIni) {
+        console.log('\n** Cuaca Saat Ini **');
+        console.log(JSON.stringify(dataCuaca.saatIni, null, 2));
+    } else {
+        console.log('\n** Cuaca Saat Ini: Tidak ditemukan **');
+    }
+
+    // Tampilkan data "Prakiraan Per Jam" jika ada
+    if (dataCuaca.prakiraanPerJam && dataCuaca.prakiraanPerJam.length > 0) {
+        console.log('\n** Prakiraan Per Jam **');
+        console.log(JSON.stringify(dataCuaca.prakiraanPerJam, null, 2));
+    } else {
+        console.log('\n** Prakiraan Per Jam: Tidak ditemukan atau kosong **');
+    }
+
   } else {
-    console.log('\nGagal mendapatkan data cuaca.');
+    console.log('\nGagal mendapatkan data cuaca secara keseluruhan.');
   }
-
-  // Contoh lain (misal Jakarta Pusat - Kemayoran)
-  // const kodeJakarta = '31.71.03.1001';
-  // const dataCuacaJakarta = await scrapeBmkgCurrentWeather(kodeJakarta);
-  // if (dataCuacaJakarta) {
-  //   console.log('\n--- Data Cuaca Saat Ini (Jakarta) ---');
-  //   console.log(JSON.stringify(dataCuacaJakarta, null, 2));
-  // } else {
-  //   console.log('\nGagal mendapatkan data cuaca Jakarta.');
-  // }
 })();
