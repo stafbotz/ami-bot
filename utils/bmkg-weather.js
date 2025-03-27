@@ -204,25 +204,18 @@ async function scrapeBMKGWithPuppeteer(kodeWilayah) {
         console.log(`\nMencoba memproses tab untuk tanggal: ${tanggalTarget}...`);
 
         try {
-            // *** PERUBAHAN DI SINI: Cari dan klik menggunakan page.evaluate ***
-            const clickSuccess = await page.evaluate((targetDate) => {
-                const buttons = Array.from(document.querySelectorAll('button.border-\\[\\#CBD5E1\\]')); // Cari hanya yang tidak aktif
-                const buttonToClick = buttons.find(btn => btn.textContent.trim().replace(/\s+/g, ' ') === targetDate);
-                if (buttonToClick) {
-                    buttonToClick.click();
-                    return true; // Berhasil menemukan dan mengklik
-                }
-                return false; // Tidak menemukan tombol
-            }, tanggalTarget); // Kirim tanggalTarget ke dalam evaluate
+            // *** PERUBAHAN DI SINI: Gunakan page.click dengan selector teks ***
+            // Selector ini mencari button yang mengandung teks tanggal target.
+            // Menggunakan '::-p-text' adalah cara Puppeteer (seringkali) untuk menargetkan teks.
+            // Perlu diapit dengan benar.
+            const buttonSelector = `button ::-p-text("${tanggalTarget}")`;
 
-            if (!clickSuccess) {
-                console.warn(`Tidak dapat menemukan tombol untuk tanggal ${tanggalTarget} di dalam DOM. Melanjutkan...`);
-                continue; // Lanjut ke iterasi berikutnya
-            }
+            console.log(`Mencari dan mengklik tombol dengan selector: ${buttonSelector}`);
+            await page.waitForSelector(buttonSelector, { timeout: 10000 }); // Tunggu tombol ada
+            await page.click(buttonSelector);
             console.log(`Tombol tab ${tanggalTarget} diklik.`);
 
-
-            // *** STRATEGI MENUNGGU TETAP PENTING ***
+            // *** STRATEGI MENUNGGU SETELAH KLIK ***
             console.log(`Menunggu tab ${tanggalTarget} menjadi aktif...`);
             await page.waitForFunction(
                  (dateText) => {
@@ -234,7 +227,7 @@ async function scrapeBMKGWithPuppeteer(kodeWilayah) {
              );
              console.log(`Tab ${tanggalTarget} aktif.`);
 
-             // Jeda singkat untuk render
+             // Jeda singkat untuk render (opsional)
              await page.waitForTimeout(500);
 
             console.log(`Mengambil data untuk tanggal: ${tanggalTarget}...`);
@@ -255,10 +248,12 @@ async function scrapeBMKGWithPuppeteer(kodeWilayah) {
 
         } catch (error) {
             if (error.name === 'TimeoutError') {
-                console.error(`Timeout menunggu tab ${tanggalTarget} menjadi aktif. Data mungkin tidak dimuat.`);
+                // Bisa jadi timeout dari waitForSelector, click, atau waitForFunction
+                console.error(`Timeout saat memproses tab ${tanggalTarget}. Tombol mungkin tidak ditemukan atau tab tidak aktif tepat waktu.`);
             } else {
                 console.error(`Gagal memproses tab ${tanggalTarget}: ${error.message}`);
             }
+            // Lanjutkan ke tab berikutnya meskipun ada error di tab ini
         }
     }
 
