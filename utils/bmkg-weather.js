@@ -14,7 +14,7 @@ async function scrapeBmkgCuaca(kodeWilayah) {
 
     try {
         browser = await puppeteer.launch({
-            headless: true, // Ganti jadi false untuk debug visual jika perlu
+            headless: true,
             args: ['--no-sandbox', '--disable-setuid-sandbox']
         });
 
@@ -22,13 +22,12 @@ async function scrapeBmkgCuaca(kodeWilayah) {
         await page.setUserAgent('Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36');
 
         await page.goto(url, {
-            waitUntil: 'networkidle2', // Cukup fleksibel
+            waitUntil: 'networkidle2',
             timeout: 90000
         });
 
         console.log('Halaman berhasil dimuat.');
 
-        // Tunggu slider prakiraan jam
         try {
             await page.waitForSelector('.swiper-wrapper', { timeout: 20000 });
             console.log('Kontainer prakiraan jam ditemukan. Memulai ekstraksi data...');
@@ -36,19 +35,27 @@ async function scrapeBmkgCuaca(kodeWilayah) {
             console.error('Kontainer prakiraan jam tidak ditemukan setelah menunggu.');
             const htmlContent = await page.content();
             console.log("---------- HTML Content (Failure - Swiper) ----------");
-            console.log(htmlContent.substring(0, 5000)); // Log sebagian HTML untuk debug
+            console.log(htmlContent.substring(0, 5000));
             console.log("-----------------------------------------------------");
             throw new Error('Kontainer prakiraan jam tidak ditemukan');
         }
 
         const data = await page.evaluate((inputKodeWilayah) => {
+            // --- PERUBAHAN DI SINI ---
             const hasil = {
-                lokasi: { kode: inputKodeWilayah || null, nama: null, provinsi: null, kabupaten: null, kecamatan: null },
+                lokasi: {
+                    kode: inputKodeWilayah || null,
+                    kelurahan: null, // Ganti nama menjadi kelurahan
+                    provinsi: null,
+                    kabupaten: null,
+                    kecamatan: null
+                },
                 timezone: null,
                 cuacaSaatIni: { waktuPembaruan: null, suhu: null, deskripsi: null, kelembapan: null, kecepatanAngin: null, arahAngin: null, jarakPandang: null },
                 peringatan: null,
                 prakiraanPerJam: [],
             };
+             // --- AKHIR PERUBAHAN ---
 
             const getText = (element) => element?.textContent?.trim() || null;
             const getCleanText = (element, prefixToRemove) => {
@@ -58,9 +65,9 @@ async function scrapeBmkgCuaca(kodeWilayah) {
 
             // --- Lokasi ---
             const headingElement = document.querySelector('h1');
-            hasil.lokasi.nama = getCleanText(headingElement, /^Prakiraan Cuaca\s+/i);
+             // --- PERUBAHAN DI SINI ---
+            hasil.lokasi.kelurahan = getCleanText(headingElement, /^Prakiraan Cuaca\s+/i); // Ambil nama dari H1
 
-            // Cari <p> deskripsi dengan lebih toleran
             const descriptionCandidates = Array.from(document.querySelectorAll('p.text-gray-primary.text-center'));
             let descriptionElement = null;
             for (const p of descriptionCandidates) {
@@ -73,17 +80,27 @@ async function scrapeBmkgCuaca(kodeWilayah) {
             const descriptionTextRaw = getText(descriptionElement);
             if (descriptionTextRaw && descriptionTextRaw.includes(',')) {
                 const parts = descriptionTextRaw.split(',').map(part => part.trim());
-                if (parts.length >= 4) { // Kelurahan, Kec, Kab, Prov
+                 if (parts.length >= 4) { // Kelurahan, Kec, Kab, Prov
                     hasil.lokasi.provinsi = parts[parts.length - 1];
                     hasil.lokasi.kabupaten = parts[parts.length - 2].replace(/^Kabupaten\s+/i, '');
                     hasil.lokasi.kecamatan = parts[parts.length - 3].replace(/^Kecamatan\s+/i, '');
-                    // Nama sudah diambil dari H1
+                    // --- PERUBAHAN DI SINI ---
+                    // Ambil kelurahan dari deskripsi jika H1 tidak akurat
+                    const namaDariDesc = parts[0].replace(/^Prakiraan cuaca di\s+/i, '');
+                    if(namaDariDesc) hasil.lokasi.kelurahan = namaDariDesc; // Timpa jika ada dari deskripsi
                 } else if (parts.length === 3) { // Kab/Kota, Kec, Prov
-                    hasil.lokasi.provinsi = parts[parts.length - 1];
-                    hasil.lokasi.kecamatan = parts[parts.length - 2].replace(/^Kecamatan\s+/i, '');
-                    hasil.lokasi.kabupaten = parts[0].replace(/^Prakiraan cuaca di\s+/i, '');
+                     hasil.lokasi.provinsi = parts[parts.length - 1];
+                     hasil.lokasi.kecamatan = parts[parts.length - 2].replace(/^Kecamatan\s+/i, '');
+                     hasil.lokasi.kabupaten = parts[0].replace(/^Prakiraan cuaca di\s+/i, '');
+                     // Jika nama dari H1 null, gunakan nama kabupaten/kota sebagai kelurahan
+                     if (!hasil.lokasi.kelurahan) hasil.lokasi.kelurahan = hasil.lokasi.kabupaten;
                 } else if (parts.length === 2) { // Lokasi, Prov
                     hasil.lokasi.provinsi = parts[parts.length - 1];
+                    // Jika nama dari H1 null, coba ambil dari deskripsi
+                     if (!hasil.lokasi.kelurahan) {
+                        const namaMatch = parts[0].match(/di\s+(.*?)$/i);
+                        hasil.lokasi.kelurahan = namaMatch ? namaMatch[1].trim() : parts[0].replace(/^Prakiraan cuaca di\s+/i, '');
+                     }
                 }
             }
              if (!hasil.lokasi.kode) {
@@ -101,63 +118,62 @@ async function scrapeBmkgCuaca(kodeWilayah) {
                 hasil.timezone = match ? match[0] : null;
             }
 
-            // --- Cuaca Saat Ini ---
-            let currentTimeAnchor = null;
-            const timeElements = Array.from(document.querySelectorAll('time.font-medium'));
-            timeElements.forEach(t => {
-                if(getText(t)?.toLowerCase().startsWith('saat ini')) {
-                    currentTimeAnchor = t;
-                }
-            });
+             // --- Cuaca Saat Ini ---
+             let currentTimeAnchor = null;
+             const timeElements = Array.from(document.querySelectorAll('time.font-medium'));
+             timeElements.forEach(t => {
+                 if(getText(t)?.toLowerCase().startsWith('saat ini')) {
+                     currentTimeAnchor = t;
+                 }
+             });
 
-            if (currentTimeAnchor) {
-                const currentSection = currentTimeAnchor.closest('div.md\\:flex');
-                if (currentSection) {
-                     const updateTimeEl = currentSection.querySelector('time span span');
-                     hasil.cuacaSaatIni.waktuPembaruan = getCleanText(updateTimeEl, 'Pemutakhiran:');
+             if (currentTimeAnchor) {
+                 const currentSection = currentTimeAnchor.closest('div.md\\:flex');
+                 if (currentSection) {
+                      const updateTimeEl = currentSection.querySelector('time span span');
+                      hasil.cuacaSaatIni.waktuPembaruan = getCleanText(updateTimeEl, 'Pemutakhiran:');
 
-                     const tempEl = currentSection.querySelector('p[class*="text-"][class*="leading-"]');
-                     hasil.cuacaSaatIni.suhu = getText(tempEl);
+                      const tempEl = currentSection.querySelector('p[class*="text-"][class*="leading-"]');
+                      hasil.cuacaSaatIni.suhu = getText(tempEl);
 
-                    const descEl = currentSection.querySelector('p.font-medium[class*="text-"]');
-                     hasil.cuacaSaatIni.deskripsi = getText(descEl);
+                     const descEl = currentSection.querySelector('p.font-medium[class*="text-"]');
+                      hasil.cuacaSaatIni.deskripsi = getText(descEl);
 
-                     const detailContainer = currentSection.querySelector('.flex.flex-wrap.gap-3');
-                     if (detailContainer) {
-                        const detailElements = detailContainer.querySelectorAll(':scope > div.border');
-                        detailElements.forEach(div => {
-                            const textContent = getText(div);
-                            const valueSpan = div.querySelector('span.font-bold');
-                            const value = getText(valueSpan);
-                            if (textContent) {
-                                if (textContent.includes('Kelembapan')) hasil.cuacaSaatIni.kelembapan = value || null;
-                                else if (textContent.includes('Kecepatan Angin')) hasil.cuacaSaatIni.kecepatanAngin = value || null;
-                                else if (textContent.includes('Arah Angin')) {
-                                    const directionSpans = div.querySelectorAll('span.font-bold');
-                                    hasil.cuacaSaatIni.arahAngin = directionSpans.length > 0 ? getText(directionSpans[directionSpans.length - 1]) : null;
-                                }
-                                else if (textContent.includes('Jarak Pandang')) hasil.cuacaSaatIni.jarakPandang = value || null;
-                            }
-                        });
-                    }
-
-                    // Peringatan
-                    let potentialWarningContainer = detailContainer?.parentElement?.nextElementSibling;
-                     if(potentialWarningContainer && potentialWarningContainer.querySelector('svg path[d*="M8.485 2.495c"]')) {
-                         const warningDiv = potentialWarningContainer.querySelector('div[class*="border-"]');
-                         if (warningDiv) {
-                            hasil.peringatan = warningDiv.querySelector('p span')?.textContent?.trim() || warningDiv.textContent?.trim() || null;
-                         }
-                     } else {
-                         const warningIcon = document.querySelector('svg path[d*="M8.485 2.495c"]');
-                         const warningDivGlobal = warningIcon?.closest('div[class*="border-"]');
-                          if (warningDivGlobal && !warningDivGlobal.closest('.swiper-slide')) {
-                            hasil.peringatan = warningDivGlobal.querySelector('p span')?.textContent?.trim() || warningDivGlobal.textContent?.trim() || null;
-                          }
+                      const detailContainer = currentSection.querySelector('.flex.flex-wrap.gap-3');
+                      if (detailContainer) {
+                         const detailElements = detailContainer.querySelectorAll(':scope > div.border');
+                         detailElements.forEach(div => {
+                             const textContent = getText(div);
+                             const valueSpan = div.querySelector('span.font-bold');
+                             const value = getText(valueSpan);
+                             if (textContent) {
+                                 if (textContent.includes('Kelembapan')) hasil.cuacaSaatIni.kelembapan = value || null;
+                                 else if (textContent.includes('Kecepatan Angin')) hasil.cuacaSaatIni.kecepatanAngin = value || null;
+                                 else if (textContent.includes('Arah Angin')) {
+                                     const directionSpans = div.querySelectorAll('span.font-bold');
+                                     hasil.cuacaSaatIni.arahAngin = directionSpans.length > 0 ? getText(directionSpans[directionSpans.length - 1]) : null;
+                                 }
+                                 else if (textContent.includes('Jarak Pandang')) hasil.cuacaSaatIni.jarakPandang = value || null;
+                             }
+                         });
                      }
-                }
-            }
 
+                     // Peringatan
+                      let potentialWarningContainer = detailContainer?.parentElement?.nextElementSibling;
+                      if(potentialWarningContainer && potentialWarningContainer.querySelector('svg path[d*="M8.485 2.495c"]')) {
+                          const warningDiv = potentialWarningContainer.querySelector('div[class*="border-"]');
+                          if (warningDiv) {
+                             hasil.peringatan = warningDiv.querySelector('p span')?.textContent?.trim() || warningDiv.textContent?.trim() || null;
+                          }
+                      } else {
+                          const warningIcon = document.querySelector('svg path[d*="M8.485 2.495c"]');
+                          const warningDivGlobal = warningIcon?.closest('div[class*="border-"]');
+                           if (warningDivGlobal && !warningDivGlobal.closest('.swiper-slide')) {
+                             hasil.peringatan = warningDivGlobal.querySelector('p span')?.textContent?.trim() || warningDivGlobal.textContent?.trim() || null;
+                           }
+                      }
+                 }
+             }
 
             // --- Prakiraan Per Jam ---
             const hourlyContainer = document.querySelector('.swiper-wrapper');
@@ -173,40 +189,34 @@ async function scrapeBmkgCuaca(kodeWilayah) {
                     if (detailBox) {
                         const detailItems = detailBox.querySelectorAll(':scope > div');
                         detailItems.forEach((item) => {
-                            const textContent = getText(item);
-                            const value = item.querySelector('p.font-bold')?.textContent?.trim();
-                            const svgs = item.querySelectorAll('svg'); // Hitung SVG di dalam item
+                             const textContent = getText(item);
+                             const value = item.querySelector('p.font-bold')?.textContent?.trim();
+                             const svgs = item.querySelectorAll('svg');
 
-                             if (textContent) {
-                                if (textContent.includes('%')) {
-                                    jam.kelembapan = value || textContent.split(':').pop().trim();
-                                } else if (textContent.toLowerCase().includes('km/jam')) {
-                                    jam.kecepatanAngin = value || textContent.split(':').pop().trim();
-                                } else if (svgs.length >= 2) { // Identifikasi Arah Angin berdasarkan punya 2 SVG (kompas & panah)
-                                    const arahSpan = item.querySelector('span > span.font-bold'); // Target span bold di dalam span lain
-                                    jam.arahAngin = getText(arahSpan);
-                                    // Fallback jika struktur span berubah
-                                    if (!jam.arahAngin) {
-                                        // Coba ambil semua text node sebelum SVG pertama
-                                        let directionText = '';
-                                        let currentNode = item.querySelector('p')?.firstChild; // Mulai dari anak pertama <p>
-                                        while (currentNode) {
-                                            if (currentNode.nodeType === Node.TEXT_NODE) {
-                                                directionText += currentNode.textContent;
-                                            } else if (currentNode.nodeName === 'svg') {
-                                                break; // Berhenti jika ketemu SVG
-                                            } else if (currentNode.nodeType === Node.ELEMENT_NODE) {
-                                                 // Jika ada elemen lain (misal <span>), ambil teksnya juga
-                                                 directionText += currentNode.textContent;
-                                            }
-                                            currentNode = currentNode.nextSibling;
-                                        }
-                                        jam.arahAngin = directionText.replace(/Arah Angin dari:/i,'').trim() || null;
-                                    }
-                                } else if (textContent.toLowerCase().includes('km') || textContent.includes('>')) { // Jarak pandang
-                                     jam.jarakPandang = value || textContent.split(':').pop().trim();
-                                }
-                            }
+                              if (textContent) {
+                                 if (textContent.includes('%')) jam.kelembapan = value || textContent.split(':').pop().trim();
+                                 else if (textContent.toLowerCase().includes('km/jam')) jam.kecepatanAngin = value || textContent.split(':').pop().trim();
+                                 else if (svgs.length >= 2) {
+                                     const arahSpan = item.querySelector('span > span.font-bold');
+                                     let arahAnginText = getText(arahSpan);
+                                     if (!arahAnginText) {
+                                         let directionText = '';
+                                         let currentNode = item.querySelector('p')?.firstChild;
+                                         while (currentNode) {
+                                             if (currentNode.nodeType === Node.TEXT_NODE) directionText += currentNode.textContent;
+                                             else if (currentNode.nodeName === 'svg') break;
+                                             else if (currentNode.nodeType === Node.ELEMENT_NODE) directionText += currentNode.textContent;
+                                             currentNode = currentNode.nextSibling;
+                                         }
+                                         jam.arahAngin = directionText.replace(/Arah Angin dari:/i,'').trim() || null;
+                                     } else {
+                                        jam.arahAngin = arahAnginText;
+                                     }
+                                 }
+                                 else if (item.querySelector('svg path[d*="M10 3.333c"]')) { // Ikon mata
+                                      jam.jarakPandang = value || textContent.split(':').pop().trim();
+                                 }
+                             }
                         });
                     }
                     if (jam.waktu) hasil.prakiraanPerJam.push(jam);
@@ -221,7 +231,6 @@ async function scrapeBmkgCuaca(kodeWilayah) {
 
     } catch (error) {
         console.error(`Error saat scraping ${url}:`, error);
-         // Log HTML saat error di evaluate
         if (error.message.includes('evaluate')) {
              try {
                 const htmlContent = await page.content();
