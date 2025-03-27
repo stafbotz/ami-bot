@@ -178,14 +178,14 @@ async function scrapeBMKGWithPuppeteer(kodeWilayah) {
     const dataHariPertama = await page.evaluate(extractPageData);
     hasilScraping.cuacaSaatIni = dataHariPertama.cuacaSaatIni;
     hasilScraping.peringatan = dataHariPertama.peringatan;
-    let jamPertamaHariIni = null; // Simpan jam pertama untuk perbandingan nanti
+    let jamPertamaSebelumKlik = null; // Deklarasi di luar loop
     if (dataHariPertama.tanggalAktif && dataHariPertama.prakiraanPerJam.length > 0) {
       hasilScraping.prakiraanMultiHari.push({
         tanggal: dataHariPertama.tanggalAktif,
         data: dataHariPertama.prakiraanPerJam
       });
-      jamPertamaHariIni = dataHariPertama.prakiraanPerJam[0]?.waktu; // Ambil waktu slide pertama
-      console.log(`Data hari pertama (${dataHariPertama.tanggalAktif}) diambil. Jam pertama: ${jamPertamaHariIni}`);
+      jamPertamaSebelumKlik = dataHariPertama.prakiraanPerJam[0]?.waktu; // Ambil waktu slide pertama
+      console.log(`Data hari pertama (${dataHariPertama.tanggalAktif}) diambil. Jam pertama awal: ${jamPertamaSebelumKlik}`);
     } else {
         console.warn("Data prakiraan hari pertama tidak lengkap atau tidak ditemukan.");
     }
@@ -205,66 +205,75 @@ async function scrapeBMKGWithPuppeteer(kodeWilayah) {
     for (let i = 1; i < tabDates.length; i++) {
         const tanggalTarget = tabDates[i];
         console.log(`\nMencoba memproses tab untuk tanggal: ${tanggalTarget}...`);
-
-        // Simpan jam pertama *sebelum* klik, untuk perbandingan nanti
-        const jamPertamaSebelumKlik = await page.evaluate(() => {
-             const firstSlideHeader = document.querySelector('div.swiper-slide h4');
-             return firstSlideHeader ? firstSlideHeader.textContent.trim().replace(/\s+/g, ' ').replace('WIB', '').trim() : null;
-        });
-        console.log(`[Debug] Jam pertama sebelum klik ${tanggalTarget}: ${jamPertamaSebelumKlik}`);
-
+        console.log(`[Debug] Jam pertama sebelum klik ${tanggalTarget}: ${jamPertamaSebelumKlik}`); // Log jam sebelum klik
 
         try {
             const buttonSelector = `button ::-p-text("${tanggalTarget}")`;
-            console.log(`Mencari dan mengklik tombol dengan selector: ${buttonSelector}`);
+            // console.log(`Mencari dan mengklik tombol dengan selector: ${buttonSelector}`); // Log ini bisa di-skip
             await page.waitForSelector(buttonSelector, { timeout: 10000 });
             await page.click(buttonSelector);
             console.log(`Tombol tab ${tanggalTarget} diklik.`);
 
-            // *** STRATEGI MENUNGGU BARU: Tunggu Perubahan Konten Swiper ***
+            // *** STRATEGI MENUNGGU + DEBUGGING ***
             console.log(`Menunggu konten swiper berubah dari jam ${jamPertamaSebelumKlik}...`);
             await page.waitForFunction(
                 (previousFirstHour) => {
                     const currentFirstSlideHeader = document.querySelector('div.swiper-slide h4');
                     const currentFirstHour = currentFirstSlideHeader ? currentFirstSlideHeader.textContent.trim().replace(/\s+/g, ' ').replace('WIB', '').trim() : null;
-                    // Tunggu sampai jam pertama BERBEDA dari sebelumnya DAN tidak null
+                    // Log di dalam browser console (akan muncul jika headless=false atau via page.on('console'))
+                    // console.log(`[Browser] Cek perubahan: Prev='${previousFirstHour}', Current='${currentFirstHour}'`);
                     return currentFirstHour !== null && currentFirstHour !== previousFirstHour;
                 },
                 { timeout: 20000 }, // Timeout 20 detik
                 jamPertamaSebelumKlik // Kirim jam sebelumnya ke fungsi
             );
-            console.log(`Konten swiper terdeteksi berubah untuk ${tanggalTarget}.`);
 
-            // Jeda singkat tambahan setelah konten berubah (opsional)
-            await page.waitForTimeout(500);
+             // Ambil jam pertama *setelah* waitForFunction berhasil
+            const jamPertamaSetelahWait = await page.evaluate(() => {
+                const firstSlideHeader = document.querySelector('div.swiper-slide h4');
+                return firstSlideHeader ? firstSlideHeader.textContent.trim().replace(/\s+/g, ' ').replace('WIB', '').trim() : null;
+            });
+            console.log(`Konten swiper terdeteksi berubah untuk ${tanggalTarget}. Jam pertama sekarang: ${jamPertamaSetelahWait}`);
+
+            // *** PERBAIKAN DI SINI: Ganti waitForTimeout ***
+            await page.waitForTimeout(500); // Jeda singkat untuk render (0.5 detik)
 
             console.log(`Mengambil data untuk tanggal: ${tanggalTarget}...`);
             const dataHariBerikutnya = await page.evaluate(extractPageData);
 
-            // Validasi (Tanggal aktif mungkin belum tentu berubah secepat konten)
-            // Fokus pada apakah data prakiraan berhasil diambil
+            // Validasi
             if (dataHariBerikutnya.prakiraanPerJam.length > 0) {
-                 // Kita gunakan tanggalTarget dari loop karena itu yang kita klik
                  hasilScraping.prakiraanMultiHari.push({
                     tanggal: tanggalTarget, // Gunakan tanggal dari loop
                     data: dataHariBerikutnya.prakiraanPerJam
                 });
                  console.log(`Data untuk ${tanggalTarget} berhasil diambil.`);
-                 // Log jika tanggal aktif terdeteksi berbeda (hanya sebagai info)
+                 // Update jamPertamaSebelumKlik untuk iterasi berikutnya
+                 jamPertamaSebelumKlik = dataHariBerikutnya.prakiraanPerJam[0]?.waktu;
                  if (dataHariBerikutnya.tanggalAktif !== tanggalTarget) {
                      console.warn(`[Info] Tanggal aktif terdeteksi (${dataHariBerikutnya.tanggalAktif}) berbeda dari target (${tanggalTarget}), tapi data diambil.`);
                  }
             } else {
                  console.warn(`Tidak ada data prakiraan ditemukan untuk tanggal ${tanggalTarget} setelah konten berubah.`);
+                 // Jangan update jamPertamaSebelumKlik jika data gagal diambil
             }
 
         } catch (error) {
             if (error.name === 'TimeoutError') {
-                // Bisa jadi timeout dari waitForSelector, click, atau waitForFunction (menunggu konten berubah)
-                console.error(`Timeout saat memproses tab ${tanggalTarget}. Konten mungkin tidak berubah atau tombol tidak ditemukan.`);
+                console.error(`Timeout saat memproses tab ${tanggalTarget}. Konten mungkin tidak berubah atau tombol tidak ditemukan/aktif.`);
             } else {
+                 // Error lain, seperti page.waitForTimeout yang salah
                 console.error(`Gagal memproses tab ${tanggalTarget}: ${error.message}`);
             }
+             // Coba dapatkan info tambahan tentang state halaman saat error
+             try {
+                 const pageTitle = await page.title();
+                 const currentUrl = page.url();
+                 const activeTabText = await page.evaluate(() => document.querySelector('button.border-blue-primary')?.textContent.trim().replace(/\s+/g, ' '));
+                 console.error(`[Debug Error State] URL: ${currentUrl}, Judul: ${pageTitle}, Tab Aktif Terdeteksi: ${activeTabText}`);
+             } catch (debugError) {
+                 console.error("[Debug Error State] Gagal mendapatkan info state halaman.");
+             }
             // Lanjutkan ke tab berikutnya meskipun ada error di tab ini
         }
     }
