@@ -25,12 +25,10 @@ function extractPageData() {
     const cuacaSaatIniContainer = document.querySelector('div.md\\:flex.items-center.gap-6');
     const cuacaSaatIni = {};
     if (cuacaSaatIniContainer) {
-        // Pemutakhiran (SELECTOR DIPERBAIKI)
-        // Cari elemen <time> yang mengandung teks "Saat ini"
-        // Kemudian cari span.group di dalamnya, lalu span lagi di dalamnya
+        // Pemutakhiran
         const timeElement = Array.from(cuacaSaatIniContainer.querySelectorAll('time')).find(el => el.textContent.includes("Saat ini"));
         const groupSpan = timeElement ? timeElement.querySelector('span.group') : null;
-        const pemutakhiranSpan = groupSpan ? groupSpan.querySelector('span') : null; // Span di dalam group span
+        const pemutakhiranSpan = groupSpan ? groupSpan.querySelector('span') : null;
         const pemutakhiranRaw = pemutakhiranSpan ? pemutakhiranSpan.textContent : null;
         cuacaSaatIni.pemutakhiran = cleanTextBrowser(pemutakhiranRaw?.replace('Pemutakhiran:', ''));
 
@@ -45,7 +43,7 @@ function extractPageData() {
              cuacaSaatIni.lokasi = cleanTextBrowser(lokasiRaw?.replace('di ', ''));
         }
 
-        // Detail (Kelembapan, Angin, Jarak Pandang)
+        // Detail
         const detailsContainer = cuacaSaatIniContainer.querySelector('div.relative.mt-5');
         if (detailsContainer) {
             detailsContainer.querySelectorAll('div.flex.gap-2.items-center').forEach(el => {
@@ -67,17 +65,17 @@ function extractPageData() {
     const peringatanElement = document.querySelector('div.border-\\[\\#FFA500\\] p');
     const peringatan = peringatanElement ? cleanTextBrowser(peringatanElement.textContent) : null;
 
-    // --- Ekstraksi Prakiraan Per Jam (UNTUK HARI YANG SEDANG AKTIF) ---
+    // --- Ekstraksi Prakiraan Per Jam ---
     const prakiraanPerJam = [];
-    const tanggalAktifButton = document.querySelector('button.border-blue-primary'); // Tombol tab hari aktif
-    const tanggalAktifText = tanggalAktifButton ? cleanTextBrowser(tanggalAktifButton.textContent) : null; // e.g., "27 Mar"
+    const tanggalAktifButton = document.querySelector('button.border-blue-primary');
+    const tanggalAktifText = tanggalAktifButton ? cleanTextBrowser(tanggalAktifButton.textContent) : null;
     const currentYear = new Date().getFullYear();
     const monthMap = { 'Jan': '01', 'Feb': '02', 'Mar': '03', 'Apr': '04', 'Mei': '05', 'Jun': '06', 'Jul': '07', 'Agu': '08', 'Sep': '09', 'Okt': '10', 'Nov': '11', 'Des': '12' };
 
     const slides = document.querySelectorAll('div.swiper-slide');
     slides.forEach(slide => {
         const jamRaw = cleanTextBrowser(slide.querySelector('h4')?.textContent);
-        const jam = jamRaw?.replace('WIB', '').trim(); // e.g., "20.00"
+        const jam = jamRaw?.replace('WIB', '').trim();
 
         const suhu = cleanTextBrowser(slide.querySelector('p.text-\\[32px\\]')?.textContent);
         const deskripsi = cleanTextBrowser(slide.querySelector('p.text-sm.md\\:text-lg.font-bold')?.textContent);
@@ -147,7 +145,7 @@ async function scrapeBMKGWithPuppeteer(kodeWilayah) {
   const url = `https://www.bmkg.go.id/cuaca/prakiraan-cuaca/${kodeWilayah}`;
   console.log(`Mengakses ${url} dengan Puppeteer...`);
 
-  let browser = null; // Deklarasikan di luar try
+  let browser = null;
   const hasilScraping = {
     cuacaSaatIni: null,
     peringatan: null,
@@ -156,24 +154,23 @@ async function scrapeBMKGWithPuppeteer(kodeWilayah) {
 
   try {
     browser = await puppeteer.launch({
-      headless: true, // Gunakan 'new' untuk versi baru, true untuk default lama, atau false untuk melihat browser
-      args: ['--no-sandbox', '--disable-setuid-sandbox'] // Opsi umum untuk lingkungan server/docker
+      headless: true, // Set false untuk melihat browser
+      args: ['--no-sandbox', '--disable-setuid-sandbox']
     });
     const page = await browser.newPage();
     await page.setUserAgent('Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36');
-    await page.setViewport({ width: 1366, height: 768 }); // Ukuran viewport bisa mempengaruhi layout
+    await page.setViewport({ width: 1366, height: 768 });
 
     console.log(`Navigasi ke halaman...`);
-    await page.goto(url, { waitUntil: 'networkidle2', timeout: 60000 }); // Tunggu jaringan relatif tenang, timeout 60 detik
+    await page.goto(url, { waitUntil: 'networkidle0', timeout: 60000 }); // Coba 'networkidle0' untuk menunggu lebih lama
 
-    console.log(`Menunggu selector utama muncul...`);
-    // Menunggu elemen-elemen kunci muncul
-    await page.waitForSelector('div.md\\:flex.items-center.gap-6', { timeout: 30000 }); // Container cuaca saat ini
-    await page.waitForSelector('div.swiper', { timeout: 30000 }); // Container swiper
-    await page.waitForSelector('button.border-blue-primary', { timeout: 30000 }); // Tab tanggal aktif
-    await page.waitForSelector('button.border-\\[\\#CBD5E1\\]', { timeout: 30000 }); // Tab tanggal tidak aktif
+    console.log(`Menunggu elemen kunci muncul...`);
+    await page.waitForSelector('div.md\\:flex.items-center.gap-6', { timeout: 30000 });
+    await page.waitForSelector('div.swiper', { timeout: 30000 });
+    await page.waitForSelector('button.border-blue-primary', { timeout: 30000 });
+    await page.waitForSelector('button.border-\\[\\#CBD5E1\\]', { timeout: 30000 });
 
-    // 1. Scrape data hari pertama (yang aktif)
+    // 1. Scrape data hari pertama
     console.log(`Mengambil data hari pertama...`);
     const dataHariPertama = await page.evaluate(extractPageData);
     hasilScraping.cuacaSaatIni = dataHariPertama.cuacaSaatIni;
@@ -187,59 +184,74 @@ async function scrapeBMKGWithPuppeteer(kodeWilayah) {
         console.warn("Data prakiraan hari pertama tidak lengkap atau tidak ditemukan.");
     }
 
-    // 2. Cari semua tombol tab tanggal yang tidak aktif
-    const tabSelectors = await page.$$('button.border-\\[\\#CBD5E1\\]');
-    console.log(`Menemukan ${tabSelectors.length} tab tanggal tambahan.`);
+    // 2. Cari *semua* tombol tab tanggal (termasuk yang aktif awal) untuk iterasi yang lebih mudah
+    const allTabButtons = await page.$$('button[class*="border-blue-primary"], button.border-\\[\\#CBD5E1\\]');
+    const tabDates = [];
+    for (const btn of allTabButtons) {
+        const dateText = await page.evaluate(el => el.textContent.trim().replace(/\s+/g, ' '), btn);
+        if (dateText) tabDates.push(dateText);
+    }
 
+    console.log(`Menemukan total ${tabDates.length} tab tanggal: ${tabDates.join(', ')}`);
 
-    // 3. Loop melalui tab tanggal lainnya
-    for (let i = 0; i < tabSelectors.length; i++) {
-        // Re-fetch selector di setiap iterasi karena DOM bisa berubah
-        const currentTabs = await page.$$('button.border-\\[\\#CBD5E1\\]');
-        if (i >= currentTabs.length) {
-            console.warn(`Indeks tab ${i} di luar batas setelah DOM mungkin berubah.`);
-            break; // Hentikan loop jika tab tidak ditemukan lagi
-        }
-        const tabButton = currentTabs[i];
-        const tanggalTab = await page.evaluate(el => el.textContent.trim().replace(/\s+/g, ' '), tabButton);
-        console.log(`\nMengklik tab untuk tanggal: ${tanggalTab}...`);
+    // 3. Loop melalui tab tanggal MULAI DARI YANG KEDUA
+    for (let i = 1; i < tabDates.length; i++) { // Mulai dari indeks 1
+        const tanggalTarget = tabDates[i];
+        console.log(`\nMencoba memproses tab untuk tanggal: ${tanggalTarget}...`);
 
         try {
-             // Klik tab
+            // Cari tombol berdasarkan teksnya - lebih andal jika urutan berubah
+            const selectorTombol = `//button[contains(., "${tanggalTarget}")]`; // XPath selector
+            const [tabButton] = await page.$x(selectorTombol); // Menggunakan page.$x untuk XPath
+
+            if (!tabButton) {
+                console.warn(`Tidak dapat menemukan tombol untuk tanggal ${tanggalTarget}. Melanjutkan...`);
+                continue; // Lanjut ke iterasi berikutnya
+            }
+
+            console.log(`Mengklik tab ${tanggalTarget}...`);
             await tabButton.click();
 
-            // *** Strategi Menunggu Penting ***
-            // Tunggu hingga swiper kemungkinan diperbarui.
-             await page.waitForTimeout(2000); // Naikkan sedikit waktu tunggu menjadi 2 detik
-
-            // Opsional: Coba tunggu sampai tab yang diklik benar-benar aktif
-             await page.waitForFunction(
+            // *** STRATEGI MENUNGGU YANG DIPERBAIKI ***
+            console.log(`Menunggu tab ${tanggalTarget} menjadi aktif...`);
+            await page.waitForFunction(
                  (dateText) => {
                      const activeButton = document.querySelector('button.border-blue-primary');
+                     // Periksa apakah tombol aktif ada DAN teksnya cocok
                      return activeButton && activeButton.textContent.trim().replace(/\s+/g, ' ') === dateText;
                  },
-                 { timeout: 10000 }, // Timeout 10 detik
-                 tanggalTab // Kirim tanggal yang diharapkan ke dalam fungsi browser
-             ).catch(e => console.warn(`Timeout atau error menunggu tab ${tanggalTab} menjadi aktif: ${e.message}`)); // Tangkap error jika timeout
+                 { timeout: 15000 }, // Timeout 15 detik
+                 tanggalTarget // Kirim tanggal yang diharapkan ke dalam fungsi browser
+             );
+             console.log(`Tab ${tanggalTarget} aktif.`);
 
-            console.log(`Mengambil data untuk tanggal: ${tanggalTab}...`);
+             // Tambahkan sedikit jeda setelah tab aktif untuk memastikan render swiper selesai (opsional tapi bisa membantu)
+             await page.waitForTimeout(500); // 0.5 detik
+
+            console.log(`Mengambil data untuk tanggal: ${tanggalTarget}...`);
             const dataHariBerikutnya = await page.evaluate(extractPageData);
 
-            // Validasi apakah tanggal yang diekstrak sesuai dengan tab yang diklik
-            if (dataHariBerikutnya.tanggalAktif === tanggalTab && dataHariBerikutnya.prakiraanPerJam.length > 0) {
+            // Validasi
+            if (dataHariBerikutnya.tanggalAktif === tanggalTarget && dataHariBerikutnya.prakiraanPerJam.length > 0) {
                  hasilScraping.prakiraanMultiHari.push({
                     tanggal: dataHariBerikutnya.tanggalAktif,
                     data: dataHariBerikutnya.prakiraanPerJam
                 });
+                 console.log(`Data untuk ${tanggalTarget} berhasil diambil.`);
             } else if (dataHariBerikutnya.prakiraanPerJam.length === 0) {
-                 console.warn(`Tidak ada data prakiraan ditemukan untuk tanggal ${tanggalTab} setelah klik.`);
+                 console.warn(`Tidak ada data prakiraan ditemukan untuk tanggal ${tanggalTarget} setelah klik dan menunggu.`);
             } else {
-                 console.warn(`Tanggal aktif (${dataHariBerikutnya.tanggalAktif}) tidak cocok dengan tab yang diklik (${tanggalTab}). Mungkin ada masalah timing.`);
+                 console.warn(`Tanggal aktif terdeteksi (${dataHariBerikutnya.tanggalAktif}) tidak cocok dengan target (${tanggalTarget}) setelah menunggu.`);
             }
 
-        } catch (clickError) {
-            console.error(`Gagal mengklik atau memproses data untuk tab ${tanggalTab}: ${clickError.message}`);
-            // Lanjutkan ke tab berikutnya jika ada error
+        } catch (error) {
+             // Tangkap error spesifik dari waitForFunction (TimeoutError) atau klik
+            if (error.name === 'TimeoutError') {
+                console.error(`Timeout menunggu tab ${tanggalTarget} menjadi aktif. Data mungkin tidak dimuat.`);
+            } else {
+                console.error(`Gagal memproses tab ${tanggalTarget}: ${error.message}`);
+            }
+            // Lanjutkan ke tab berikutnya meskipun ada error di tab ini
         }
     }
 
@@ -247,8 +259,7 @@ async function scrapeBMKGWithPuppeteer(kodeWilayah) {
     return hasilScraping;
 
   } catch (error) {
-    console.error(`Terjadi kesalahan Puppeteer: ${error.message}`);
-    // console.error(error.stack); // Tampilkan stack trace untuk debugging
+    console.error(`Terjadi kesalahan Puppeteer utama: ${error.message}`);
     throw error;
   } finally {
     if (browser) {
