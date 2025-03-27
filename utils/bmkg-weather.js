@@ -1,7 +1,5 @@
-import axios from 'axios';
 import * as cheerio from 'cheerio';
-
-import { fetch } from 'undici'; // Lebih modern dan direkomendasikan daripada node-fetch bawaan lama
+import { fetch } from 'undici'; // Lebih modern dan direkomendasikan
 import process from 'node:process'; // Akses argumen command line
 
 /**
@@ -29,7 +27,6 @@ async function scrapeBMKG(kodeWilayah) {
   try {
     const response = await fetch(url, {
       headers: {
-        // Menyamar sebagai browser umum untuk menghindari potensi blokir
         'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
       }
     });
@@ -45,9 +42,10 @@ async function scrapeBMKG(kodeWilayah) {
     const cuacaSaatIniContainer = $('div.md\\:flex.items-center.gap-6'); // Container utama cuaca saat ini
     const cuacaSaatIni = {};
 
-    // Pemutakhiran
-    const pemutakhiranRaw = cuacaSaatIniContainer.find('time:contains("Saat ini") + span > span').text();
-    cuacaSaatIni.pemutakhiran = cleanText(pemutakhiranRaw?.replace('Pemutakhiran:', ''));
+    // Pemutakhiran (SELECTOR DIPERBAIKI)
+    // Cari span di dalam time yang berisi teks "Pemutakhiran:"
+    const pemutakhiranRaw = cuacaSaatIniContainer.find('time:contains("Saat ini") span > span:contains("Pemutakhiran:")').text();
+    cuacaSaatIni.pemutakhiran = cleanText(pemutakhiranRaw?.replace('Pemutakhiran:', '')); // Hilangkan prefix
 
     // Suhu
     cuacaSaatIni.suhu = cleanText(cuacaSaatIniContainer.find('p.text-\\[40px\\]').first().text());
@@ -82,26 +80,23 @@ async function scrapeBMKG(kodeWilayah) {
     }
 
 
-    // --- Ekstraksi Prakiraan Per Jam ---
-    const prakiraanPerJam = [];
-    // Cari tab aktif untuk mendapatkan tanggal
-    const tanggalAktif = cleanText($('button.border-blue-primary').first().text()); // Ambil tanggal dari tab aktif
-    const tahunSekarang = new Date().getFullYear(); // Asumsi tahun berjalan
+    // --- Ekstraksi Prakiraan Per Jam (HANYA UNTUK HARI PERTAMA YANG TERSEDIA DI HTML AWAL) ---
+    const prakiraanHariIniPerJam = [];
+    // Cari tab aktif untuk mendapatkan tanggal HARI INI
+    const tanggalAktifButton = $('button.border-blue-primary').first();
+    const tanggalAktifText = cleanText(tanggalAktifButton.text()); // e.g., "27 Mar"
 
-    $('div.swiper-slide').each((index, element) => {
+    // Validasi tanggal aktif
+    if (!tanggalAktifText) {
+        console.warn("Tidak dapat menemukan tanggal aktif pada tab.");
+        // Anda bisa memutuskan untuk lanjut tanpa tanggal atau throw error
+    }
+
+    const slidesContainer = $('div.swiper'); // Target container swiper
+    slidesContainer.find('div.swiper-slide').each((index, element) => {
       const slide = $(element);
       const jamRaw = cleanText(slide.find('h4').text());
-      const jam = jamRaw?.replace('WIB', '').trim();
-
-      // Format tanggal dan jam
-      const tanggalJamISO = `${tahunSekarang}-${tanggalAktif.split(' ')[1]}-${tanggalAktif.split(' ')[0]}T${jam}:00Z`; // Format YYYY-MM-DDTHH:mm:ssZ
-      // Perlu penyesuaian mapping bulan jika format tanggal tidak standar
-      // Contoh sederhana, perlu lebih robust jika nama bulan berbeda
-      const mapBulan = { Mar: '03', Apr: '04', Mei: '05', Jun: '06' /* ... tambahkan bulan lain */};
-      const bulanAngka = mapBulan[tanggalAktif.split(' ')[1]];
-      const tanggalISO = `${tahunSekarang}-${bulanAngka}-${tanggalAktif.split(' ')[0].padStart(2, '0')}`;
-      const dateTimeISO = `${tanggalISO}T${jam}:00+07:00`; // Format ISO 8601 dengan timezone WIB (+07:00)
-
+      const jam = jamRaw?.replace('WIB', '').trim(); // e.g., "20.00"
 
       const suhu = cleanText(slide.find('p.text-\\[32px\\]').text());
       const deskripsi = cleanText(slide.find('p.text-sm.md\\:text-lg.font-bold').text());
@@ -112,11 +107,38 @@ async function scrapeBMKG(kodeWilayah) {
       const arahAngin = cleanText(detailSlide.find('div:nth-child(3) span > span.font-bold').first().text());
       const jarakPandang = cleanText(detailSlide.find('div:nth-child(4) p.font-bold').text());
 
-      if (jam && suhu && deskripsi) { // Pastikan data penting ada
-          prakiraanPerJam.push({
-              // tanggal: tanggalAktif, // Bisa ditambahkan jika perlu
+      let dateTimeISO = null;
+      if (tanggalAktifText && jam) {
+          try {
+              const [dayStr, monthStr] = tanggalAktifText.split(' ');
+              const day = dayStr.padStart(2, '0');
+              const currentYear = new Date().getFullYear(); // Asumsi tahun berjalan
+              const monthMap = { 'Jan': '01', 'Feb': '02', 'Mar': '03', 'Apr': '04', 'Mei': '05', 'Jun': '06', 'Jul': '07', 'Agu': '08', 'Sep': '09', 'Okt': '10', 'Nov': '11', 'Des': '12' };
+              const month = monthMap[monthStr];
+
+              if (!month) {
+                  console.warn(`Bulan tidak dikenali: ${monthStr} dari tanggal ${tanggalAktifText}`);
+              } else {
+                  const dateISO = `${currentYear}-${month}-${day}`;
+                  // Pastikan format jam valid (HH.mm), ubah ke HH:mm jika perlu
+                  const formattedJam = jam.includes('.') ? jam.replace('.', ':') : `${jam}:00`; // Asumsi jika tidak ada titik berarti jam bulat
+                  if (formattedJam.match(/^\d{2}:\d{2}$/)) {
+                    dateTimeISO = `${dateISO}T${formattedJam}:00+07:00`; // Gunakan +07:00 untuk WIB
+                  } else {
+                    console.warn(`Format jam tidak valid: ${jam}`);
+                  }
+              }
+          } catch (e) {
+              console.warn(`Gagal memproses tanggal/jam: ${tanggalAktifText} ${jam}`, e);
+          }
+      }
+
+      // Hanya tambahkan jika data penting ada
+      if (jam && suhu && deskripsi) {
+          prakiraanHariIniPerJam.push({
+              // tanggal: tanggalAktifText, // Bisa ditambahkan jika perlu kejelasan
               waktu: jam,
-              dateTimeISO: dateTimeISO, // Tambahkan ISO datetime
+              dateTimeISO: dateTimeISO, // Bisa jadi null jika tanggal/jam bermasalah
               suhu: suhu,
               deskripsi: deskripsi,
               kelembapan: kelembapan,
@@ -124,18 +146,21 @@ async function scrapeBMKG(kodeWilayah) {
               arahAngin: arahAngin,
               jarakPandang: jarakPandang,
           });
+      } else {
+          console.warn("Data slide tidak lengkap, dilewati:", { jam, suhu, deskripsi });
       }
-
     });
 
     return {
       cuacaSaatIni,
       peringatan: peringatan,
-      prakiraanPerJam
+      prakiraanHariIniPerJam // Nama field diubah untuk mencerminkan isinya
     };
 
   } catch (error) {
-    console.error(`Terjadi kesalahan: ${error.message}`);
+    console.error(`Terjadi kesalahan saat scraping: ${error.message}`);
+    // Tambahkan detail error jika perlu untuk debugging
+    // console.error(error.stack);
     throw error; // Lempar ulang error agar bisa ditangkap di luar
   }
 }
@@ -145,6 +170,7 @@ async function scrapeBMKG(kodeWilayah) {
   const args = process.argv.slice(2); // Ambil argumen dari command line, skip node dan nama file
   const kodeWilayahInput = args[0] || '12.76.01.1001'; // Default ke Pabatu jika tidak ada argumen
 
+  // Validasi format kode wilayah (angka dan titik)
   if (!kodeWilayahInput.match(/^[\d.]+$/)) {
       console.error("Kode wilayah tidak valid. Harusnya berupa angka dan titik (contoh: 12.76.01.1001)");
       process.exit(1); // Keluar dengan kode error
@@ -155,7 +181,8 @@ async function scrapeBMKG(kodeWilayah) {
     console.log("\n--- Hasil Scraping ---");
     console.log(JSON.stringify(dataCuaca, null, 2)); // Output JSON yang rapi
   } catch (error) {
-    console.error("Gagal menjalankan scraper:", error);
+    // Error sudah dicatat di dalam scrapeBMKG, cukup keluar saja
+    console.error("Gagal menjalankan scraper.");
     process.exit(1); // Keluar dengan kode error jika scraping gagal
   }
 })();
