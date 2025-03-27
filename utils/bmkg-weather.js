@@ -162,7 +162,11 @@ async function scrapeBMKGWithPuppeteer(kodeWilayah) {
     await page.setViewport({ width: 1366, height: 768 });
 
     console.log(`Navigasi ke halaman...`);
-    await page.goto(url, { waitUntil: 'networkidle0', timeout: 60000 }); // Coba 'networkidle0' untuk menunggu lebih lama
+    // *** PERUBAHAN DI SINI ***
+    await page.goto(url, {
+        waitUntil: 'networkidle2', // Kembali ke networkidle2
+        timeout: 120000 // Tingkatkan timeout menjadi 120 detik
+    });
 
     console.log(`Menunggu elemen kunci muncul...`);
     await page.waitForSelector('div.md\\:flex.items-center.gap-6', { timeout: 30000 });
@@ -184,14 +188,13 @@ async function scrapeBMKGWithPuppeteer(kodeWilayah) {
         console.warn("Data prakiraan hari pertama tidak lengkap atau tidak ditemukan.");
     }
 
-    // 2. Cari *semua* tombol tab tanggal (termasuk yang aktif awal) untuk iterasi yang lebih mudah
+    // 2. Cari semua tombol tab tanggal
     const allTabButtons = await page.$$('button[class*="border-blue-primary"], button.border-\\[\\#CBD5E1\\]');
     const tabDates = [];
     for (const btn of allTabButtons) {
         const dateText = await page.evaluate(el => el.textContent.trim().replace(/\s+/g, ' '), btn);
         if (dateText) tabDates.push(dateText);
     }
-
     console.log(`Menemukan total ${tabDates.length} tab tanggal: ${tabDates.join(', ')}`);
 
     // 3. Loop melalui tab tanggal MULAI DARI YANG KEDUA
@@ -200,38 +203,33 @@ async function scrapeBMKGWithPuppeteer(kodeWilayah) {
         console.log(`\nMencoba memproses tab untuk tanggal: ${tanggalTarget}...`);
 
         try {
-            // Cari tombol berdasarkan teksnya - lebih andal jika urutan berubah
-            const selectorTombol = `//button[contains(., "${tanggalTarget}")]`; // XPath selector
-            const [tabButton] = await page.$x(selectorTombol); // Menggunakan page.$x untuk XPath
+            const selectorTombol = `//button[contains(., "${tanggalTarget}")]`;
+            const [tabButton] = await page.$x(selectorTombol);
 
             if (!tabButton) {
                 console.warn(`Tidak dapat menemukan tombol untuk tanggal ${tanggalTarget}. Melanjutkan...`);
-                continue; // Lanjut ke iterasi berikutnya
+                continue;
             }
 
             console.log(`Mengklik tab ${tanggalTarget}...`);
             await tabButton.click();
 
-            // *** STRATEGI MENUNGGU YANG DIPERBAIKI ***
             console.log(`Menunggu tab ${tanggalTarget} menjadi aktif...`);
             await page.waitForFunction(
                  (dateText) => {
                      const activeButton = document.querySelector('button.border-blue-primary');
-                     // Periksa apakah tombol aktif ada DAN teksnya cocok
                      return activeButton && activeButton.textContent.trim().replace(/\s+/g, ' ') === dateText;
                  },
-                 { timeout: 15000 }, // Timeout 15 detik
-                 tanggalTarget // Kirim tanggal yang diharapkan ke dalam fungsi browser
+                 { timeout: 15000 },
+                 tanggalTarget
              );
              console.log(`Tab ${tanggalTarget} aktif.`);
 
-             // Tambahkan sedikit jeda setelah tab aktif untuk memastikan render swiper selesai (opsional tapi bisa membantu)
-             await page.waitForTimeout(500); // 0.5 detik
+             await page.waitForTimeout(500); // Jeda singkat untuk render
 
             console.log(`Mengambil data untuk tanggal: ${tanggalTarget}...`);
             const dataHariBerikutnya = await page.evaluate(extractPageData);
 
-            // Validasi
             if (dataHariBerikutnya.tanggalAktif === tanggalTarget && dataHariBerikutnya.prakiraanPerJam.length > 0) {
                  hasilScraping.prakiraanMultiHari.push({
                     tanggal: dataHariBerikutnya.tanggalAktif,
@@ -245,13 +243,11 @@ async function scrapeBMKGWithPuppeteer(kodeWilayah) {
             }
 
         } catch (error) {
-             // Tangkap error spesifik dari waitForFunction (TimeoutError) atau klik
             if (error.name === 'TimeoutError') {
                 console.error(`Timeout menunggu tab ${tanggalTarget} menjadi aktif. Data mungkin tidak dimuat.`);
             } else {
                 console.error(`Gagal memproses tab ${tanggalTarget}: ${error.message}`);
             }
-            // Lanjutkan ke tab berikutnya meskipun ada error di tab ini
         }
     }
 
