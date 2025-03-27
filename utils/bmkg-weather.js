@@ -192,7 +192,6 @@ async function scrapeBMKGWithPuppeteer(kodeWilayah) {
     const tabDates = [];
     for (const btn of allTabButtons) {
         const dateText = await page.evaluate(el => el.textContent.trim().replace(/\s+/g, ' '), btn);
-        // Filter tombol 'Contact Center 196' yang mungkin ikut terambil
         if (dateText && !dateText.includes('Contact Center')) {
             tabDates.push(dateText);
         }
@@ -200,43 +199,48 @@ async function scrapeBMKGWithPuppeteer(kodeWilayah) {
     console.log(`Menemukan total ${tabDates.length} tab tanggal: ${tabDates.join(', ')}`);
 
     // 3. Loop melalui tab tanggal MULAI DARI YANG KEDUA
-    for (let i = 1; i < tabDates.length; i++) { // Mulai dari indeks 1
+    for (let i = 1; i < tabDates.length; i++) {
         const tanggalTarget = tabDates[i];
         console.log(`\nMencoba memproses tab untuk tanggal: ${tanggalTarget}...`);
 
         try {
-            // *** PERUBAHAN DI SINI: Menggunakan page.waitForXPath ***
-            const selectorTombolXPath = `//button[contains(., "${tanggalTarget}")]`;
-            console.log(`Mencari tombol dengan XPath: ${selectorTombolXPath}`);
-            const tabButton = await page.waitForXPath(selectorTombolXPath, { timeout: 10000 }); // Tunggu tombol muncul
+            // *** PERUBAHAN DI SINI: Cari dan klik menggunakan page.evaluate ***
+            const clickSuccess = await page.evaluate((targetDate) => {
+                const buttons = Array.from(document.querySelectorAll('button.border-\\[\\#CBD5E1\\]')); // Cari hanya yang tidak aktif
+                const buttonToClick = buttons.find(btn => btn.textContent.trim().replace(/\s+/g, ' ') === targetDate);
+                if (buttonToClick) {
+                    buttonToClick.click();
+                    return true; // Berhasil menemukan dan mengklik
+                }
+                return false; // Tidak menemukan tombol
+            }, tanggalTarget); // Kirim tanggalTarget ke dalam evaluate
 
-            if (!tabButton) {
-                console.warn(`Tidak dapat menemukan tombol handle untuk tanggal ${tanggalTarget} menggunakan XPath. Melanjutkan...`);
+            if (!clickSuccess) {
+                console.warn(`Tidak dapat menemukan tombol untuk tanggal ${tanggalTarget} di dalam DOM. Melanjutkan...`);
                 continue; // Lanjut ke iterasi berikutnya
             }
+            console.log(`Tombol tab ${tanggalTarget} diklik.`);
 
-            console.log(`Mengklik tab ${tanggalTarget}...`);
-            await tabButton.click();
 
-            // Buang handle setelah diklik jika tidak diperlukan lagi
-            await tabButton.dispose();
-
+            // *** STRATEGI MENUNGGU TETAP PENTING ***
             console.log(`Menunggu tab ${tanggalTarget} menjadi aktif...`);
             await page.waitForFunction(
                  (dateText) => {
                      const activeButton = document.querySelector('button.border-blue-primary');
                      return activeButton && activeButton.textContent.trim().replace(/\s+/g, ' ') === dateText;
                  },
-                 { timeout: 15000 },
+                 { timeout: 15000 }, // Timeout 15 detik
                  tanggalTarget
              );
              console.log(`Tab ${tanggalTarget} aktif.`);
 
-             await page.waitForTimeout(500); // Jeda singkat untuk render
+             // Jeda singkat untuk render
+             await page.waitForTimeout(500);
 
             console.log(`Mengambil data untuk tanggal: ${tanggalTarget}...`);
             const dataHariBerikutnya = await page.evaluate(extractPageData);
 
+            // Validasi
             if (dataHariBerikutnya.tanggalAktif === tanggalTarget && dataHariBerikutnya.prakiraanPerJam.length > 0) {
                  hasilScraping.prakiraanMultiHari.push({
                     tanggal: dataHariBerikutnya.tanggalAktif,
@@ -251,12 +255,10 @@ async function scrapeBMKGWithPuppeteer(kodeWilayah) {
 
         } catch (error) {
             if (error.name === 'TimeoutError') {
-                // Bisa jadi timeout dari waitForXPath atau waitForFunction
-                console.error(`Timeout saat memproses tab ${tanggalTarget}. Data mungkin tidak dimuat atau tombol tidak ditemukan/aktif tepat waktu.`);
+                console.error(`Timeout menunggu tab ${tanggalTarget} menjadi aktif. Data mungkin tidak dimuat.`);
             } else {
                 console.error(`Gagal memproses tab ${tanggalTarget}: ${error.message}`);
             }
-            // Lanjutkan ke tab berikutnya meskipun ada error di tab ini
         }
     }
 
