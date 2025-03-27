@@ -1,9 +1,6 @@
 import axios from 'axios';
 import * as cheerio from 'cheerio';
 
-import axios from 'axios';
-import cheerio from 'cheerio';
-
 /**
  * Memformat objek data mentah dari JSON __NUXT_DATA__ menjadi format yang lebih rapi.
  * @param {object} rawData Objek data mentah dari state Nuxt.
