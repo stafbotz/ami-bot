@@ -1,6 +1,6 @@
-const axios = require('axios');
-const cheerio = require('cheerio');
-const moment = require('moment');
+import axios from 'axios';
+import cheerio from 'cheerio';
+import moment from 'moment';
 
 async function scrapeBMKG(url) {
   try {
