@@ -1,8 +1,7 @@
 import puppeteer from 'puppeteer';
 
-// ... (extractHourlyForecast function remains the same) ...
+// ... (Fungsi extractHourlyForecast tetap sama) ...
 async function extractHourlyForecast(page) {
-    // ... (Keep the existing implementation) ...
     try {
         return await page.evaluate(() => {
             const hourlyForecast = [];
@@ -64,6 +63,14 @@ async function scrapeBmkgCuaca(kodeWilayah) {
     let page = null;
 
     try {
+        // --- Konfirmasi Versi Puppeteer (Opsional) ---
+        // try {
+        //     const browserVersion = await puppeteer.launch().then(b => b.version());
+        //     console.log(`Versi Puppeteer/Browser: ${browserVersion}`);
+        //     await puppeteer.launch().then(b => b.close()); // Tutup browser tes
+        // } catch (vError) { console.error("Gagal cek versi puppeteer:", vError);}
+        // --- Akhir Konfirmasi Versi ---
+
         browser = await puppeteer.launch({
             headless: true,
             args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage', '--disable-gpu']
@@ -217,39 +224,63 @@ async function scrapeBmkgCuaca(kodeWilayah) {
             throw new Error("Gagal menemukan container tombol tanggal.");
         }
 
-        // --- Ambil SEMUA handle tombol tanggal ---
         const allButtonHandles = await page.$$(`${dateButtonContainerSelector} > div > button`);
-        console.log(`Menemukan ${allButtonHandles.length} total handle tombol di container.`);
-
-        let firstDateText = "Tanggal_1";
-        const targetButtonHandles = []; // Simpan handle tombol yang akan diklik
-
-        if (allButtonHandles.length > 0) {
-            // Asumsikan tombol pertama adalah yang aktif
-            firstDateText = await page.evaluate(el => el.textContent.trim(), allButtonHandles[0]);
-            console.log(`Tombol aktif (diasumsikan): ${firstDateText}`);
-            // Ambil handle semua tombol KECUALI yang pertama
-            targetButtonHandles.push(...allButtonHandles.slice(1));
-        } else {
-            console.warn("Tidak ada tombol tanggal ditemukan sama sekali!");
+        const allButtonsData = [];
+        for (const handle of allButtonHandles) {
+            const buttonData = await page.evaluate(btn => ({
+                text: btn.textContent.trim(),
+                isActive: btn.classList.contains('border-blue-primary')
+            }), handle);
+            allButtonsData.push({ ...buttonData, handle });
         }
 
-        console.log(`Menemukan ${targetButtonHandles.length} tombol tanggal tambahan untuk diproses.`);
+        console.log(`Menemukan ${allButtonsData.length} total handle tombol di container.`);
+
+        let firstDateText = "Tanggal_1";
+        const targetButtonsData = [];
+
+        const firstActiveButtonInfo = allButtonsData.find(info => info.isActive);
+        if (firstActiveButtonInfo) {
+            firstDateText = firstActiveButtonInfo.text;
+        } else {
+            console.warn("Tidak ada tombol aktif terdeteksi, menggunakan tombol pertama.");
+            if (allButtonsData.length > 0) {
+                firstDateText = allButtonsData[0].text;
+            }
+        }
+
+        allButtonsData.forEach(info => {
+            if (!info.isActive) {
+                targetButtonsData.push(info);
+            }
+        });
+
+        console.log(`Tombol aktif: ${firstDateText}`);
+        console.log(`Menemukan ${targetButtonsData.length} tombol tanggal tambahan untuk diproses.`);
 
         initialData.prakiraan[firstDateText] = await extractHourlyForecast(page);
         let previousFirstSlideTime = initialData.prakiraan[firstDateText]?.[0]?.waktu || '';
 
-        // --- Loop dan Klik Menggunakan Handle yang Disimpan ---
-        for (const buttonHandle of targetButtonHandles) {
-            let dateText = 'N/A'; // Default jika gagal ambil teks
-            try {
-                 dateText = await page.evaluate(el => el.textContent.trim(), buttonHandle);
-                 console.log(`\nMencoba memproses tanggal: ${dateText}`);
+        // --- Loop dan Klik Menggunakan Handle ---
+        for (const buttonInfo of targetButtonsData) {
+            const dateText = buttonInfo.text;
+            const buttonToClickHandle = buttonInfo.handle;
 
+            console.log(`\nMencoba memproses tanggal: ${dateText}`);
+
+            if (!buttonToClickHandle) {
+                 console.warn(`Handle untuk tombol "${dateText}" tidak valid.`);
+                 continue;
+            }
+
+            try {
                 console.log(`Mengklik tombol "${dateText}" menggunakan handle...`);
-                await buttonHandle.click();
+                // Coba klik langsung pada handle
+                await buttonToClickHandle.click();
 
                 console.log(`Menunggu konten slider untuk "${dateText}" berubah...`);
+
+                // --- Tunggu dengan waitForFunction ---
                 await page.waitForFunction(
                     (selector, prevTime) => {
                         const firstSlideH4 = document.querySelector(selector);
@@ -262,9 +293,9 @@ async function scrapeBmkgCuaca(kodeWilayah) {
                     '.swiper-slide:first-child h4',
                     previousFirstSlideTime
                 );
-                console.log(`Konten untuk "${dateText}" terdeteksi berubah.`);
+                // --- Akhir Tunggu ---
 
-                console.log(`Mengekstrak data untuk "${dateText}"...`);
+                console.log(`Konten untuk "${dateText}" terdeteksi berubah. Mengekstrak data...`);
                 const hourlyData = await extractHourlyForecast(page);
 
                 if (hourlyData.length > 0 && !hourlyData[0].error) {
@@ -288,7 +319,7 @@ async function scrapeBmkgCuaca(kodeWilayah) {
                     console.log("----------------------------------------------------------");
                  } catch (htmlErr) { console.error("Gagal log HTML"); }
             }
-             await new Promise(resolve => setTimeout(resolve, 600));
+             await new Promise(resolve => setTimeout(resolve, 600)); // Jeda
         }
 
         console.log('Ekstraksi data multi-tanggal selesai.');
