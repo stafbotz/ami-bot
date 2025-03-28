@@ -65,7 +65,7 @@ async function scrapeBmkgCuaca(kodeWilayah) {
     try {
         browser = await puppeteer.launch({
             // --- DEBUG: LIHAT BROWSER ---
-            headless: false,
+            headless: true,
             // --- AKHIR DEBUG ---
             slowMo: 50, // Perlambat sedikit eksekusi (ms) - opsional untuk debug
             args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage', '--disable-gpu']
