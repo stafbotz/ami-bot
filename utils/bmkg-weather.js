@@ -1,6 +1,6 @@
 import puppeteer from 'puppeteer';
 
-// ... (Fungsi extractHourlyForecast tetap sama persis) ...
+// ... (Fungsi extractHourlyForecast tetap sama persis seperti sebelumnya) ...
 async function extractHourlyForecast(page) {
     try {
         return await page.evaluate(() => {
@@ -29,7 +29,7 @@ async function extractHourlyForecast(page) {
                                      jam.kelembapan = value || textContent.split(':').pop().trim();
                                  } else if (textContent.toLowerCase().includes('km/jam')) {
                                      jam.kecepatanAngin = value || textContent.split(':').pop().trim();
-                                  } else if (item.querySelector('p > span > span.font-bold')) {
+                                  } else if (item.querySelector('p > span > span.font-bold')) { // Struktur Arah Angin
                                      jam.arahAngin = item.querySelector('p > span > span.font-bold').textContent.trim();
                                   } else if (item.querySelector('svg path[d*="M10 3.333c"]')) { // Ikon mata
                                       jam.jarakPandang = value || textContent.split(':').pop().trim();
@@ -64,7 +64,7 @@ async function scrapeBmkgCuaca(kodeWilayah) {
 
     try {
         browser = await puppeteer.launch({
-            headless: true,
+            headless: true, // Set false untuk debug
             args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage', '--disable-gpu']
         });
 
@@ -88,7 +88,7 @@ async function scrapeBmkgCuaca(kodeWilayah) {
         }
 
         const initialData = await page.evaluate((inputKodeWilayah) => {
-            // ... (Kode evaluate data awal tetap sama) ...
+            // ... (Kode evaluate data awal lokasi, timezone, cuaca saat ini, peringatan tetap sama) ...
             const hasil = {
                 lokasi: { kode: inputKodeWilayah || null, kelurahan: null, provinsi: null, kabupaten: null, kecamatan: null },
                 timezone: null,
@@ -212,28 +212,42 @@ async function scrapeBmkgCuaca(kodeWilayah) {
         const dateButtonContainer = await page.waitForSelector(dateButtonContainerSelector, { timeout: 10000 });
 
         if (!dateButtonContainer) {
-            console.error("Container tombol tanggal tidak ditemukan dengan selector:", dateButtonContainerSelector);
+            console.error("Container tombol tanggal tidak ditemukan.");
             throw new Error("Gagal menemukan container tombol tanggal.");
         }
 
-        const allButtonsData = await page.evaluate((containerSelector) => {
-            const container = document.querySelector(containerSelector);
-            const buttons = container ? Array.from(container.querySelectorAll('div > button')) : [];
-            return buttons.map(btn => ({
+        // --- Ambil Semua Tombol & Datanya ---
+        const allButtonHandles = await page.$$(`${dateButtonContainerSelector} > div > button`);
+        const allButtonsData = [];
+        for (const handle of allButtonHandles) {
+            const buttonData = await page.evaluate(btn => ({
                 text: btn.textContent.trim(),
                 isActive: btn.classList.contains('border-blue-primary')
-            }));
-        }, dateButtonContainerSelector);
+            }), handle);
+            // Simpan handle bersama datanya
+            allButtonsData.push({ ...buttonData, handle });
+        }
 
         console.log(`Menemukan ${allButtonsData.length} total tombol di container: ${allButtonsData.map(b => b.text).join(', ')}`);
 
+        // --- Identifikasi Tombol Aktif dan Target ---
         let firstDateText = "Tanggal_1";
-        const targetButtonsData = [];
-        allButtonsData.forEach(buttonInfo => {
-            if (buttonInfo.isActive) {
-                firstDateText = buttonInfo.text;
-            } else {
-                targetButtonsData.push(buttonInfo);
+        const targetButtonsData = []; // Array untuk { text: '...', handle: elementHandle }
+
+        const firstActiveButtonInfo = allButtonsData.find(info => info.isActive);
+        if (firstActiveButtonInfo) {
+            firstDateText = firstActiveButtonInfo.text;
+        } else {
+            console.warn("Tidak ada tombol aktif terdeteksi, menggunakan tombol pertama.");
+            if (allButtonsData.length > 0) {
+                firstDateText = allButtonsData[0].text;
+            }
+        }
+
+        // Kumpulkan handle tombol yang tidak aktif
+        allButtonsData.forEach(info => {
+            if (!info.isActive) {
+                targetButtonsData.push(info); // Simpan info lengkap termasuk handle
             }
         });
 
@@ -243,27 +257,57 @@ async function scrapeBmkgCuaca(kodeWilayah) {
         initialData.prakiraan[firstDateText] = await extractHourlyForecast(page);
         let previousFirstSlideTime = initialData.prakiraan[firstDateText]?.[0]?.waktu || '';
 
+        // --- Loop dan Klik Menggunakan Handle ---
         for (const buttonInfo of targetButtonsData) {
             const dateText = buttonInfo.text;
+            const buttonToClickHandle = buttonInfo.handle; // Gunakan handle yang sudah disimpan
+
             console.log(`\nMencoba memproses tanggal: ${dateText}`);
 
-            try {
-                 // --- PERBAIKAN: Gunakan page.waitForSelector dengan prefix xpath/ ---
-                 const xpathSelector = `//button[normalize-space()='${dateText}']`;
-                 console.log(`Mencari tombol dengan XPath: ${xpathSelector}`);
-                 // waitForSelector dengan xpath/ mengembalikan ElementHandle atau null
-                 const buttonToClickHandle = await page.waitForSelector(`xpath/${xpathSelector}`, { timeout: 10000 });
-
-                 if (!buttonToClickHandle) {
-                     console.warn(`Tombol "${dateText}" tidak ditemukan menggunakan XPath/Selector.`);
+            if (!buttonToClickHandle) {
+                 console.warn(`Handle untuk tombol "${dateText}" tidak valid (mungkin sudah stale).`);
+                 // Coba cari ulang berdasarkan teks jika handle gagal
+                 try {
+                     const xpathSelector = `//button[normalize-space()='${dateText}']`;
+                     const freshHandle = await page.waitForSelector(`xpath/${xpathSelector}`, { timeout: 5000 });
+                     if (freshHandle) {
+                         console.log(`Menemukan ulang tombol "${dateText}" dengan XPath.`);
+                         await freshHandle.click();
+                     } else {
+                         console.warn(`Tidak dapat menemukan ulang tombol "${dateText}". Melanjutkan...`);
+                         continue;
+                     }
+                 } catch (findError) {
+                     console.warn(`Error saat mencari ulang tombol "${dateText}": ${findError.message}. Melanjutkan...`);
                      continue;
                  }
-                 // --- AKHIR PERBAIKAN ---
+            } else {
+                 try {
+                    console.log(`Mengklik tombol "${dateText}" menggunakan handle...`);
+                    await buttonToClickHandle.click();
+                 } catch (clickHandleError) {
+                     console.warn(`Gagal klik handle untuk "${dateText}", mencoba cari ulang dengan XPath: ${clickHandleError.message}`);
+                      try {
+                         const xpathSelector = `//button[normalize-space()='${dateText}']`;
+                         const freshHandle = await page.waitForSelector(`xpath/${xpathSelector}`, { timeout: 5000 });
+                         if (freshHandle) {
+                             console.log(`Menemukan ulang tombol "${dateText}" dengan XPath.`);
+                             await freshHandle.click();
+                         } else {
+                             console.warn(`Tidak dapat menemukan ulang tombol "${dateText}". Melanjutkan...`);
+                             continue;
+                         }
+                     } catch (findError) {
+                         console.warn(`Error saat mencari ulang tombol "${dateText}": ${findError.message}. Melanjutkan...`);
+                         continue;
+                     }
+                 }
+            }
 
-                console.log(`Mengklik tombol "${dateText}"...`);
-                await buttonToClickHandle.click();
+
+            // --- Tunggu Update Konten ---
+            try {
                 console.log(`Menunggu konten slider untuk "${dateText}" berubah...`);
-
                 await page.waitForFunction(
                     (selector, prevTime) => {
                         const firstSlideH4 = document.querySelector(selector);
@@ -276,8 +320,16 @@ async function scrapeBmkgCuaca(kodeWilayah) {
                     '.swiper-slide:first-child h4',
                     previousFirstSlideTime
                 );
+                console.log(`Konten untuk "${dateText}" terdeteksi berubah.`);
 
-                console.log(`Konten untuk "${dateText}" terdeteksi berubah. Mengekstrak data...`);
+            } catch (waitTimeoutError) {
+                 console.warn(`Timeout menunggu perubahan konten untuk "${dateText}". Mencoba ekstrak data apa adanya...`);
+                 // Tetap lanjut mencoba ekstrak
+            }
+
+            // --- Ekstrak Data ---
+            try {
+                console.log(`Mengekstrak data untuk "${dateText}"...`);
                 const hourlyData = await extractHourlyForecast(page);
 
                 if (hourlyData.length > 0 && !hourlyData[0].error) {
@@ -289,19 +341,13 @@ async function scrapeBmkgCuaca(kodeWilayah) {
                      initialData.prakiraan[dateText] = hourlyData.length > 0 ? hourlyData : [{ message: "Tidak ada data prakiraan per jam tersedia." }];
                      previousFirstSlideTime = `no_data_${dateText}`;
                 }
-
-            } catch (processError) {
-                console.error(`Gagal memproses tanggal ${dateText}: ${processError.message}`);
-                initialData.prakiraan[dateText] = [{ error: `Gagal memproses: ${processError.message}` }];
-                previousFirstSlideTime = `error_${dateText}`;
-                 try {
-                    const htmlContent = await page.content();
-                    console.log(`---------- HTML Content (Error Process ${dateText}) ----------`);
-                    console.log(htmlContent.substring(0, 10000));
-                    console.log("----------------------------------------------------------");
-                 } catch (htmlErr) { console.error("Gagal log HTML"); }
+            } catch (extractError) {
+                 console.error(`Gagal mengekstrak data untuk "${dateText}" setelah menunggu: ${extractError.message}`);
+                 initialData.prakiraan[dateText] = [{ error: `Gagal ekstrak data: ${extractError.message}` }];
+                 previousFirstSlideTime = `extract_error_${dateText}`;
             }
-             await new Promise(resolve => setTimeout(resolve, 600));
+
+             await new Promise(resolve => setTimeout(resolve, 600)); // Jeda antar klik
         }
 
         console.log('Ekstraksi data multi-tanggal selesai.');
