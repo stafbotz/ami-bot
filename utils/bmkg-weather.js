@@ -1,7 +1,8 @@
 import puppeteer from 'puppeteer';
 
-// ... (Fungsi extractHourlyForecast tetap sama persis seperti sebelumnya) ...
+// ... (Fungsi extractHourlyForecast tetap sama) ...
 async function extractHourlyForecast(page) {
+    // ... (kode fungsi ini tidak berubah) ...
     try {
         return await page.evaluate(() => {
             const hourlyForecast = [];
@@ -31,7 +32,7 @@ async function extractHourlyForecast(page) {
                                      jam.kecepatanAngin = value || textContent.split(':').pop().trim();
                                   } else if (item.querySelector('p > span > span.font-bold')) { // Struktur Arah Angin
                                      jam.arahAngin = item.querySelector('p > span > span.font-bold').textContent.trim();
-                                  } else if (item.querySelector('svg path[d*="M10 3.333c"]')) { // Ikon mata Jarak Pandang
+                                  } else if (item.querySelector('svg path[d*="M10 3.333c"]')) { // Ikon mata
                                       jam.jarakPandang = value || textContent.split(':').pop().trim();
                                  }
                              }
@@ -50,6 +51,7 @@ async function extractHourlyForecast(page) {
 
 
 async function scrapeBmkgCuaca(kodeWilayah) {
+    // ... (Definisi kodeWilayah, url, browser, page setup tetap sama) ...
     if (!kodeWilayah) {
         console.error('Error: Kode wilayah diperlukan.');
         console.log('Contoh penggunaan: node scrapeBmkg.js 53.01.06.2018');
@@ -64,7 +66,7 @@ async function scrapeBmkgCuaca(kodeWilayah) {
 
     try {
         browser = await puppeteer.launch({
-            headless: true, // Set true untuk production
+            headless: true, // Set true
             args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage', '--disable-gpu']
         });
 
@@ -94,7 +96,7 @@ async function scrapeBmkgCuaca(kodeWilayah) {
                 timezone: null,
                 cuacaSaatIni: { waktuPembaruan: null, suhu: null, deskripsi: null, kelembapan: null, kecepatanAngin: null, arahAngin: null, jarakPandang: null },
                 peringatan: null,
-                prakiraan: {} // Inisialisasi objek prakiraan
+                prakiraan: {}
             };
 
             const getText = (element) => element?.textContent?.trim() || null;
@@ -103,62 +105,60 @@ async function scrapeBmkgCuaca(kodeWilayah) {
                 return text ? text.replace(prefixToRemove, '').trim() : null;
             }
 
-             // --- Lokasi ---
-             const headingElement = document.querySelector('h1');
-             hasil.lokasi.kelurahan = getCleanText(headingElement, /^Prakiraan Cuaca\s+/i);
-
-             const headingContainer = headingElement?.closest('div.flex-col');
-             let descriptionElement = null;
-             if (headingContainer) {
-                  const pElements = headingContainer.parentElement?.querySelectorAll('p.text-gray-primary');
-                  if (pElements) {
-                     for (const p of pElements) {
-                         if (getText(p)?.toLowerCase().startsWith('prakiraan cuaca di')) {
-                             descriptionElement = p;
-                             break;
-                         }
-                     }
-                  }
-             }
-
-             const descriptionTextRaw = getText(descriptionElement);
-             if (descriptionTextRaw && descriptionTextRaw.includes(',')) {
-                 const parts = descriptionTextRaw.split(',').map(part => part.trim());
-                  if (parts.length >= 4) {
-                     hasil.lokasi.provinsi = parts[parts.length - 1];
-                     hasil.lokasi.kabupaten = parts[parts.length - 2].replace(/^Kabupaten\s+/i, '');
-                     hasil.lokasi.kecamatan = parts[parts.length - 3].replace(/^Kecamatan\s+/i, '');
-                     const kelurahanDariDesc = parts[0].replace(/^Prakiraan cuaca di\s+/i, '');
-                     if(kelurahanDariDesc) hasil.lokasi.kelurahan = kelurahanDariDesc;
-                 } else if (parts.length === 3) {
-                      hasil.lokasi.provinsi = parts[parts.length - 1];
-                      hasil.lokasi.kecamatan = parts[parts.length - 2].replace(/^Kecamatan\s+/i, '');
-                      hasil.lokasi.kabupaten = parts[0].replace(/^Prakiraan cuaca di\s+/i, '');
-                      if (!hasil.lokasi.kelurahan) hasil.lokasi.kelurahan = hasil.lokasi.kabupaten;
-                 } else if (parts.length === 2) {
-                     hasil.lokasi.provinsi = parts[parts.length - 1];
-                     if (!hasil.lokasi.kelurahan) {
-                          const namaMatch = parts[0].match(/di\s+(.*?)$/i);
-                          hasil.lokasi.kelurahan = namaMatch ? namaMatch[1].trim() : parts[0].replace(/^Prakiraan cuaca di\s+/i, '');
-                     }
+            // --- Lokasi ---
+            const headingElement = document.querySelector('h1');
+            hasil.lokasi.kelurahan = getCleanText(headingElement, /^Prakiraan Cuaca\s+/i);
+            const headingContainer = headingElement?.closest('div.flex-col');
+            let descriptionElement = null;
+            if (headingContainer) {
+                 const pElements = headingContainer.parentElement?.querySelectorAll('p.text-gray-primary');
+                 if (pElements) {
+                    for (const p of pElements) {
+                        if (getText(p)?.toLowerCase().startsWith('prakiraan cuaca di')) {
+                            descriptionElement = p;
+                            break;
+                        }
+                    }
                  }
-             }
-              if (!hasil.lokasi.kode) {
-                 try {
-                     const currentUrl = window.location.href;
-                     const urlParts = currentUrl.split('/');
-                     hasil.lokasi.kode = urlParts[urlParts.length - 1] || null;
-                 } catch (e) { /* ignore */ }
-             }
+            }
+            const descriptionTextRaw = getText(descriptionElement);
+            if (descriptionTextRaw && descriptionTextRaw.includes(',')) {
+                const parts = descriptionTextRaw.split(',').map(part => part.trim());
+                 if (parts.length >= 4) {
+                    hasil.lokasi.provinsi = parts[parts.length - 1];
+                    hasil.lokasi.kabupaten = parts[parts.length - 2].replace(/^Kabupaten\s+/i, '');
+                    hasil.lokasi.kecamatan = parts[parts.length - 3].replace(/^Kecamatan\s+/i, '');
+                    const kelurahanDariDesc = parts[0].replace(/^Prakiraan cuaca di\s+/i, '');
+                    if(kelurahanDariDesc) hasil.lokasi.kelurahan = kelurahanDariDesc;
+                } else if (parts.length === 3) {
+                     hasil.lokasi.provinsi = parts[parts.length - 1];
+                     hasil.lokasi.kecamatan = parts[parts.length - 2].replace(/^Kecamatan\s+/i, '');
+                     hasil.lokasi.kabupaten = parts[0].replace(/^Prakiraan cuaca di\s+/i, '');
+                     if (!hasil.lokasi.kelurahan) hasil.lokasi.kelurahan = hasil.lokasi.kabupaten;
+                } else if (parts.length === 2) {
+                    hasil.lokasi.provinsi = parts[parts.length - 1];
+                    if (!hasil.lokasi.kelurahan) {
+                         const namaMatch = parts[0].match(/di\s+(.*?)$/i);
+                         hasil.lokasi.kelurahan = namaMatch ? namaMatch[1].trim() : parts[0].replace(/^Prakiraan cuaca di\s+/i, '');
+                    }
+                }
+            }
+             if (!hasil.lokasi.kode) {
+                try {
+                    const currentUrl = window.location.href;
+                    const urlParts = currentUrl.split('/');
+                    hasil.lokasi.kode = urlParts[urlParts.length - 1] || null;
+                } catch (e) { /* ignore */ }
+            }
 
-             // --- Timezone ---
-             const firstHourTitle = document.querySelector('.swiper-slide h4');
-              if (firstHourTitle) {
-                 const match = getText(firstHourTitle)?.match(/(WIB|WITA|WIT)/);
-                 hasil.timezone = match ? match[0] : null;
-             }
+            // --- Timezone ---
+            const firstHourTitle = document.querySelector('.swiper-slide h4');
+             if (firstHourTitle) {
+                const match = getText(firstHourTitle)?.match(/(WIB|WITA|WIT)/);
+                hasil.timezone = match ? match[0] : null;
+            }
 
-              // --- Cuaca Saat Ini ---
+             // --- Cuaca Saat Ini ---
              let currentTimeAnchor = null;
              const timeElements = Array.from(document.querySelectorAll('time.font-medium'));
              timeElements.forEach(t => {
@@ -200,7 +200,6 @@ async function scrapeBmkgCuaca(kodeWilayah) {
                       }
                  }
              }
-
             return hasil;
         }, kodeWilayah);
 
@@ -209,45 +208,52 @@ async function scrapeBmkgCuaca(kodeWilayah) {
         }
 
         console.log("Mengekstrak prakiraan jam untuk tanggal pertama...");
-
-        // --- Selector Container Tombol Tanggal (Revisi) ---
         const dateButtonContainerSelector = 'div.px-6.md\\:px-0 > div.flex[class*="overflow-x-scroll"]';
-
-        const firstDateButton = await page.$(`${dateButtonContainerSelector} > div > button.border-blue-primary`); // Target button di dalam div
+        const firstDateButton = await page.$(`${dateButtonContainerSelector} > div > button.border-blue-primary`);
         const firstDateText = firstDateButton ? await page.evaluate(el => el.textContent.trim(), firstDateButton) : "Tanggal_1";
         initialData.prakiraan[firstDateText] = await extractHourlyForecast(page);
 
-        // --- Selector Tombol Tidak Aktif (Revisi) ---
-        const inactiveButtonSelector = `${dateButtonContainerSelector} > div > button.border:not(.border-blue-primary)`;
+        // --- Ambil SEMUA Tombol Tanggal ---
+        const allButtonSelector = `${dateButtonContainerSelector} > div > button.border`;
+        const allDateButtonsHandles = await page.$$(allButtonSelector);
+        console.log(`Menemukan ${allDateButtonsHandles.length} total tombol di container.`);
 
-        const dateButtonsHandles = await page.$$(inactiveButtonSelector); // Ambil handle elemen
-        console.log(`Menemukan ${dateButtonsHandles.length} tombol tanggal tambahan (selector: ${inactiveButtonSelector})`);
+        // --- Filter Tombol Tidak Aktif di Sini (Node.js side) ---
+        const inactiveDateButtonsHandles = [];
+        for (const handle of allDateButtonsHandles) {
+            const className = await page.evaluate(el => el.className, handle);
+            if (!className.includes('border-blue-primary')) { // Jika TIDAK punya kelas aktif
+                inactiveDateButtonsHandles.push(handle);
+            }
+        }
+        console.log(`Menemukan ${inactiveDateButtonsHandles.length} tombol tanggal tambahan untuk diproses.`);
 
-        // --- Loop dan Klik ---
-        // Simpan teks tombol target agar tidak bergantung pada handle yang bisa stale
+        // --- Loop dan Klik (menggunakan handle yang sudah difilter) ---
         const targetButtonTexts = [];
-        for (const handle of dateButtonsHandles) {
+        for (const handle of inactiveDateButtonsHandles) { // Gunakan handle yang sudah difilter
             const text = await page.evaluate(el => el.textContent.trim(), handle);
             targetButtonTexts.push(text);
         }
 
-        for (const dateText of targetButtonTexts) {
+        for (const dateText of targetButtonTexts) { // Loop berdasarkan teks target
             console.log(`\nMencoba memproses tanggal: ${dateText}`);
 
-            // Cari ulang handle tombol berdasarkan teks setiap iterasi
-            let buttonToClick = null;
-            const currentInactiveButtons = await page.$$(inactiveButtonSelector);
-            for (const btn of currentInactiveButtons) {
-                const currentBtnText = await page.evaluate(el => el.textContent.trim(), btn);
-                if (currentBtnText === dateText) {
-                    buttonToClick = btn;
-                    console.log(`Tombol "${dateText}" ditemukan.`);
-                    break;
-                }
-            }
+             // Cari ulang handle tombol berdasarkan teks setiap iterasi (masih diperlukan karena DOM berubah)
+             let buttonToClick = null;
+             const currentAllButtons = await page.$$(allButtonSelector); // Cari semua tombol lagi
+             for (const btn of currentAllButtons) {
+                  const currentBtnText = await page.evaluate(el => el.textContent.trim(), btn);
+                  const currentClassName = await page.evaluate(el => el.className, btn);
+                  // Cari tombol yang teksnya cocok DAN tidak aktif
+                  if (currentBtnText === dateText && !currentClassName.includes('border-blue-primary')) {
+                      buttonToClick = btn;
+                      console.log(`Tombol "${dateText}" ditemukan.`);
+                      break;
+                  }
+             }
 
             if (!buttonToClick) {
-                console.warn(`Tombol untuk tanggal "${dateText}" tidak ditemukan lagi (mungkin DOM berubah). Melanjutkan...`);
+                console.warn(`Tombol untuk tanggal "${dateText}" tidak ditemukan lagi (mungkin DOM berubah atau sudah aktif?). Melanjutkan...`);
                 continue;
             }
 
@@ -255,26 +261,24 @@ async function scrapeBmkgCuaca(kodeWilayah) {
                 console.log(`Mengklik tombol "${dateText}"...`);
                 await buttonToClick.click();
                 console.log(`Menunggu network idle setelah klik "${dateText}"...`);
-                // Tunggu jaringan selesai setelah klik
-                await page.waitForNetworkIdle({ idleTime: 750, timeout: 30000 }); // Tingkatkan timeout jika perlu
-                console.log(`Network idle tercapai untuk "${dateText}". Mengekstrak data...`);
+                await page.waitForNetworkIdle({ idleTime: 750, timeout: 30000 });
 
+                console.log(`Data untuk ${dateText} selesai dimuat. Mengekstrak...`);
                 initialData.prakiraan[dateText] = await extractHourlyForecast(page);
                 console.log(`Data untuk "${dateText}" berhasil diekstrak.`);
 
             } catch (clickError) {
                 console.error(`Gagal memproses tanggal ${dateText}: ${clickError.message}`);
                 initialData.prakiraan[dateText] = [{ error: `Gagal memuat/ekstrak data: ${clickError.message}` }];
-                // Log HTML saat error
-                try {
+                 // Log HTML
+                 try {
                     const htmlContent = await page.content();
                     console.log(`---------- HTML Content (Error Klik/Tunggu ${dateText}) ----------`);
                     console.log(htmlContent.substring(0, 10000));
                     console.log("---------------------------------------------------------------");
                  } catch (htmlErr) { console.error("Gagal log HTML"); }
             }
-            // Beri jeda singkat antar klik untuk stabilitas (opsional)
-             await new Promise(resolve => setTimeout(resolve, 300));
+            await new Promise(resolve => setTimeout(resolve, 300)); // Jeda antar klik
         }
 
         console.log('Ekstraksi data multi-tanggal selesai.');
@@ -297,19 +301,14 @@ async function scrapeBmkgCuaca(kodeWilayah) {
         return null;
     } finally {
         if (browser) {
-            // Hapus jeda debug jika sudah tidak diperlukan
-            // console.log("Menunggu 30 detik sebelum menutup browser (untuk debug)...");
-            // await new Promise(resolve => setTimeout(resolve, 30000));
             await browser.close();
             console.log('Browser ditutup.');
         }
     }
 }
 
-// --- Ambil Kode Wilayah dari Argumen CLI ---
+// ... (Kode pemanggilan scrapeBmkgCuaca tetap sama) ...
 const kodeWilayahInput = process.argv[2];
-
-// --- Jalankan Scraper ---
 scrapeBmkgCuaca(kodeWilayahInput)
     .then(data => {
         if (data) {
