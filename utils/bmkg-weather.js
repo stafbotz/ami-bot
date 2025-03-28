@@ -1,8 +1,7 @@
 import puppeteer from 'puppeteer';
 
-// ... (Fungsi extractHourlyForecast tetap sama) ...
+// ... (Fungsi extractHourlyForecast tetap sama persis seperti sebelumnya) ...
 async function extractHourlyForecast(page) {
-    // ... (kode fungsi ini tidak berubah) ...
     try {
         return await page.evaluate(() => {
             const hourlyForecast = [];
@@ -30,7 +29,7 @@ async function extractHourlyForecast(page) {
                                      jam.kelembapan = value || textContent.split(':').pop().trim();
                                  } else if (textContent.toLowerCase().includes('km/jam')) {
                                      jam.kecepatanAngin = value || textContent.split(':').pop().trim();
-                                  } else if (item.querySelector('p > span > span.font-bold')) { // Struktur Arah Angin
+                                  } else if (item.querySelector('p > span > span.font-bold')) {
                                      jam.arahAngin = item.querySelector('p > span > span.font-bold').textContent.trim();
                                   } else if (item.querySelector('svg path[d*="M10 3.333c"]')) { // Ikon mata
                                       jam.jarakPandang = value || textContent.split(':').pop().trim();
@@ -51,7 +50,6 @@ async function extractHourlyForecast(page) {
 
 
 async function scrapeBmkgCuaca(kodeWilayah) {
-    // ... (Definisi kodeWilayah, url, browser, page setup tetap sama) ...
     if (!kodeWilayah) {
         console.error('Error: Kode wilayah diperlukan.');
         console.log('Contoh penggunaan: node scrapeBmkg.js 53.01.06.2018');
@@ -66,7 +64,7 @@ async function scrapeBmkgCuaca(kodeWilayah) {
 
     try {
         browser = await puppeteer.launch({
-            headless: true, // Set true
+            headless: true, // Set false untuk debug
             args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage', '--disable-gpu']
         });
 
@@ -96,7 +94,7 @@ async function scrapeBmkgCuaca(kodeWilayah) {
                 timezone: null,
                 cuacaSaatIni: { waktuPembaruan: null, suhu: null, deskripsi: null, kelembapan: null, kecepatanAngin: null, arahAngin: null, jarakPandang: null },
                 peringatan: null,
-                prakiraan: {}
+                prakiraan: {} // Inisialisasi objek prakiraan
             };
 
             const getText = (element) => element?.textContent?.trim() || null;
@@ -108,6 +106,7 @@ async function scrapeBmkgCuaca(kodeWilayah) {
             // --- Lokasi ---
             const headingElement = document.querySelector('h1');
             hasil.lokasi.kelurahan = getCleanText(headingElement, /^Prakiraan Cuaca\s+/i);
+
             const headingContainer = headingElement?.closest('div.flex-col');
             let descriptionElement = null;
             if (headingContainer) {
@@ -121,6 +120,7 @@ async function scrapeBmkgCuaca(kodeWilayah) {
                     }
                  }
             }
+
             const descriptionTextRaw = getText(descriptionElement);
             if (descriptionTextRaw && descriptionTextRaw.includes(',')) {
                 const parts = descriptionTextRaw.split(',').map(part => part.trim());
@@ -208,77 +208,91 @@ async function scrapeBmkgCuaca(kodeWilayah) {
         }
 
         console.log("Mengekstrak prakiraan jam untuk tanggal pertama...");
+        // --- Selector Container Tombol (Revisi) ---
         const dateButtonContainerSelector = 'div.px-6.md\\:px-0 > div.flex[class*="overflow-x-scroll"]';
+
         const firstDateButton = await page.$(`${dateButtonContainerSelector} > div > button.border-blue-primary`);
         const firstDateText = firstDateButton ? await page.evaluate(el => el.textContent.trim(), firstDateButton) : "Tanggal_1";
         initialData.prakiraan[firstDateText] = await extractHourlyForecast(page);
 
-        // --- Ambil SEMUA Tombol Tanggal ---
-        const allButtonSelector = `${dateButtonContainerSelector} > div > button.border`;
-        const allDateButtonsHandles = await page.$$(allButtonSelector);
-        console.log(`Menemukan ${allDateButtonsHandles.length} total tombol di container.`);
-
-        // --- Filter Tombol Tidak Aktif di Sini (Node.js side) ---
-        const inactiveDateButtonsHandles = [];
-        for (const handle of allDateButtonsHandles) {
-            const className = await page.evaluate(el => el.className, handle);
-            if (!className.includes('border-blue-primary')) { // Jika TIDAK punya kelas aktif
-                inactiveDateButtonsHandles.push(handle);
-            }
-        }
-        console.log(`Menemukan ${inactiveDateButtonsHandles.length} tombol tanggal tambahan untuk diproses.`);
-
-        // --- Loop dan Klik (menggunakan handle yang sudah difilter) ---
-        const targetButtonTexts = [];
-        for (const handle of inactiveDateButtonsHandles) { // Gunakan handle yang sudah difilter
+        // --- Logika Baru: Dapatkan Semua Teks Tombol, Identifikasi yang Tidak Aktif ---
+        const allButtonHandles = await page.$$(`${dateButtonContainerSelector} > div > button`);
+        const allButtonTexts = [];
+        for (const handle of allButtonHandles) {
             const text = await page.evaluate(el => el.textContent.trim(), handle);
-            targetButtonTexts.push(text);
+            allButtonTexts.push(text);
         }
+        console.log(`Menemukan ${allButtonTexts.length} total tombol di container: ${allButtonTexts.join(', ')}`);
 
-        for (const dateText of targetButtonTexts) { // Loop berdasarkan teks target
+        // Tombol target adalah semua tombol kecuali yang pertama (yang aktif)
+        const targetButtonTexts = allButtonTexts.slice(1);
+        console.log(`Menemukan ${targetButtonTexts.length} tombol tanggal tambahan untuk diproses.`);
+
+        let previousFirstSlideTime = initialData.prakiraan[firstDateText]?.[0]?.waktu || ''; // Waktu slide pertama untuk perbandingan
+
+        // --- Loop dan Klik Berdasarkan Teks ---
+        for (const dateText of targetButtonTexts) {
             console.log(`\nMencoba memproses tanggal: ${dateText}`);
 
-             // Cari ulang handle tombol berdasarkan teks setiap iterasi (masih diperlukan karena DOM berubah)
-             let buttonToClick = null;
-             const currentAllButtons = await page.$$(allButtonSelector); // Cari semua tombol lagi
-             for (const btn of currentAllButtons) {
-                  const currentBtnText = await page.evaluate(el => el.textContent.trim(), btn);
-                  const currentClassName = await page.evaluate(el => el.className, btn);
-                  // Cari tombol yang teksnya cocok DAN tidak aktif
-                  if (currentBtnText === dateText && !currentClassName.includes('border-blue-primary')) {
-                      buttonToClick = btn;
-                      console.log(`Tombol "${dateText}" ditemukan.`);
-                      break;
-                  }
-             }
+            // Cari ulang handle tombol berdasarkan teks setiap iterasi
+            let buttonToClick = null;
+            const currentAllButtons = await page.$$(`${dateButtonContainerSelector} > div > button`); // Cari semua tombol lagi
+            for (const btn of currentAllButtons) {
+                const currentBtnText = await page.evaluate(el => el.textContent.trim(), btn);
+                if (currentBtnText === dateText) {
+                    buttonToClick = btn;
+                    console.log(`Tombol "${dateText}" ditemukan.`);
+                    break;
+                }
+            }
 
             if (!buttonToClick) {
-                console.warn(`Tombol untuk tanggal "${dateText}" tidak ditemukan lagi (mungkin DOM berubah atau sudah aktif?). Melanjutkan...`);
+                console.warn(`Tombol untuk tanggal "${dateText}" tidak ditemukan lagi.`);
                 continue;
             }
 
             try {
                 console.log(`Mengklik tombol "${dateText}"...`);
                 await buttonToClick.click();
-                console.log(`Menunggu network idle setelah klik "${dateText}"...`);
-                await page.waitForNetworkIdle({ idleTime: 750, timeout: 30000 });
+                console.log(`Menunggu konten slider untuk "${dateText}" berubah...`);
 
-                console.log(`Data untuk ${dateText} selesai dimuat. Mengekstrak...`);
-                initialData.prakiraan[dateText] = await extractHourlyForecast(page);
-                console.log(`Data untuk "${dateText}" berhasil diekstrak.`);
+                // --- Gunakan waitForFunction untuk menunggu perubahan konten ---
+                await page.waitForFunction(
+                    (selector, prevTime) => {
+                        const firstSlideH4 = document.querySelector(selector);
+                        const currentTime = firstSlideH4?.textContent?.trim() || null;
+                        // Tunggu sampai teks ada DAN berbeda dari sebelumnya
+                        return currentTime && currentTime !== prevTime;
+                    },
+                    { timeout: 20000 }, // Timeout 20 detik untuk menunggu perubahan
+                    '.swiper-slide:first-child h4', // Selector H4 di slide pertama
+                    previousFirstSlideTime // Kirim waktu sebelumnya untuk perbandingan
+                );
+                // --- Akhir waitForFunction ---
+
+                console.log(`Konten untuk "${dateText}" telah berubah. Mengekstrak data...`);
+                const hourlyData = await extractHourlyForecast(page);
+                initialData.prakiraan[dateText] = hourlyData;
+                console.log(`Data untuk "${dateText}" berhasil diekstrak (${hourlyData.length} jam).`);
+
+                // Update waktu slide pertama untuk iterasi berikutnya
+                 previousFirstSlideTime = hourlyData?.[0]?.waktu || `error_${dateText}`; // Jika ekstrak gagal, beri nilai beda
 
             } catch (clickError) {
                 console.error(`Gagal memproses tanggal ${dateText}: ${clickError.message}`);
                 initialData.prakiraan[dateText] = [{ error: `Gagal memuat/ekstrak data: ${clickError.message}` }];
-                 // Log HTML
-                 try {
+                // Coba log HTML
+                try {
                     const htmlContent = await page.content();
                     console.log(`---------- HTML Content (Error Klik/Tunggu ${dateText}) ----------`);
                     console.log(htmlContent.substring(0, 10000));
                     console.log("---------------------------------------------------------------");
                  } catch (htmlErr) { console.error("Gagal log HTML"); }
+                 // Set waktu sebelumnya agar berbeda untuk iterasi selanjutnya jika terjadi error
+                 previousFirstSlideTime = `error_${dateText}`;
             }
-            await new Promise(resolve => setTimeout(resolve, 300)); // Jeda antar klik
+             // Jeda singkat antar klik
+             await new Promise(resolve => setTimeout(resolve, 500)); // 500ms jeda
         }
 
         console.log('Ekstraksi data multi-tanggal selesai.');
@@ -301,14 +315,19 @@ async function scrapeBmkgCuaca(kodeWilayah) {
         return null;
     } finally {
         if (browser) {
+             // Hapus jeda debug jika tidak diperlukan
+             // console.log("Menunggu 30 detik sebelum menutup browser (untuk debug)...");
+             // await new Promise(resolve => setTimeout(resolve, 30000));
             await browser.close();
             console.log('Browser ditutup.');
         }
     }
 }
 
-// ... (Kode pemanggilan scrapeBmkgCuaca tetap sama) ...
+// --- Ambil Kode Wilayah dari Argumen CLI ---
 const kodeWilayahInput = process.argv[2];
+
+// --- Jalankan Scraper ---
 scrapeBmkgCuaca(kodeWilayahInput)
     .then(data => {
         if (data) {
